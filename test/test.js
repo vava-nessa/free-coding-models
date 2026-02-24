@@ -27,7 +27,7 @@ const ROOT = join(__dirname, '..')
 // 📖 Import modules under test
 import { nvidiaNim, sources, MODELS } from '../sources.js'
 import {
-  getAvg, getVerdict, getUptime, sortResults, filterByTier, findBestModel, parseArgs,
+  getAvg, getVerdict, getUptime, sortResults, filterByTier, findBestModel, findFallbackModel, parseArgs,
   TIER_ORDER, VERDICT_ORDER, TIER_LETTER_MAP
 } from '../lib/utils.js'
 
@@ -332,6 +332,72 @@ describe('findBestModel', () => {
       mockResult({ label: 'Stable', status: 'up', pings: [{ ms: 300, code: '200' }, { ms: 300, code: '200' }] }),
     ]
     assert.equal(findBestModel(results).label, 'Stable')
+  })
+})
+
+describe('findFallbackModel', () => {
+  it('returns null when no alternatives available', () => {
+    const overloaded = mockResult({ label: 'Overloaded', tier: 'S', status: 'up', httpCode: '429' })
+    const results = [overloaded]
+    assert.equal(findFallbackModel(results, overloaded), null)
+  })
+
+  it('returns null when only alternative is also overloaded', () => {
+    const overloaded = mockResult({ label: 'Overloaded', tier: 'S', status: 'up', httpCode: '429' })
+    const other = mockResult({ label: 'Other', tier: 'S', status: 'up', httpCode: '429' })
+    const results = [overloaded, other]
+    assert.equal(findFallbackModel(results, overloaded), null)
+  })
+
+  it('finds fallback from same tier', () => {
+    const overloaded = mockResult({ label: 'Overloaded', tier: 'S', status: 'up', httpCode: '429', modelId: 'model1' })
+    const alternative = mockResult({ label: 'Alternative', tier: 'S', status: 'up', httpCode: '200', modelId: 'model2', pings: [{ ms: 500, code: '200' }] })
+    const results = [overloaded, alternative]
+    const fallback = findFallbackModel(results, overloaded)
+    assert.equal(fallback.label, 'Alternative')
+  })
+
+  it('prefers same tier over lower tier', () => {
+    const overloaded = mockResult({ label: 'Overloaded', tier: 'S', status: 'up', httpCode: '429', modelId: 'model1' })
+    const sameTier = mockResult({ label: 'SameTier', tier: 'S', status: 'up', httpCode: '200', modelId: 'model2', pings: [{ ms: 800, code: '200' }] })
+    const lowerTier = mockResult({ label: 'LowerTier', tier: 'A', status: 'up', httpCode: '200', modelId: 'model3', pings: [{ ms: 100, code: '200' }] })
+    const results = [overloaded, sameTier, lowerTier]
+    const fallback = findFallbackModel(results, overloaded)
+    assert.equal(fallback.label, 'SameTier')
+  })
+
+  it('finds lower tier when same tier not available', () => {
+    const overloaded = mockResult({ label: 'Overloaded', tier: 'S', status: 'up', httpCode: '429', modelId: 'model1' })
+    const lowerTier = mockResult({ label: 'LowerTier', tier: 'A', status: 'up', httpCode: '200', modelId: 'model2', pings: [{ ms: 500, code: '200' }] })
+    const results = [overloaded, lowerTier]
+    const fallback = findFallbackModel(results, overloaded)
+    assert.equal(fallback.label, 'LowerTier')
+  })
+
+  it('prefers faster model within same tier', () => {
+    const overloaded = mockResult({ label: 'Overloaded', tier: 'S', status: 'up', httpCode: '429', modelId: 'model1' })
+    const slow = mockResult({ label: 'Slow', tier: 'S', status: 'up', httpCode: '200', modelId: 'model2', pings: [{ ms: 1000, code: '200' }] })
+    const fast = mockResult({ label: 'Fast', tier: 'S', status: 'up', httpCode: '200', modelId: 'model3', pings: [{ ms: 200, code: '200' }] })
+    const results = [overloaded, slow, fast]
+    const fallback = findFallbackModel(results, overloaded)
+    assert.equal(fallback.label, 'Fast')
+  })
+
+  it('respects sameTierOnly option', () => {
+    const overloaded = mockResult({ label: 'Overloaded', tier: 'S', status: 'up', httpCode: '429', modelId: 'model1' })
+    const lowerTier = mockResult({ label: 'LowerTier', tier: 'A', status: 'up', httpCode: '200', modelId: 'model2', pings: [{ ms: 500, code: '200' }] })
+    const results = [overloaded, lowerTier]
+    const fallback = findFallbackModel(results, overloaded, { sameTierOnly: true })
+    assert.equal(fallback, null)
+  })
+
+  it('skips down models', () => {
+    const overloaded = mockResult({ label: 'Overloaded', tier: 'S', status: 'up', httpCode: '429', modelId: 'model1' })
+    const down = mockResult({ label: 'Down', tier: 'S', status: 'down', httpCode: '500', modelId: 'model2' })
+    const up = mockResult({ label: 'Up', tier: 'A', status: 'up', httpCode: '200', modelId: 'model3', pings: [{ ms: 500, code: '200' }] })
+    const results = [overloaded, down, up]
+    const fallback = findFallbackModel(results, overloaded)
+    assert.equal(fallback.label, 'Up')
   })
 })
 

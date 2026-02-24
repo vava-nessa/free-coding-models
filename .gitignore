@@ -50,3 +50,6 @@ Thumbs.db
 
 # 11. Local-only telemetry POC (kept out of this repo on purpose)
 private-telemetry/
+
+#12 Txt files
+*.txt

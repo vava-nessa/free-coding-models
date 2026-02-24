@@ -4,6 +4,11 @@
 
 ## 0.1.63
 
+### Added
+
+- **Fireworks AI provider**: added new provider with 11 models including Llama 4 Maverick, DeepSeek V3, QwQ 32B, Qwen2.5 Coder 32B, Llama 3.1 405B, R1 Distill 70B, Llama 3.3 70B, Mixtral 8x22B, Llama 3.1 8B, R1 Distill 7B, and Gemma 3 27B. API key available via `FIREWORKS_API_KEY` env var or config file.
+- **Fallback model suggestions**: when a model shows "Overloaded" (HTTP 429 rate limit), the TUI now displays a suggestion line below it with the best alternative model from the same tier or lower. Includes model name, tier, provider, and average latency.
+
 ### Changed
 
 - Replaced webhook telemetry with PostHog capture API (`/i/v0/e/`) and kept explicit consent + `--no-telemetry` opt-out.

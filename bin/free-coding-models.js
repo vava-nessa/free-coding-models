@@ -88,7 +88,7 @@ import { homedir } from 'os'
 import { join, dirname } from 'path'
 import { MODELS, sources } from '../sources.js'
 import { patchOpenClawModelsJson } from '../patch-openclaw-models.js'
-import { getAvg, getVerdict, getUptime, sortResults, filterByTier, findBestModel, parseArgs, TIER_ORDER, VERDICT_ORDER, TIER_LETTER_MAP } from '../lib/utils.js'
+import { getAvg, getVerdict, getUptime, sortResults, filterByTier, findBestModel, findFallbackModel, parseArgs, TIER_ORDER, VERDICT_ORDER, TIER_LETTER_MAP } from '../lib/utils.js'
 import { loadConfig, saveConfig, getApiKey, isProviderEnabled } from '../lib/config.js'
 
 const require = createRequire(import.meta.url)
@@ -568,6 +568,14 @@ async function promptApiKey(config) {
       url: 'https://aistudio.google.com/apikey',
       hint: 'Get API key (free Gemma models, 14.4K req/day)',
       prefix: 'AIza',
+    },
+    {
+      key: 'fireworks',
+      label: 'Fireworks AI',
+      color: chalk.rgb(255, 80, 150),
+      url: 'https://fireworks.ai/account/api-keys',
+      hint: 'API Keys → Create key (free tier available)',
+      prefix: 'fw_',
     },
   ]
 
@@ -1078,6 +1086,21 @@ function renderTable(results, pendingPings, frame, cursor = null, sortColumn = '
       lines.push(chalk.bgRgb(139, 0, 139)(row))
     } else {
       lines.push(row)
+    }
+    
+    // 📖 Fallback suggestion for overloaded models (429 rate limit)
+    // 📖 Shows a suggestion line below the overloaded model with an alternative
+    if (r.httpCode === '429') {
+      const fallback = findFallbackModel(sorted, r)
+      if (fallback) {
+        const fallbackTier = chalk.rgb(100, 200, 255)(`[${fallback.tier}]`)
+        const fallbackName = chalk.cyan(fallback.label)
+        const fallbackProvider = chalk.dim(`(${sources[fallback.providerKey]?.name || fallback.providerKey})`)
+        const fallbackAvg = getAvg(fallback)
+        const fallbackAvgStr = fallbackAvg === Infinity ? '...' : fallbackAvg + 'ms'
+        const suggestionLine = chalk.dim('      ↳ Try: ') + fallbackTier + ' ' + fallbackName + ' ' + fallbackProvider + chalk.dim(` · ${fallbackAvgStr}`)
+        lines.push(suggestionLine)
+      }
     }
   }
 

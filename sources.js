@@ -27,8 +27,8 @@
  *   📖 Secondary: https://swe-rebench.com (independent evals, scores are lower)
  *   📖 Leaderboard tracker: https://www.marc0.dev/en/leaderboard
  *
- *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, codestral, hyperbolic, scaleway, googleai — model arrays per provider
- *   @exports sources — map of { nvidia, groq, cerebras, sambanova, openrouter, codestral, hyperbolic, scaleway, googleai } each with { name, url, models }
+ *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, codestral, hyperbolic, scaleway, googleai, fireworks — model arrays per provider
+ *   @exports sources — map of { nvidia, groq, cerebras, sambanova, openrouter, codestral, hyperbolic, scaleway, googleai, fireworks } each with { name, url, models }
  *   @exports MODELS — flat array of [modelId, label, tier, sweScore, ctx, providerKey]
  *
  *   📖 MODELS now includes providerKey as 6th element so ping() knows which
@@ -197,6 +197,29 @@ export const googleai = [
   ['gemma-3-4b-it',                            'Gemma 3 4B',         'C',  '10.0%', '128k'],
 ]
 
+// 📖 Fireworks AI source - https://fireworks.ai
+// 📖 Free tier available — API keys at https://fireworks.ai/account/api-keys
+export const fireworks = [
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['accounts/fireworks/models/llama4-maverick-instruct-basic', 'Llama 4 Maverick', 'S', '62.0%', '1M'],
+  ['accounts/fireworks/models/deepseek-v3',                    'DeepSeek V3',      'S', '62.0%', '128k'],
+  // ── A+ tier — SWE-bench Verified 50–60% ──
+  ['accounts/fireworks/models/qwq-32b',                        'QwQ 32B',          'A+', '50.0%', '131k'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['accounts/fireworks/models/qwen2p5-coder-32b-instruct',     'Qwen2.5 Coder 32B','A',  '46.0%', '32k'],
+  ['accounts/fireworks/models/llama3.1-405b-instruct',         'Llama 3.1 405B',   'A',  '44.0%', '128k'],
+  ['accounts/fireworks/models/deepseek-r1-distill-llama-70b',  'R1 Distill 70B',   'A',  '43.9%', '128k'],
+  // ── A- tier — SWE-bench Verified 35–40% ──
+  ['accounts/fireworks/models/llama-v3p3-70b-instruct',        'Llama 3.3 70B',    'A-', '39.5%', '128k'],
+  // ── B+ tier — SWE-bench Verified 30–35% ──
+  ['accounts/fireworks/models/mixtral-8x22b-instruct',         'Mixtral 8x22B',    'B+', '32.0%', '64k'],
+  // ── B tier — SWE-bench Verified 20–30% ──
+  ['accounts/fireworks/models/llama-v3p1-8b-instruct',         'Llama 3.1 8B',     'B',  '28.8%', '128k'],
+  ['accounts/fireworks/models/deepseek-r1-distill-qwen-7b',    'R1 Distill 7B',    'B',  '22.6%', '32k'],
+  // ── C tier — SWE-bench Verified <20% ──
+  ['accounts/fireworks/models/gemma-3-27b-it',                 'Gemma 3 27B',      'B',  '22.0%', '128k'],
+]
+
 // 📖 All sources combined - used by the main script
 // 📖 Each source has: name (display), url (API endpoint), models (array of model tuples)
 export const sources = {
@@ -244,6 +267,11 @@ export const sources = {
     name: 'Google AI',
     url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
     models: googleai,
+  },
+  fireworks: {
+    name: 'Fireworks',
+    url: 'https://api.fireworks.ai/inference/v1/chat/completions',
+    models: fireworks,
   },
 }
 
