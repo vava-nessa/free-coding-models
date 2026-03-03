@@ -686,6 +686,12 @@ describe('parseArgs', () => {
     assert.equal(parseArgs(argv('--port', '--best')).port, null)
   })
 
+  it('returns null port for invalid (non-numeric) --port value', () => {
+    // 📖 parseInt('abc', 10) = NaN — must be normalised to null, not stored as NaN
+    assert.strictEqual(parseArgs(argv('--port', 'abc')).port, null)
+    assert.strictEqual(parseArgs(argv('--port', 'notanumber')).port, null)
+  })
+
   it('does not capture --port value as apiKey', () => {
     assert.equal(parseArgs(argv('--port', '3000')).apiKey, null)
     assert.equal(parseArgs(argv('--router', '--port', '4000')).apiKey, null)
