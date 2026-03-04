@@ -1026,9 +1026,11 @@ function renderTable(results, pendingPings, frame, cursor = null, sortColumn = '
   const originH_c  = sortColumn === 'origin'
     ? chalk.bold.cyan(originLabel.padEnd(W_SOURCE))
     : (originFilterMode > 0 ? chalk.bold.rgb(100, 200, 255)(originLabel.padEnd(W_SOURCE)) : (() => {
-      // 📖 Custom colorization for Origin: highlight 'N' (the filter key) at the end
+      // 📖 Custom colorization for Origin: highlight 'O' (the sort key) at start
+      const first = originLabel[0]
+      const rest = originLabel.slice(1)
       const padding = ' '.repeat(Math.max(0, W_SOURCE - originLabel.length))
-      return chalk.dim('Origi') + chalk.yellow('N') + chalk.dim(padding)
+      return chalk.yellow(first) + chalk.dim(rest + padding)
     })())
   const modelH_c   = colorFirst(modelH, W_MODEL)
   const sweH_c     = sortColumn === 'swe' ? chalk.bold.cyan(sweH.padEnd(W_SWE)) : colorFirst(sweH, W_SWE)
@@ -1041,7 +1043,7 @@ function renderTable(results, pendingPings, frame, cursor = null, sortColumn = '
   const stabH_c    = sortColumn === 'stability' ? chalk.bold.cyan(stabH.padEnd(W_STAB)) : (() => {
     const plain = 'Stability'
     const padding = ' '.repeat(Math.max(0, W_STAB - plain.length))
-    return chalk.dim('Sta') + chalk.white.bold('B') + chalk.dim('ility' + padding)
+    return chalk.dim('Sta') + chalk.yellow.bold('B') + chalk.dim('ility' + padding)
   })()
   const uptimeH_c  = sortColumn === 'uptime' ? chalk.bold.cyan(uptimeH.padEnd(W_UPTIME)) : colorFirst(uptimeH, W_UPTIME, chalk.green)
   // 📖 Custom colorization for Usage: highlight 'G' (Shift+G = sort key)

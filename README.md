@@ -121,7 +121,7 @@ Before using `free-coding-models`, make sure you have:
 3. **OpenCode** *(optional)* — [Install OpenCode](https://github.com/opencode-ai/opencode) to use the OpenCode integration
 4. **OpenClaw** *(optional)* — [Install OpenClaw](https://openclaw.ai) to use the OpenClaw integration
 
- > 💡 **Tip:** You don't need all nineteen providers. One key is enough to get started. Add more later via the Settings screen (`P` key). Models without a key still show real latency (`🔑 NO KEY`) so you can evaluate providers before signing up.
+ > 💡 **Tip:** You don't need all twenty providers. One key is enough to get started. Add more later via the Settings screen (`P` key). Models without a key still show real latency (`🔑 NO KEY`) so you can evaluate providers before signing up.
 
 ---
 
@@ -199,13 +199,13 @@ When you run `free-coding-models` without `--opencode` or `--openclaw`, you get 
 Use `↑↓` arrows to select, `Enter` to confirm. Then the TUI launches with your chosen mode shown in the header badge.
 
 **How it works:**
- 1. **Ping phase** — All enabled models are pinged in parallel (up to 150 across 19 providers)
+ 1. **Ping phase** — All enabled models are pinged in parallel (up to 150 across 20 providers)
  2. **Continuous monitoring** — Models are re-pinged every 3 seconds forever
 3. **Real-time updates** — Watch "Latest", "Avg", and "Up%" columns update live
 4. **Select anytime** — Use ↑↓ arrows to navigate, press Enter on a model to act
 5. **Smart detection** — Automatically detects if NVIDIA NIM is configured in OpenCode or OpenClaw
 
- Setup wizard (first run — walks through all 19 providers):
+ Setup wizard (first run — walks through all 20 providers):
 
 ```
   🔑 First-time setup — API keys
