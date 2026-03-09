@@ -1,0 +1,49 @@
+name: Post pull requests to Discord
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send pull request to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_PR }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD: ${{ github.event.pull_request.head.ref }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          BODY=$(printf "%.800s" "${PR_BODY:-No description}")
+
+          jq -n \
+            --arg repo "$REPO_NAME" \
+            --arg number "$PR_NUMBER" \
+            --arg title "$PR_TITLE" \
+            --arg author "$PR_AUTHOR" \
+            --arg base "$PR_BASE" \
+            --arg head "$PR_HEAD" \
+            --arg body "$BODY" \
+            --arg url "$PR_URL" \
+            '{
+              username: "GitHub PRs",
+              embeds: [
+                {
+                  title: ("PR #" + $number + " - " + $title),
+                  url: $url,
+                  description: ("Repo: **" + $repo + "**\nAuthor: **" + $author + "**\nBranch: **" + $head + " → " + $base + "**\n\n" + $body)
+                }
+              ]
+            }' > payload.json
+
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d @payload.json \
+               "$DISCORD_WEBHOOK_URL"
