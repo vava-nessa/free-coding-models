@@ -31,9 +31,10 @@ import { homedir } from 'os'
 import { dirname, join } from 'path'
 import { spawn } from 'child_process'
 import { sources } from '../sources.js'
-import { getApiKey } from './config.js'
+import { getApiKey, getProxySettings } from './config.js'
 import { ENV_VAR_NAMES, isWindows } from './provider-metadata.js'
 import { getToolMeta } from './tool-metadata.js'
+import { ensureProxyRunning } from './opencode.js'
 
 function ensureDir(filePath) {
   const dir = dirname(filePath)
@@ -109,7 +110,7 @@ function spawnCommand(command, args, env) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: 'inherit',
-      shell: true,
+      shell: isWindows,
       detached: false,
       env,
     })
@@ -141,14 +142,16 @@ function writeAiderConfig(model, apiKey, baseUrl) {
   return { filePath, backupPath }
 }
 
-function writeCrushConfig(model, apiKey, baseUrl) {
+function writeCrushConfig(model, apiKey, baseUrl, providerId) {
   const filePath = join(homedir(), '.config', 'crush', 'crush.json')
   const backupPath = backupIfExists(filePath)
   const config = readJson(filePath, { $schema: 'https://charm.land/crush.json' })
+  if (!config.options || typeof config.options !== 'object') config.options = {}
+  config.options.disable_default_providers = true
   if (!config.providers || typeof config.providers !== 'object') config.providers = {}
-  config.providers.freeCodingModels = {
+  config.providers[providerId] = {
     name: 'Free Coding Models',
-    type: 'openai',
+    type: 'openai-compat',
     base_url: baseUrl,
     api_key: apiKey,
     models: [
@@ -158,12 +161,11 @@ function writeCrushConfig(model, apiKey, baseUrl) {
       },
     ],
   }
-  // 📖 Crush validates top-level `models` against an internal selected-model struct.
-  // 📖 Writing plain strings here breaks startup, so selection is passed via `--model` instead.
-  if (config.models && typeof config.models === 'object') {
-    delete config.models.preferred
-    delete config.models.default
-    if (Object.keys(config.models).length === 0) delete config.models
+  // 📖 Crush expects structured selected models at config.models.{large,small}.
+  // 📖 Root `crush` reads these defaults in interactive mode, unlike `crush run --model`.
+  config.models = {
+    ...(config.models && typeof config.models === 'object' ? config.models : {}),
+    large: { model: model.modelId, provider: providerId },
   }
   writeJson(filePath, config)
   return { filePath, backupPath }
@@ -247,8 +249,23 @@ export async function startExternalTool(mode, model, config) {
   }
 
   if (mode === 'crush') {
-    printConfigResult(meta.label, writeCrushConfig(model, apiKey, baseUrl))
-    return spawnCommand('crush', ['--model', model.modelId], env)
+    let crushApiKey = apiKey
+    let crushBaseUrl = baseUrl
+    let providerId = 'freeCodingModels'
+    const proxySettings = getProxySettings(config)
+
+    if (proxySettings.enabled) {
+      const started = await ensureProxyRunning(config)
+      crushApiKey = started.proxyToken
+      crushBaseUrl = `http://127.0.0.1:${started.port}/v1`
+      providerId = 'freeCodingModelsProxy'
+      console.log(chalk.dim(`  📖 Crush will use the local FCM proxy on :${started.port} for this launch.`))
+    } else {
+      console.log(chalk.dim('  📖 Crush will use the provider directly for this launch.'))
+    }
+
+    printConfigResult(meta.label, writeCrushConfig(model, crushApiKey, crushBaseUrl, providerId))
+    return spawnCommand('crush', [], env)
   }
 
   if (mode === 'goose') {

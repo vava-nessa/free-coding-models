@@ -77,14 +77,13 @@
 - **📊 Uptime tracking** — Percentage of successful pings shown in real-time
 - **📐 Stability score** — Composite 0–100 score measuring consistency (p95, jitter, spikes, uptime)
 - **📊 Usage tracking** — Monitor remaining quota for each exact provider/model pair when the provider exposes it; otherwise the TUI shows a green dot instead of a misleading percentage.
-- **📜 Live Log Viewer** — Press `X` to view real-time activity and error logs in a focused TUI overlay.
+- **📜 Request Log Overlay** — Press `X` to inspect recent proxied requests and token usage for exact provider/model pairs.
 - **🛠 MODEL_NOT_FOUND Rotation** — If a specific provider returns a 404 for a model, the TUI intelligently rotates through other available providers for the same model.
 - **🔄 Auto-retry** — Timeout models keep getting retried, nothing is ever "given up on"
 - **🎮 Interactive selection** — Navigate with arrow keys directly in the table, press Enter to act
-- **🔀 Startup mode menu** — Choose between OpenCode and OpenClaw before the TUI launches
 - **💻 OpenCode integration** — Auto-detects NIM setup, sets model as default, launches OpenCode
 - **🦞 OpenClaw integration** — Sets selected model as default provider in `~/.openclaw/openclaw.json`
-- **🧰 Multi-tool launchers** — `Enter` can now auto-configure and launch `Aider`, `Crush`, `Goose`, `Claude Code` (proxy env), `Codex CLI`, `Gemini CLI`, `Qwen Code`, `OpenHands`, `Amp`, and `Pi`
+- **🧰 Public tool launchers** — `Enter` can auto-configure and launch `OpenCode CLI`, `OpenCode Desktop`, `OpenClaw`, `Crush`, and `Goose`
 - **📝 Feature Request (J key)** — Send anonymous feedback directly to the project team
 - **🐛 Bug Report (I key)** — Send anonymous bug reports directly to the project team
  - **🎨 Clean output** — Zero scrollback pollution, interface stays open until Ctrl+C
@@ -151,7 +150,7 @@ bunx free-coding-models YOUR_API_KEY
 ## 🚀 Usage
 
 ```bash
-# Just run it — shows a startup menu to pick OpenCode or OpenClaw, prompts for API key if not set
+# Just run it — starts in OpenCode CLI mode, prompts for API key if not set
 free-coding-models
 
 # Explicitly target OpenCode CLI (TUI + Enter launches OpenCode CLI)
@@ -163,17 +162,9 @@ free-coding-models --opencode-desktop
 # Explicitly target OpenClaw (TUI + Enter sets model as default in OpenClaw)
 free-coding-models --openclaw
 
-# Launch other supported tools with the selected model
-free-coding-models --aider
+# Launch other supported public tools with the selected model
 free-coding-models --crush
 free-coding-models --goose
-free-coding-models --claude-code
-free-coding-models --codex
-free-coding-models --gemini
-free-coding-models --qwen
-free-coding-models --openhands
-free-coding-models --amp
-free-coding-models --pi
 
 # Show only top-tier models (A+, S, S+)
 free-coding-models --best
@@ -192,30 +183,17 @@ free-coding-models --openclaw --tier S
 free-coding-models --opencode --best
 ```
 
-### Startup mode menu
+### Choosing the target tool
 
-When you run `free-coding-models` without `--opencode` or `--openclaw`, you get an interactive startup menu:
+Running `free-coding-models` with no launcher flag starts in **OpenCode CLI** mode.
 
-```
-  ⚡ Free Coding Models — Choose your tool
-
-  ❯ 💻 OpenCode CLI
-       Press Enter on a model → launch OpenCode CLI with it as default
-
-    🖥 OpenCode Desktop
-       Press Enter on a model → set model & open OpenCode Desktop app
-
-    🦞 OpenClaw
-       Press Enter on a model → set it as default in OpenClaw config
-
-  ↑↓ Navigate  •  Enter Select  •  Ctrl+C Exit
-```
-
-Use `↑↓` arrows to select, `Enter` to confirm. Then the TUI launches with your chosen mode shown in the header badge.
+- Press **`Z`** in the TUI to cycle the public launch targets: `OpenCode CLI` → `OpenCode Desktop` → `OpenClaw` → `Crush` → `Goose`
+- Or start directly in the target mode with a CLI flag such as `--opencode-desktop`, `--openclaw`, `--crush`, or `--goose`
+- The active target is always visible in the header badge before you press `Enter`
 
 **How it works:**
- 1. **Ping phase** — All enabled models are pinged in parallel (up to 150 across 20 providers)
- 2. **Continuous monitoring** — Models start at 2s re-pings for 60s, then fall back to 10s automatically
+ 1. **Ping phase** — All enabled models are pinged in parallel (up to 159 across 20 providers)
+ 2. **Continuous monitoring** — Models start at 2s re-pings for 60s, then fall back to 10s automatically, and slow to 30s after 5 minutes idle unless you force 4s mode with `W`
 3. **Real-time updates** — Watch "Latest", "Avg", and "Up%" columns update live
 4. **Select anytime** — Use ↑↓ arrows to navigate, press Enter on a model to act
 5. **Smart detection** — Automatically detects if NVIDIA NIM is configured in OpenCode or OpenClaw
@@ -270,14 +248,18 @@ Press **`P`** to open the Settings screen at any time:
   2) Profile → API Keys → Generate
   3) Press T to test your key
 
-  ↑↓ Navigate  •  Enter Edit key / Check-or-Install update  •  Space Toggle enabled  •  T Test key  •  U Check updates  •  Esc Close
+  ↑↓ Navigate  •  Enter Edit/Run  •  + Add key  •  - Remove key  •  Space Toggle  •  T Test key  •  S Sync→OpenCode  •  R Restore backup  •  U Updates  •  ⌫ Delete profile  •  Esc Close
 ```
 
 - **↑↓** — navigate providers
-- **Enter** — enter inline key edit mode (type your key, Enter to save, Esc to cancel)
+- **Enter** — edit the selected key, run maintenance actions, or load the selected profile
+- **+ / -** — add another key for the selected provider or remove one
 - **Space** — toggle provider enabled/disabled
 - **T** — fire a real test ping to verify the key works (shows ✅/❌)
+- **S** — sync `fcm-proxy` into OpenCode when proxy mode + persistence are enabled
+- **R** — restore the last OpenCode backup created by sync/cleanup flows
 - **U** — manually check npm for a newer version
+- **Backspace** — delete the selected saved profile
 - **Esc** — close settings and reload models list
 
  Keys are saved to `~/.free-coding-models.json` (permissions `0600`).
@@ -377,7 +359,7 @@ TOGETHER_API_KEY=together_xxx free-coding-models
 2. Create API key (`PERPLEXITY_API_KEY`)
 
 **Alibaba Cloud (DashScope)** (8 models, Qwen3-Coder family):
-1. Sign up at [dashscope.console.alibabacloud.com](https://dashscope.console.alibabacloud.com)
+1. Sign up at [modelstudio.console.alibabacloud.com](https://modelstudio.console.alibabacloud.com)
 2. Activate Model Studio (1M free tokens per model, Singapore region, 90 days)
 3. Create API key (`DASHSCOPE_API_KEY`)
 
@@ -550,14 +532,14 @@ Cleanup:
 
 ---
 
-## 📜 Log Viewer
+## 📜 Request Log Overlay
 
-Press **`X`** at any time to open the dedicated Log Viewer overlay.
+Press **`X`** at any time to open the dedicated request-log overlay.
 
-- **Real-time Activity**: See every ping, rotation, and proxy request as it happens.
-- **Error Diagnostics**: View detailed error messages from providers when a ping fails.
-- **Quota Tracking**: Monitor how the tool discovers and updates your remaining quota.
-- **Auto-Pruning**: The log history is automatically managed to stay concise and relevant.
+- **Proxy-only accounting**: Entries are written when requests flow through the multi-account proxy.
+- **Exact token totals**: The overlay aggregates prompt+completion usage per proxied request.
+- **Per-request visibility**: You can inspect provider, model, status, token count, and latency for recent requests.
+- **Startup table reuse**: The `Used` column in the main table is derived from the same request log file.
 
 Use **↑↓** to scroll and **Esc** or **X** to return to the main table.
 
@@ -567,7 +549,7 @@ Use **↑↓** to scroll and **Esc** or **X** to return to the main table.
 
 **The easiest way** — let `free-coding-models` do everything:
 
-1. **Run**: `free-coding-models --opencode` (or choose OpenCode from the startup menu)
+1. **Run**: `free-coding-models --opencode` (or launch with no flag to use the default OpenCode CLI mode)
 2. **Wait** for models to be pinged (green ✅ status)
 3. **Navigate** with ↑↓ arrows to your preferred model
 4. **Press Enter** — tool automatically:
@@ -650,7 +632,7 @@ OpenClaw is an autonomous AI agent daemon. `free-coding-models` can configure it
 free-coding-models --openclaw
 ```
 
-Or run without flags and choose **OpenClaw** from the startup menu.
+Or press **`Z`** in the TUI until the header shows **OpenClaw**, then press **Enter** on a model.
 
 1. **Wait** for models to be pinged
 2. **Navigate** with ↑↓ arrows to your preferred model
@@ -755,6 +737,7 @@ This script:
 │  2. Ping ALL models in parallel                                  │
 │  3. Display real-time table with Latest/Avg/Stability/Up%        │
 │  4. Re-ping ALL models at 2s on startup, then 10s steady-state │
+│     and 30s after 5m idle unless forced back to 4s with W      │
 │  5. Update rolling averages + stability scores per model        │
 │  6. User can navigate with ↑↓ and select with Enter            │
 │  7. On Enter (OpenCode): set model, launch OpenCode             │
@@ -842,29 +825,32 @@ This script:
 
 | Flag | Description |
 |------|-------------|
-| *(none)* | Show startup menu to choose OpenCode or OpenClaw |
+| *(none)* | Start in OpenCode CLI mode |
 | `--opencode` | OpenCode CLI mode — Enter launches OpenCode CLI with selected model |
- | `--opencode-desktop` | OpenCode Desktop mode — Enter sets model & opens OpenCode Desktop app |
- | `--openclaw` | OpenClaw mode — Enter sets selected model as default in OpenClaw |
- | `--best` | Show only top-tier models (A+, S, S+) |
- | `--fiable` | Analyze 10 seconds, output the most reliable model as `provider/model_id` |
- | `--tier S` | Show only S+ and S tier models |
+| `--opencode-desktop` | OpenCode Desktop mode — Enter sets model and opens OpenCode Desktop |
+| `--openclaw` | OpenClaw mode — Enter sets selected model as default in OpenClaw |
+| `--crush` | Crush mode — Enter writes `crush.json` and launches Crush |
+| `--goose` | Goose mode — Enter launches Goose with env-based provider config |
+| `--best` | Show only top-tier models (A+, S, S+) |
+| `--fiable` | Analyze 10 seconds, output the most reliable model as `provider/model_id` |
+| `--tier S` | Show only S+ and S tier models |
 | `--tier A` | Show only A+, A, A- tier models |
 | `--tier B` | Show only B+, B tier models |
 | `--tier C` | Show only C tier models |
 | `--profile <name>` | Load a saved config profile on startup |
 | `--recommend` | Auto-open Smart Recommend overlay on start |
+| `--clean-proxy` | Remove persisted `fcm-proxy` config from OpenCode |
 
 **Keyboard shortcuts (main TUI):**
 - **↑↓** — Navigate models
-- **Enter** — Select model (launches OpenCode or sets OpenClaw default, depending on mode)
+- **Enter** — Select model and launch the current target tool from the header badge
 - **R/Y/S/C/M/O/L/A/H/V/B/U/G** — Sort by Rank/Tier/SWE/Ctx/Model/Provider/Latest/Avg/Health/Verdict/Stability/Up%/Usage
 - **F** — Toggle favorite on selected model (⭐ in Model column, pinned at top)
 - **T** — Cycle tier filter (All → S+ → S → A+ → A → A- → B+ → B → C → All)
 - **D** — Cycle provider filter (All → NIM → Groq → ...)
 - **E** — Toggle configured-only mode (on by default, persisted across sessions and profiles)
-- **Z** — Cycle mode (OpenCode CLI → OpenCode Desktop → OpenClaw)
-- **X** — **Toggle Token Logs** (view recent request/token usage logs)
+- **Z** — Cycle target tool (OpenCode CLI → OpenCode Desktop → OpenClaw → Crush → Goose)
+- **X** — Toggle request logs (recent proxied request/token usage logs)
 - **P** — Open Settings (manage API keys, toggles, updates, profiles)
 - **Shift+P** — Cycle through saved profiles (switches live TUI settings)
 - **Shift+S** — Save current TUI settings as a named profile (inline prompt)
@@ -896,6 +882,7 @@ Profiles let you save and restore different TUI configurations — useful if you
 - Sort column and direction
 - Tier filter
 - Ping mode
+- Configured-only filter
 - API keys
 
 **Saving a profile:**

@@ -2,6 +2,29 @@
 
 ---
 
+## 0.1.89
+
+### Added
+
+- 🎨 Dynamic color coding for active Tier and Provider filter badges — each tier/provider now displays with its signature color directly in the header and footer pills for better visual feedback.
+- 📖 Comprehensive documentation refresh across JSDoc headers in `bin/free-coding-models.js` to clarify the new default startup behavior, ping cadence states, and removal of the startup menu.
+
+### Changed
+
+- 🛡️ **Hardened public launcher set** — Narrowed the Z-cycle to only the stable, tested integrations: `OpenCode CLI` → `OpenCode Desktop` → `OpenClaw` → `Crush` → `Goose`. Aider, Claude Code, Codex CLI, Gemini CLI, Qwen Code, OpenHands, Amp, and Pi are now temporarily disabled pending flow hardening.
+- 🎯 **Improved Crush configuration** — Now writes proper `config.models.large` default selection (instead of relying on CLI args), respects proxy enablement state, and uses `disable_default_providers` to rely on FCM's provider configuration.
+- 🔧 **Crush launcher robustness** — Spawn call simplified to not pass `--model` argument; model selection now driven entirely through `crush.json` to avoid CLI parsing conflicts.
+- 📚 **Synchronized in-app help** — Removed references to temporarily disabled launchers from the Z-cycle hint and CLI flag examples to reduce user confusion and match the hardened set.
+- ✅ **Refined filter UI responsiveness** — Active Tier and Provider filter values now visually highlight in the main table footer hotkeys with tier-matched or provider-matched colors for instant recognition.
+
+### Fixed
+
+- 🪪 **Crush proxy support** — Crush now correctly detects when proxy mode is enabled and routes through the local FCM proxy (`http://127.0.0.1:<port>/v1`) with appropriate token/URL substitution instead of attempting direct provider connection.
+- 📖 **Shell compatibility** — Fixed spawning command for external tools to use `shell: true` only on Windows; Linux/macOS now spawn without shell wrapper for cleaner process trees.
+- 🎛 **Filter state persistence** — Tier and Provider filter badges in the footer now correctly calculate and display their active state across all state transitions.
+
+---
+
 ## 0.1.88
 
 ### Added
@@ -13,6 +36,13 @@
 
 - 🧭 Extended the `Z` tool cycle, CLI flag parser, help overlay, and header mode badge so the active target tool is visible and switchable across all supported launchers.
 - 🔀 Made the multi-account proxy opt-in and disabled by default, added Settings controls for proxy enablement, OpenCode persistence, and preferred port, and restored direct OpenCode launch as the default path.
+- 🎛 Active Tier and Provider filters now show their current value directly inside the highlighted pills, while Crush now writes a real default selected model into `crush.json` and uses either direct provider config or the local FCM proxy depending on the current proxy setting.
+- 📚 Audited and synchronized the public documentation, in-app help, and footer hints so they now describe the hardened launcher set (`OpenCode CLI`, `OpenCode Desktop`, `OpenClaw`, `Crush`, `Goose`), the real default startup behavior, the current ping cadence, the Settings shortcuts, and the proxy-only request log semantics.
+
+### Fixed
+
+- 🪫 Temporarily removed unstable external launchers (`Aider`, `Claude Code`, `Codex CLI`, `Gemini CLI`, `Qwen Code`, `OpenHands`, `Amp`, `Pi`) from the public mode cycle/help so only the currently hardened integrations remain exposed.
+- 🧭 Corrected stale docs that still advertised the removed startup picker, mislabeled the `X` overlay as a live activity/error log viewer, and listed public commands or tips that no longer matched the current UI.
 
 ---
 

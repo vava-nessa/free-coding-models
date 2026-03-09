@@ -15,8 +15,8 @@
  *   - Rolling averages calculated from ALL successful pings since start
  *   - Best-per-tier highlighting with medals (🥇🥈🥉)
  *   - Interactive navigation with arrow keys directly in the table
- *   - Instant OpenCode OR OpenClaw action on Enter key press
- *   - Startup mode menu (OpenCode CLI vs OpenCode Desktop vs OpenClaw) when no flag is given
+ *   - Instant OpenCode / OpenClaw / external-tool action on Enter key press
+ *   - Direct mode flags plus an in-app Z-cycle for the public launcher set
  *   - Automatic config detection and model setup for both tools
  *   - JSON config stored in ~/.free-coding-models.json (auto-migrates from old plain-text)
  *   - Multi-provider support via sources.js (NIM/Groq/Cerebras/OpenRouter/Hugging Face/Replicate/DeepInfra/... — extensible)
@@ -34,7 +34,6 @@
  *   - `sendUsageTelemetry`: Fire-and-forget anonymous app-start event
  *   - `ensureFavoritesConfig` / `toggleFavoriteModel`: Persist and toggle pinned favorites
  *   - `promptApiKey`: Interactive wizard for first-time multi-provider API key setup
- *   - `promptModeSelection`: Startup menu to choose OpenCode vs OpenClaw
  *   - `buildPingRequest` / `ping`: Build provider-specific probe requests and measure latency
  *   - `renderTable`: Generate ASCII table with colored latency indicators and status emojis
  *   - `getAvg`: Calculate average latency from all successful pings
@@ -66,14 +65,15 @@
  *   - OpenCode config: ~/.config/opencode/opencode.json
  *   - OpenClaw config: ~/.openclaw/openclaw.json
  *   - Ping timeout: 15s per attempt
- *   - Ping interval: 60 seconds (continuous monitoring mode)
+ *   - Ping cadence: 2s startup burst for 60s, 10s steady state, 30s after 5m idle, forced 4s via `W`
  *   - Animation: 12 FPS with braille spinners
  *
  *   🚀 CLI flags:
- *   - (no flag): Show startup menu → choose OpenCode or OpenClaw
+ *   - (no flag): Start in OpenCode CLI mode
  *   - --opencode: OpenCode CLI mode (launch CLI with selected model)
  *   - --opencode-desktop: OpenCode Desktop mode (set model & open Desktop app)
  *   - --openclaw: OpenClaw mode (set selected model as default in OpenClaw)
+ *   - --crush / --goose: launch the currently selected model in the supported external CLI
  *   - --best: Show only top-tier models (A+, S, S+)
  *   - --fiable: Analyze 10s and output the most reliable model
  *   - --no-telemetry: Disable anonymous usage analytics for this run

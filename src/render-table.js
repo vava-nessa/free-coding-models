@@ -41,6 +41,17 @@ import { formatTokenTotalCompact } from './token-usage-reader.js'
 import { calculateViewport, sortResultsWithPinnedFavorites, renderProxyStatusLine, padEndDisplay } from './render-helpers.js'
 import { getToolMeta } from './tool-metadata.js'
 
+const ACTIVE_FILTER_BG_BY_TIER = {
+  'S+': [57, 255, 20],
+  'S': [57, 255, 20],
+  'A+': [160, 255, 60],
+  'A': [255, 224, 130],
+  'A-': [255, 204, 128],
+  'B+': [255, 171, 64],
+  'B': [239, 83, 80],
+  'C': [186, 104, 200],
+}
+
 const require = createRequire(import.meta.url)
 const { version: LOCAL_VERSION } = require('../package.json')
 
@@ -125,13 +136,16 @@ export function renderTable(results, pendingPings, frame, cursor = null, sortCol
     ? chalk.bold.rgb(255, 100, 50)
     : chalk.bold.rgb(0, 200, 255)
   const modeBadge = toolBadgeColor(' [ ') + chalk.yellow.bold('Z') + toolBadgeColor(` Tool : ${toolMeta.label} ]`)
-  const activeHeaderBadge = (text) => chalk.bgRgb(57, 255, 20).black.bold(` ${text} `)
+  const activeHeaderBadge = (text, bg = [57, 255, 20], fg = [0, 0, 0]) => chalk.bgRgb(...bg).rgb(...fg).bold(` ${text} `)
 
   // 📖 Tier filter badge shown when filtering is active (shows exact tier name)
   const TIER_CYCLE_NAMES = [null, 'S+', 'S', 'A+', 'A', 'A-', 'B+', 'B', 'C']
   let tierBadge = ''
+  let activeTierLabel = ''
   if (tierFilterMode > 0) {
-    tierBadge = ` ${activeHeaderBadge(`TIER (${TIER_CYCLE_NAMES[tierFilterMode]})`)}`
+    activeTierLabel = TIER_CYCLE_NAMES[tierFilterMode]
+    const tierBg = ACTIVE_FILTER_BG_BY_TIER[activeTierLabel] || [57, 255, 20]
+    tierBadge = ` ${activeHeaderBadge(`TIER (${activeTierLabel})`, tierBg)}`
   }
 
   const normalizeOriginLabel = (name, key) => {
@@ -148,7 +162,8 @@ export function renderTable(results, pendingPings, frame, cursor = null, sortCol
     const activeOriginName = activeOriginKey ? sources[activeOriginKey]?.name ?? activeOriginKey : null
     if (activeOriginName) {
       activeOriginLabel = normalizeOriginLabel(activeOriginName, activeOriginKey)
-      originBadge = ` ${activeHeaderBadge(`PROVIDER (${activeOriginLabel})`)}`
+      const providerRgb = PROVIDER_COLOR[activeOriginKey] || [255, 255, 255]
+      originBadge = ` ${activeHeaderBadge(`PROVIDER (${activeOriginLabel})`, [0, 0, 0], providerRgb)}`
     }
   }
 
@@ -597,15 +612,19 @@ export function renderTable(results, pendingPings, frame, cursor = null, sortCol
   const hotkey = (keyLabel, text) => chalk.yellow(keyLabel) + chalk.dim(text)
   // 📖 Active filter pills use a loud green background so tier/provider/configured-only
   // 📖 states are obvious even when the user misses the smaller header badges.
-  const activeHotkey = (keyLabel, text) => chalk.bgRgb(57, 255, 20).black(` ${keyLabel}${text} `)
+  const activeHotkey = (keyLabel, text, bg = [57, 255, 20], fg = [0, 0, 0]) => chalk.bgRgb(...bg).rgb(...fg)(` ${keyLabel}${text} `)
   // 📖 Line 1: core navigation + filtering shortcuts
   lines.push(
     chalk.dim(`  ↑↓ Navigate  •  `) +
     hotkey('F', ' Toggle Favorite') +
     chalk.dim(`  •  `) +
-    (tierFilterMode > 0 ? activeHotkey('T', ` Tier (${TIER_CYCLE_NAMES[tierFilterMode]})`) : hotkey('T', ' Tier')) +
+    (tierFilterMode > 0
+      ? activeHotkey('T', ` Tier (${activeTierLabel})`, ACTIVE_FILTER_BG_BY_TIER[activeTierLabel] || [57, 255, 20])
+      : hotkey('T', ' Tier')) +
     chalk.dim(`  •  `) +
-    (originFilterMode > 0 ? activeHotkey('D', ` Provider (${activeOriginLabel})`) : hotkey('D', ' Provider')) +
+    (originFilterMode > 0
+      ? activeHotkey('D', ` Provider (${activeOriginLabel})`, [0, 0, 0], PROVIDER_COLOR[[null, ...Object.keys(sources)][originFilterMode]] || [255, 255, 255])
+      : hotkey('D', ' Provider')) +
     chalk.dim(`  •  `) +
     (hideUnconfiguredModels ? activeHotkey('E', ' Configured Only') : hotkey('E', ' Configured Only')) +
     chalk.dim(`  •  `) +
