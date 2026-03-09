@@ -1,0 +1,45 @@
+name: Post new issues to Discord
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send issue to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_ISSUES }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          REPO_NAME: ${{ github.repository }}
+        run: |
+          BODY=$(printf "%.800s" "${ISSUE_BODY:-No description}")
+
+          jq -n \
+            --arg repo "$REPO_NAME" \
+            --arg number "$ISSUE_NUMBER" \
+            --arg title "$ISSUE_TITLE" \
+            --arg author "$ISSUE_AUTHOR" \
+            --arg body "$BODY" \
+            --arg url "$ISSUE_URL" \
+            '{
+              username: "GitHub Issues",
+              embeds: [
+                {
+                  title: ("Issue #" + $number + " - " + $title),
+                  url: $url,
+                  description: ("Repo: **" + $repo + "**\nAuthor: **" + $author + "**\n\n" + $body)
+                }
+              ]
+            }' > payload.json
+
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d @payload.json \
+               "$DISCORD_WEBHOOK_URL"
