@@ -20,7 +20,7 @@
  *   - Automatic config detection and model setup for both tools
  *   - JSON config stored in ~/.free-coding-models.json (auto-migrates from old plain-text)
  *   - Multi-provider support via sources.js (NIM/Groq/Cerebras/OpenRouter/Hugging Face/Replicate/DeepInfra/... — extensible)
- *   - Settings screen (P key) to manage API keys, provider toggles, and manual updates
+ *   - Settings screen (P key) to manage API keys, provider toggles, manual updates, and provider-key diagnostics
  *   - Install Endpoints flow (Y key) to push provider catalogs into OpenCode, OpenClaw, Crush, and Goose
  *   - Favorites system: toggle with F, pin rows to top, persist between sessions
  *   - Uptime percentage tracking (successful pings / total pings)
@@ -399,7 +399,8 @@ async function main() {
     settingsAddKeyMode: false,    // 📖 Whether we're in add-key mode (append a new key to provider)
     settingsEditBuffer: '',       // 📖 Typed characters for the API key being edited
     settingsErrorMsg: null,       // 📖 Temporary error message to display in settings
-    settingsTestResults: {},      // 📖 { providerKey: 'pending'|'ok'|'fail'|null }
+    settingsTestResults: {},      // 📖 { providerKey: 'pending'|'ok'|'auth_error'|'rate_limited'|'no_callable_model'|'fail'|'missing_key'|null }
+    settingsTestDetails: {},      // 📖 Long-form diagnostics shown under Setup Instructions after a Settings key test.
     settingsUpdateState: 'idle',  // 📖 'idle'|'checking'|'available'|'up-to-date'|'error'|'installing'
     settingsUpdateLatestVersion: null, // 📖 Latest npm version discovered from manual check
     settingsUpdateError: null,    // 📖 Last update-check error message for maintenance row
@@ -784,10 +785,10 @@ async function main() {
         r.status = 'up'
       } else if (code === '000') {
         r.status = 'timeout'
-      } else if (code === '401') {
-        // 📖 401 = server is reachable but no API key set (or wrong key)
-        // 📖 Treated as 'noauth' — server is UP, latency is real, just needs a key
-        r.status = 'noauth'
+      } else if (code === '401' || code === '403') {
+        // 📖 Distinguish "no key configured" from "configured key rejected" so the
+        // 📖 Health column stays honest when Configured Only mode is enabled.
+        r.status = providerApiKey ? 'auth_error' : 'noauth'
         r.httpCode = code
       } else {
         r.status = 'down'

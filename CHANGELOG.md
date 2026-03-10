@@ -12,6 +12,13 @@
 
 - 🔄 Tracked endpoint installs are now refreshed automatically on future launches so managed tool catalogs stay aligned when provider model lists evolve.
 
+### Fixed
+
+- 🔐 Clarified provider auth failures in the main table so configured keys rejected by a provider no longer appear as `NO KEY`.
+- 🔁 Hardened Settings key tests with multi-model retries plus detailed diagnostics under Setup Instructions when a provider probe fails.
+- 🏷️ Fixed Settings provider badges so configured keys show `Test` before the first probe, while providers without a key now show `Missing Key`.
+- 🤗 Clarified the Hugging Face setup hint in Settings to require a fine-grained token with `Make calls to Inference Providers`.
+
 ## 0.2.1
 
 ### Added

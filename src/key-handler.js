@@ -19,9 +19,10 @@
  *   - `parseProviderModelIds` — extract model ids from an OpenAI-style `/models` payload
  *   - `listProviderTestModels` — build an ordered candidate list for provider key verification
  *   - `classifyProviderTestOutcome` — convert attempted HTTP codes into a settings badge state
+ *   - `buildProviderTestDetail` — turn probe attempts into a readable failure explanation
  *   - `createKeyHandler` — returns the async keypress handler
  *
- * @exports { buildProviderModelsUrl, parseProviderModelIds, listProviderTestModels, classifyProviderTestOutcome, createKeyHandler }
+ * @exports { buildProviderModelsUrl, parseProviderModelIds, listProviderTestModels, classifyProviderTestOutcome, buildProviderTestDetail, createKeyHandler }
  */
 
 // 📖 Some providers need an explicit probe model because the first catalog entry
@@ -29,6 +30,17 @@
 const PROVIDER_TEST_MODEL_OVERRIDES = {
   sambanova: ['DeepSeek-V3-0324'],
   nvidia: ['deepseek-ai/deepseek-v3.1-terminus', 'openai/gpt-oss-120b'],
+}
+
+// 📖 Settings key tests retry retryable failures across several models so a
+// 📖 single stale catalog entry or transient timeout does not mark a valid key as dead.
+const SETTINGS_TEST_MAX_ATTEMPTS = 10
+const SETTINGS_TEST_RETRY_DELAY_MS = 4000
+
+// 📖 Sleep helper kept local to this module so the Settings key test flow can
+// 📖 back off between retries without leaking timer logic into the rest of the TUI.
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 /**
@@ -86,14 +98,50 @@ export function listProviderTestModels(providerKey, src, discoveredModelIds = []
  * 📖 - `rate_limited` means the key is valid but the provider is currently throttling
  * 📖 - `no_callable_model` means the provider responded, but none of the attempted models were callable
  * @param {string[]} codes
- * @returns {'ok'|'fail'|'rate_limited'|'no_callable_model'}
+ * @returns {'ok'|'auth_error'|'rate_limited'|'no_callable_model'|'fail'}
  */
 export function classifyProviderTestOutcome(codes) {
   if (codes.includes('200')) return 'ok'
-  if (codes.includes('401') || codes.includes('403')) return 'fail'
+  if (codes.includes('401') || codes.includes('403')) return 'auth_error'
   if (codes.length > 0 && codes.every(code => code === '429')) return 'rate_limited'
   if (codes.length > 0 && codes.every(code => code === '404' || code === '410')) return 'no_callable_model'
   return 'fail'
+}
+
+// 📖 buildProviderTestDetail explains why the Settings `T` probe failed, with
+// 📖 enough context for the user to know whether the key, model list, or provider
+// 📖 quota is the problem.
+export function buildProviderTestDetail(providerLabel, outcome, attempts = [], discoveryNote = '') {
+  const introByOutcome = {
+    missing_key: `${providerLabel} has no saved API key right now, so no authenticated test could be sent.`,
+    ok: `${providerLabel} accepted the key.`,
+    auth_error: `${providerLabel} rejected the configured key with an authentication error.`,
+    rate_limited: `${providerLabel} throttled every probe, so the key may still be valid but is currently rate-limited.`,
+    no_callable_model: `${providerLabel} answered the requests, but none of the probed models were callable on its chat endpoint.`,
+    fail: `${providerLabel} never returned a successful probe during the retry window.`,
+  }
+
+  const hintsByOutcome = {
+    missing_key: 'Save the key with Enter in Settings, then rerun T.',
+    ok: attempts.length > 0 ? `Validated on ${attempts[attempts.length - 1].model}.` : 'The provider returned a success response.',
+    auth_error: 'This usually means the saved key is invalid, expired, revoked, or truncated before it reached disk.',
+    rate_limited: 'Wait for the provider quota window to reset, then rerun T.',
+    no_callable_model: 'The provider catalog or repo defaults likely drifted; try another model family or refresh the catalog.',
+    fail: 'This can be caused by timeouts, 5xx responses, or a provider-side outage.',
+  }
+
+  const attemptSummary = attempts.length > 0
+    ? `Attempts: ${attempts.map(({ attempt, model, code }) => `#${attempt} ${model} -> ${code}`).join(' | ')}`
+    : 'Attempts: none'
+
+  const segments = [
+    introByOutcome[outcome] || introByOutcome.fail,
+    hintsByOutcome[outcome] || hintsByOutcome.fail,
+    discoveryNote,
+    attemptSummary,
+  ].filter(Boolean)
+
+  return segments.join(' ')
 }
 
 export function createKeyHandler(ctx) {
@@ -172,11 +220,19 @@ export function createKeyHandler(ctx) {
     const src = sources[providerKey]
     if (!src) return
     const testKey = getApiKey(state.config, providerKey)
-    if (!testKey) { state.settingsTestResults[providerKey] = 'fail'; return }
+    const providerLabel = src.name || providerKey
+    if (!state.settingsTestDetails) state.settingsTestDetails = {}
+    if (!testKey) {
+      state.settingsTestResults[providerKey] = 'missing_key'
+      state.settingsTestDetails[providerKey] = buildProviderTestDetail(providerLabel, 'missing_key')
+      return
+    }
 
     state.settingsTestResults[providerKey] = 'pending'
+    state.settingsTestDetails[providerKey] = `Testing ${providerLabel} across up to ${SETTINGS_TEST_MAX_ATTEMPTS} probes...`
     const discoveredModelIds = []
     const modelsUrl = buildProviderModelsUrl(src.url)
+    let discoveryNote = ''
 
     if (modelsUrl) {
       try {
@@ -189,30 +245,53 @@ export function createKeyHandler(ctx) {
         if (modelsResp.ok) {
           const data = await modelsResp.json()
           discoveredModelIds.push(...parseProviderModelIds(data))
+          discoveryNote = discoveredModelIds.length > 0
+            ? `Live model discovery returned ${discoveredModelIds.length} ids.`
+            : 'Live model discovery succeeded but returned no callable ids.'
+        } else {
+          discoveryNote = `Live model discovery returned HTTP ${modelsResp.status}; falling back to the repo catalog.`
         }
-      } catch {
+      } catch (err) {
         // 📖 Discovery failure is non-fatal; we still have repo-defined fallbacks.
+        discoveryNote = `Live model discovery failed (${err?.name || 'error'}); falling back to the repo catalog.`
       }
     }
 
     const candidateModels = listProviderTestModels(providerKey, src, discoveredModelIds)
-    if (candidateModels.length === 0) { state.settingsTestResults[providerKey] = 'fail'; return }
-    const attemptedCodes = []
+    if (candidateModels.length === 0) {
+      state.settingsTestResults[providerKey] = 'fail'
+      state.settingsTestDetails[providerKey] = buildProviderTestDetail(providerLabel, 'fail', [], discoveryNote || 'No candidate model was available for probing.')
+      return
+    }
+    const attempts = []
 
-    for (const testModel of candidateModels.slice(0, 8)) {
+    for (let attemptIndex = 0; attemptIndex < SETTINGS_TEST_MAX_ATTEMPTS; attemptIndex++) {
+      const testModel = candidateModels[attemptIndex % candidateModels.length]
       const { code } = await ping(testKey, testModel, providerKey, src.url)
-      attemptedCodes.push(code)
+      attempts.push({ attempt: attemptIndex + 1, model: testModel, code })
+
       if (code === '200') {
         state.settingsTestResults[providerKey] = 'ok'
+        state.settingsTestDetails[providerKey] = buildProviderTestDetail(providerLabel, 'ok', attempts, discoveryNote)
         return
       }
-      if (code === '401' || code === '403') {
-        state.settingsTestResults[providerKey] = 'fail'
+
+      const outcome = classifyProviderTestOutcome(attempts.map(({ code: attemptCode }) => attemptCode))
+      if (outcome === 'auth_error') {
+        state.settingsTestResults[providerKey] = 'auth_error'
+        state.settingsTestDetails[providerKey] = buildProviderTestDetail(providerLabel, 'auth_error', attempts, discoveryNote)
         return
+      }
+
+      if (attemptIndex < SETTINGS_TEST_MAX_ATTEMPTS - 1) {
+        state.settingsTestDetails[providerKey] = `Testing ${providerLabel}... probe ${attemptIndex + 1}/${SETTINGS_TEST_MAX_ATTEMPTS} failed on ${testModel} (${code}). Retrying in ${SETTINGS_TEST_RETRY_DELAY_MS / 1000}s.`
+        await sleep(SETTINGS_TEST_RETRY_DELAY_MS)
       }
     }
 
-    state.settingsTestResults[providerKey] = classifyProviderTestOutcome(attemptedCodes)
+    const finalOutcome = classifyProviderTestOutcome(attempts.map(({ code }) => code))
+    state.settingsTestResults[providerKey] = finalOutcome
+    state.settingsTestDetails[providerKey] = buildProviderTestDetail(providerLabel, finalOutcome, attempts, discoveryNote)
   }
 
   // 📖 Manual update checker from settings; keeps status visible in maintenance row.

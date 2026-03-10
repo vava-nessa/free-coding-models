@@ -5,6 +5,7 @@
  * @details
  *   This module centralizes all overlay rendering in one place:
  *   - Settings, Install Endpoints, Help, Log, Smart Recommend, Feature Request, Bug Report
+ *   - Settings diagnostics for provider key tests, including wrapped retry/error details
  *   - Recommend analysis timer orchestration and progress updates
  *
  *   The factory pattern keeps stateful UI logic isolated while still
@@ -52,6 +53,27 @@ export function createOverlayRenderers(state, deps) {
     getInstallTargetModes,
     getProviderCatalogModels,
   } = deps
+
+  // 📖 Wrap plain diagnostic text so long Settings messages stay readable inside
+  // 📖 the overlay instead of turning into one truncated red line.
+  const wrapPlainText = (text, width = 104) => {
+    const normalized = typeof text === 'string' ? text.trim() : ''
+    if (!normalized) return []
+    const words = normalized.split(/\s+/)
+    const lines = []
+    let current = ''
+    for (const word of words) {
+      const next = current ? `${current} ${word}` : word
+      if (next.length > width && current) {
+        lines.push(current)
+        current = word
+      } else {
+        current = next
+      }
+    }
+    if (current) lines.push(current)
+    return lines
+  }
 
   // 📖 Keep log token formatting aligned with the main table so the same totals
   // 📖 read the same everywhere in the TUI.
@@ -121,9 +143,13 @@ export function createOverlayRenderers(state, deps) {
 
       // 📖 Test result badge
       const testResult = state.settingsTestResults[pk]
-      let testBadge = chalk.dim('[Test —]')
+      // 📖 Default badge reflects configuration first: a saved key should look
+      // 📖 ready to test even before the user has run the probe once.
+      let testBadge = keyCount > 0 ? chalk.cyan('[Test]') : chalk.dim('[Missing Key 🔑]')
       if (testResult === 'pending') testBadge = chalk.yellow('[Testing…]')
       else if (testResult === 'ok')   testBadge = chalk.greenBright('[Test ✅]')
+      else if (testResult === 'missing_key') testBadge = chalk.dim('[Missing Key 🔑]')
+      else if (testResult === 'auth_error') testBadge = chalk.red('[Auth ❌]')
       else if (testResult === 'rate_limited') testBadge = chalk.yellow('[Rate limit ⏳]')
       else if (testResult === 'no_callable_model') testBadge = chalk.magenta('[No model ⚠]')
       else if (testResult === 'fail') testBadge = chalk.red('[Test ❌]')
@@ -153,6 +179,14 @@ export function createOverlayRenderers(state, deps) {
         const hasAccountId = Boolean((process.env.CLOUDFLARE_ACCOUNT_ID || '').trim())
         const accountIdStatus = hasAccountId ? chalk.green('CLOUDFLARE_ACCOUNT_ID detected ✅') : chalk.yellow('Set CLOUDFLARE_ACCOUNT_ID ⚠')
         lines.push(chalk.dim(`  4) Export ${chalk.yellow('CLOUDFLARE_ACCOUNT_ID')} in your shell. Status: ${accountIdStatus}`))
+      }
+      const testDetail = state.settingsTestDetails?.[selectedProviderKey]
+      if (testDetail) {
+        lines.push('')
+        lines.push(chalk.red.bold('  Test Diagnostics'))
+        for (const detailLine of wrapPlainText(testDetail)) {
+          lines.push(chalk.red(`  ${detailLine}`))
+        }
       }
       lines.push('')
     }

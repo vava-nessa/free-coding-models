@@ -12,6 +12,7 @@
  *   → Package & CLI sanity — package.json fields, bin entry, shebang, imports
  *   → Provider key test model discovery — protects settings key-check probes from stale provider catalogs
  *   → Provider key test outcome classification — distinguishes auth failure, rate limits, and no-callable-model cases
+ *   → Provider key test diagnostics — explains probe failures in human-readable form
  *
  * @see lib/utils.js — the functions under test
  * @see sources.js — model data validated here
@@ -23,6 +24,7 @@ import { readFileSync, existsSync, accessSync, constants, mkdirSync, rmSync, wri
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
+import chalk from 'chalk'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')
@@ -42,7 +44,8 @@ import {
 } from '../src/config.js'
 import { buildProviderModelTokenKey, loadTokenUsageByProviderModel, formatTokenTotalCompact } from '../src/token-usage-reader.js'
 import { renderTable } from '../src/render-table.js'
-import { buildProviderModelsUrl, parseProviderModelIds, listProviderTestModels, classifyProviderTestOutcome } from '../src/key-handler.js'
+import { createOverlayRenderers } from '../src/overlays.js'
+import { buildProviderModelsUrl, parseProviderModelIds, listProviderTestModels, classifyProviderTestOutcome, buildProviderTestDetail } from '../src/key-handler.js'
 import { buildMergedModels } from '../src/model-merger.js'
 import { setOpenCodeModelData } from '../src/opencode.js'
 import { resolveLauncherModelId } from '../src/tool-launchers.js'
@@ -287,7 +290,7 @@ describe('classifyProviderTestOutcome', () => {
   })
 
   it('returns fail on auth errors', () => {
-    assert.equal(classifyProviderTestOutcome(['403']), 'fail')
+    assert.equal(classifyProviderTestOutcome(['403']), 'auth_error')
   })
 
   it('returns rate_limited when all attempted probes are throttled', () => {
@@ -300,6 +303,28 @@ describe('classifyProviderTestOutcome', () => {
 
   it('falls back to fail for mixed non-auth transport or server errors', () => {
     assert.equal(classifyProviderTestOutcome(['404', '500', 'ERR']), 'fail')
+  })
+})
+
+describe('buildProviderTestDetail', () => {
+  it('mentions auth rejection and attempt history', () => {
+    const detail = buildProviderTestDetail('Groq', 'auth_error', [
+      { attempt: 1, model: 'llama-3.3-70b-versatile', code: '401' },
+    ], 'Live model discovery returned HTTP 401; falling back to the repo catalog.')
+
+    assert.match(detail, /Groq rejected the configured key/i)
+    assert.match(detail, /invalid, expired, revoked, or truncated/i)
+    assert.match(detail, /#1 llama-3\.3-70b-versatile -> 401/)
+  })
+
+  it('explains rate limiting separately from auth failure', () => {
+    const detail = buildProviderTestDetail('OpenRouter', 'rate_limited', [
+      { attempt: 1, model: 'qwen/qwen3-coder:free', code: '429' },
+      { attempt: 2, model: 'openai/gpt-oss-120b:free', code: '429' },
+    ])
+
+    assert.match(detail, /throttled every probe/i)
+    assert.match(detail, /quota window/i)
   })
 })
 
@@ -730,6 +755,103 @@ describe('renderTable health labels', () => {
     assert.match(output, /410 GONE/)
     assert.match(output, /404 NOT FOUND/)
     assert.match(output, /500 ERROR/)
+  })
+
+  it('renders auth failure distinctly from missing key', () => {
+    const results = [
+      mockResult({ label: 'Auth fail', status: 'auth_error', httpCode: '401', pings: [{ ms: 25, code: '401' }], providerKey: 'groq', totalTokens: 0 }),
+      mockResult({ label: 'No key', status: 'noauth', httpCode: '401', pings: [{ ms: 25, code: '401' }], providerKey: 'groq', totalTokens: 0 }),
+    ]
+    const output = renderTable(results, 0, 0)
+
+    assert.match(output, /AUTH FAIL/)
+    assert.match(output, /NO KEY/)
+  })
+})
+
+describe('renderSettings provider test badges', () => {
+  function buildSettingsRenderer(config) {
+    const state = {
+      settingsOpen: true,
+      settingsCursor: 0,
+      settingsEditMode: false,
+      settingsAddKeyMode: false,
+      settingsEditBuffer: '',
+      settingsErrorMsg: null,
+      settingsTestResults: {},
+      settingsTestDetails: {},
+      settingsUpdateState: 'idle',
+      settingsUpdateLatestVersion: null,
+      settingsUpdateError: null,
+      settingsProxyPortEditMode: false,
+      settingsProxyPortBuffer: '',
+      settingsScrollOffset: 0,
+      settingsSyncStatus: null,
+      activeProfile: null,
+      terminalRows: 40,
+      config,
+    }
+
+    return createOverlayRenderers(state, {
+      chalk,
+      sources: { groq: sources.groq },
+      PROVIDER_METADATA: {
+        groq: {
+          label: 'Groq',
+          rateLimits: 'Free dev tier',
+          signupUrl: 'https://console.groq.com/keys',
+          signupHint: 'API Keys → Create API Key',
+        },
+      },
+      LOCAL_VERSION: '0.2.1',
+      getApiKey,
+      getProxySettings,
+      resolveApiKeys: (cfg, providerKey) => {
+        const raw = cfg.apiKeys?.[providerKey]
+        if (Array.isArray(raw)) return raw
+        return typeof raw === 'string' && raw ? [raw] : []
+      },
+      isProviderEnabled: () => true,
+      listProfiles: () => [],
+      TIER_CYCLE: ['All'],
+      SETTINGS_OVERLAY_BG: null,
+      HELP_OVERLAY_BG: null,
+      RECOMMEND_OVERLAY_BG: null,
+      LOG_OVERLAY_BG: null,
+      OVERLAY_PANEL_WIDTH: 120,
+      keepOverlayTargetVisible: (currentOffset) => currentOffset,
+      sliceOverlayLines: (lines, offset = 0) => ({ visible: lines, offset }),
+      tintOverlayLines: (lines) => lines,
+      loadRecentLogs: () => [],
+      TASK_TYPES: [],
+      PRIORITY_TYPES: [],
+      CONTEXT_BUDGETS: [],
+      FRAMES: ['-'],
+      TIER_COLOR: () => '',
+      getAvg: () => 0,
+      getStabilityScore: () => 0,
+      toFavoriteKey: () => '',
+      getTopRecommendations: () => [],
+      adjustScrollOffset: () => {},
+      getPingModel: () => null,
+      getConfiguredInstallableProviders: () => [],
+      getInstallTargetModes: () => [],
+      getProviderCatalogModels: () => [],
+    }).renderSettings
+  }
+
+  it('shows Test when a provider has a saved key but no test ran yet', () => {
+    const renderSettings = buildSettingsRenderer({ apiKeys: { groq: 'gsk_live_key' }, providers: {}, settings: {} })
+    const output = renderSettings()
+
+    assert.match(output, /\[Test\]/)
+  })
+
+  it('shows Missing Key when a provider has no saved key', () => {
+    const renderSettings = buildSettingsRenderer({ apiKeys: {}, providers: {}, settings: {} })
+    const output = renderSettings()
+
+    assert.match(output, /\[Missing Key 🔑\]/)
   })
 })
 

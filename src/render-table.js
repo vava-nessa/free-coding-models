@@ -15,6 +15,7 @@
  *   - Smart badges (mode, tier filter, origin filter, profile)
  *   - Proxy status line integrated in footer
  *   - Install-endpoints shortcut surfaced directly in the footer hints
+ *   - Distinct auth-failure vs missing-key health labels so configured providers stay honest
  *
  *   → Functions:
  *   - `setActiveProxy` — Provide the active proxy instance for footer status rendering
@@ -435,6 +436,11 @@ export function renderTable(results, pendingPings, frame, cursor = null, sortCol
       // 📖 Server responded but needs an API key — shown dimly since it IS reachable
       statusText = `🔑 NO KEY`
       statusColor = (s) => chalk.dim(s)
+    } else if (r.status === 'auth_error') {
+      // 📖 A key is configured but the provider rejected it — keep this distinct
+      // 📖 from "no key" so configured-only mode does not look misleading.
+      statusText = `🔐 AUTH FAIL`
+      statusColor = (s) => chalk.redBright(s)
     } else if (r.status === 'pending') {
       statusText = `${FRAMES[frame % FRAMES.length]} wait`
       statusColor = (s) => chalk.dim.yellow(s)

@@ -114,7 +114,9 @@ export const PROVIDER_METADATA = {
     label: 'Hugging Face Inference',
     color: chalk.rgb(255, 245, 157),
     signupUrl: 'https://huggingface.co/settings/tokens',
-    signupHint: 'Settings → Access Tokens',
+    // 📖 Hugging Face serverless inference now expects a fine-grained token with
+    // 📖 the dedicated Inference Providers permission, not a generic read token.
+    signupHint: 'Settings → Access Tokens → Fine-grained → enable "Make calls to Inference Providers"',
     rateLimits: 'Free monthly credits (~$0.10)',
   },
   replicate: {
