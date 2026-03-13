@@ -656,6 +656,9 @@ export function renderTable(results, pendingPings, frame, cursor = null, sortCol
     '🤝 ' +
     chalk.rgb(255, 165, 0)('\x1b]8;;https://github.com/vava-nessa/free-coding-models/graphs/contributors\x1b\\Contributors\x1b]8;;\x1b\\') +
     chalk.dim('  •  ') +
+    '☕ ' +
+    chalk.rgb(255, 200, 100)('\x1b]8;;https://buymeacoffee.com/vavanessadev\x1b\\Buy me a coffee\x1b]8;;\x1b\\') +
+    chalk.dim('  •  ') +
     '💬 ' +
     chalk.rgb(200, 150, 255)('\x1b]8;;https://discord.gg/5MbTnDC3Md\x1b\\Discord\x1b]8;;\x1b\\') +
     chalk.dim(' → ') +

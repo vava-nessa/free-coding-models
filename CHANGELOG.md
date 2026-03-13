@@ -26,6 +26,30 @@
 
 - 🔽 **Removed duplicate "CONFIGURED ONLY" badge** - The header no longer shows the "CONFIGURED ONLY" indicator since it's already displayed in the footer hints. This reduces header clutter while keeping the information visible.
 
+- 🎨 **Enhanced Request Log (X) with colors and visual indicators**:
+  - **Latency gradient**: Green (<500ms) → Orange (<1000ms) → Yellow (<1500ms) → Red (≥1500ms) for quick performance assessment
+  - **Token opacity**: Light green (low usage) → Medium green → Bright green (high usage, >30k tokens)
+  - **Model coloring**: Matches status color for visual consistency
+  - **Status colors** - Distinct colors for each HTTP code:
+    - `200` ✅ → Bright green
+    - `400` → Dark magenta (#8B008B)
+    - `401` → Dark orchid (#9932CC)
+    - `403` → Medium orchid (#BA55D3)
+    - `404` → Dark red (crimson)
+    - `413` → Tomato red (#FF6347)
+    - `429` → Dark orange (#FFB90F)
+    - `500` → Crimson (#DC143C)
+    - `502` → Medium violet red (#C71585)
+    - `503` → Medium purple (#9370DB)
+    - `5xx` → Magenta (other 5xx errors)
+    - `0` → Dim gray (timeout/unknown)
+  - **Fixed token display bug**: Corrected chalk function calls that were showing JavaScript code instead of token counts
+
+- 💖 **Added "Buy me a coffee" link to footer**:
+  - Added in main TUI footer next to Contributors link (buymeacoffee.com/vavanessadev)
+  - Added in Settings overlay (P) footer with credits "Made with 💖 & ☕ by vava-nessa"
+  - Warm orange color for the coffee link to match the cozy theme
+
 ### Fixed
 
 - 🖥️ **Overlays now use 100% terminal width** - All overlays (Settings P, Help K, Log X, Recommend Q, Feature J, Bug I) now dynamically adapt to full terminal width instead of fixed 116-column panels:

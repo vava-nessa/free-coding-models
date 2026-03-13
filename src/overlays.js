@@ -87,6 +87,44 @@ export function createOverlayRenderers(state, deps) {
     return String(Math.floor(safeTotal))
   }
 
+  // 📖 Colorize latency with gradient: green (<500ms) → orange (<1000ms) → yellow (<1500ms) → red (>=1500ms)
+  const colorizeLatency = (latency, text) => {
+    const ms = Number(latency) || 0
+    if (ms <= 0) return chalk.dim(text)
+    if (ms < 500) return chalk.greenBright(text)
+    if (ms < 1000) return chalk.rgb(255, 165, 0)(text)  // Orange
+    if (ms < 1500) return chalk.yellow(text)
+    return chalk.red(text)
+  }
+
+  // 📖 Colorize tokens with gradient: dim green (few) → bright green (many)
+  const colorizeTokens = (tokens, text) => {
+    const tok = Number(tokens) || 0
+    if (tok <= 0) return chalk.dim(text)
+    // Gradient: light green (low) → medium green → bright green (high, >30k)
+    if (tok < 10_000) return chalk.hex('#90EE90')(text)  // Light green
+    if (tok < 30_000) return chalk.hex('#32CD32')(text)  // Lime green
+    return chalk.greenBright(text)  // Full brightness green
+  }
+
+  // 📖 Get model color based on status code - distinct colors for each error type
+  const getModelColorByStatus = (status) => {
+    const sc = String(status)
+    if (sc === '200') return chalk.greenBright  // Success - bright green
+    if (sc === '404') return chalk.rgb(139, 0, 0)  // Not found - dark red
+    if (sc === '400') return chalk.hex('#8B008B')  // Bad request - dark magenta
+    if (sc === '401') return chalk.hex('#9932CC')  // Unauthorized - dark orchid
+    if (sc === '403') return chalk.hex('#BA55D3')  // Forbidden - medium orchid
+    if (sc === '413') return chalk.hex('#FF6347')  // Payload too large - tomato red
+    if (sc === '429') return chalk.hex('#FFB90F')  // Rate limit - dark orange
+    if (sc === '500') return chalk.hex('#DC143C')  // Internal server error - crimson
+    if (sc === '502') return chalk.hex('#C71585')  // Bad gateway - medium violet red
+    if (sc === '503') return chalk.hex('#9370DB')  // Service unavailable - medium purple
+    if (sc.startsWith('5')) return chalk.magenta  // Other 5xx - magenta
+    if (sc === '0') return chalk.hex('#696969')  // Timeout/error - dim gray
+    return chalk.white  // Unknown - white
+  }
+
   // ─── Settings screen renderer ─────────────────────────────────────────────
   // 📖 renderSettings: Draw the settings overlay in the alt screen buffer.
   // 📖 Shows all providers with their API key (masked) + enabled state.
@@ -294,6 +332,18 @@ export function createOverlayRenderers(state, deps) {
       lines.push(type === 'success' ? chalk.greenBright(`  ${msg}`) : chalk.yellow(`  ${msg}`))
     }
     lines.push('')
+
+    // 📖 Footer with credits
+    lines.push('')
+    lines.push(
+      chalk.dim('  ') +
+      chalk.rgb(255, 150, 200)('Made with 💖 & ☕ by ') +
+      chalk.cyanBright('\x1b]8;;https://github.com/vava-nessa\x1b\\vava-nessa\x1b]8;;\x1b\\') +
+      chalk.dim('  •  ☕ ') +
+      chalk.rgb(255, 200, 100)('\x1b]8;;https://buymeacoffee.com/vavanessadev\x1b\\Buy me a coffee\x1b]8;;\x1b\\') +
+      chalk.dim('  •  ') +
+      'Esc to close'
+    )
 
     // 📖 Keep selected Settings row visible on small terminals by scrolling the overlay viewport.
     const targetLine = cursorLineByRow[state.settingsCursor] ?? 0
@@ -663,15 +713,33 @@ export function createOverlayRenderers(state, deps) {
           ? `${requestedModelLabel} → ${row.model}`
           : row.model
 
-        // 📖 Color-code status
+        // 📖 Color-code status with distinct colors for each error type
         let statusCell
         const sc = String(row.status)
         if (sc === '200') {
           statusCell = chalk.greenBright(sc.padEnd(W_STATUS))
+        } else if (sc === '404') {
+          statusCell = chalk.rgb(139, 0, 0).bold(sc.padEnd(W_STATUS))  // Dark red for 404
+        } else if (sc === '400') {
+          statusCell = chalk.hex('#8B008B').bold(sc.padEnd(W_STATUS))  // Dark magenta
+        } else if (sc === '401') {
+          statusCell = chalk.hex('#9932CC').bold(sc.padEnd(W_STATUS))  // Dark orchid
+        } else if (sc === '403') {
+          statusCell = chalk.hex('#BA55D3').bold(sc.padEnd(W_STATUS))  // Medium orchid
+        } else if (sc === '413') {
+          statusCell = chalk.hex('#FF6347').bold(sc.padEnd(W_STATUS))  // Tomato red
         } else if (sc === '429') {
-          statusCell = chalk.yellow(sc.padEnd(W_STATUS))
-        } else if (sc.startsWith('5') || sc === 'error') {
-          statusCell = chalk.red(sc.padEnd(W_STATUS))
+          statusCell = chalk.hex('#FFB90F').bold(sc.padEnd(W_STATUS))  // Dark orange
+        } else if (sc === '500') {
+          statusCell = chalk.hex('#DC143C').bold(sc.padEnd(W_STATUS))  // Crimson
+        } else if (sc === '502') {
+          statusCell = chalk.hex('#C71585').bold(sc.padEnd(W_STATUS))  // Medium violet red
+        } else if (sc === '503') {
+          statusCell = chalk.hex('#9370DB').bold(sc.padEnd(W_STATUS))  // Medium purple
+        } else if (sc.startsWith('5')) {
+          statusCell = chalk.magenta(sc.padEnd(W_STATUS))  // Other 5xx - magenta
+        } else if (sc === '0') {
+          statusCell = chalk.hex('#696969')(sc.padEnd(W_STATUS))  // Dim gray for timeout
         } else {
           statusCell = chalk.dim(sc.padEnd(W_STATUS))
         }
@@ -684,14 +752,22 @@ export function createOverlayRenderers(state, deps) {
 
         const timeCell  = chalk.dim(timeStr.slice(0, W_TIME).padEnd(W_TIME))
         const provCell  = chalk.cyan(row.provider.slice(0, W_PROV).padEnd(W_PROV))
+
+        // 📖 Color model based on status
+        const modelColorFn = getModelColorByStatus(row.status)
         const modelCell = row.switched
           ? chalk.bold.rgb(255, 210, 90)(displayModel.slice(0, W_MODEL).padEnd(W_MODEL))
-          : chalk.white(displayModel.slice(0, W_MODEL).padEnd(W_MODEL))
+          : modelColorFn(displayModel.slice(0, W_MODEL).padEnd(W_MODEL))
+
         const routeCell = row.switched
           ? chalk.bgRgb(120, 25, 25).yellow.bold(` ${routeLabel.slice(0, W_ROUTE - 2).padEnd(W_ROUTE - 2)} `)
           : chalk.dim(routeLabel.padEnd(W_ROUTE))
-        const tokCell   = chalk.dim(tokStr.padEnd(W_TOKENS))
-        const latCell   = chalk.dim(latStr.padEnd(W_LAT))
+
+        // 📖 Colorize tokens with opacity gradient
+        const tokCell = colorizeTokens(row.tokens, tokStr.padEnd(W_TOKENS))
+
+        // 📖 Colorize latency with gradient (green → orange → yellow → red)
+        const latCell = colorizeLatency(row.latency, latStr.padEnd(W_LAT))
 
         lines.push(`  ${timeCell}  ${provCell}  ${modelCell}  ${routeCell}  ${statusCell}  ${tokCell}  ${latCell}`)
       }
