@@ -803,6 +803,9 @@ describe('renderSettings provider test badges', () => {
           signupHint: 'API Keys → Create API Key',
         },
       },
+      PROVIDER_COLOR: {
+        groq: [255, 204, 188],
+      },
       LOCAL_VERSION: '0.2.1',
       getApiKey,
       getProxySettings,

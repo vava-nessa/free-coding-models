@@ -2,7 +2,7 @@
 
 ---
 
-## 0.2.7
+## 0.2.6
 
 ### Added
 
@@ -20,15 +20,11 @@
   - Offers one-click auto-fix with `chmod 600`
   - Shows manual fix command if auto-fix fails or is declined
 
-### Changed
-
-- 📝 **Updated documentation** - Added `--json` flag to CLI flags table in README.md
-
----
-
-## 0.2.6
-
-### Added
+- 🎨 **Added provider colors to logs and settings** - Provider names are now colored the same way as in the main table:
+  - Settings overlay (P) shows colored provider names
+  - Fiable mode output uses colored provider names
+  - Tool launcher messages use colored provider names
+  - Consistent visual experience across all UI elements
 
 - 🔌 Added `terminalcp` MCP server configuration for Claude Code to spawn and interact with the TUI headlessly. Agents can now visually test the terminal interface by capturing output and sending keystrokes programmatically. See AGENTS.md → "Testing the TUI with terminalcp" for usage.
 
@@ -40,6 +36,8 @@
   - **Main table title now uses rocket emoji (🚀) and cyanBright color** for consistency with overlays
 
 ### Changed
+
+- 📝 **Updated documentation** - Added `--json` flag to CLI flags table in README.md with usage examples
 
 - 📊 **Improved ping progress visibility** - Moved ping completion counter from the W badge to the main status bar:
   - Now shows as `📦 49/59` next to model status counts (up/timeout/down)

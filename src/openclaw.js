@@ -23,6 +23,8 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { homedir } from 'os'
 import { join } from 'path'
 import { patchOpenClawModelsJson } from '../patch-openclaw-models.js'
+import { sources } from '../sources.js'
+import { PROVIDER_COLOR } from './render-table.js'
 
 // 📖 OpenClaw config: ~/.openclaw/openclaw.json (JSON format, may be JSON5 in newer versions)
 const OPENCLAW_CONFIG = join(homedir(), '.openclaw', 'openclaw.json')
@@ -84,7 +86,10 @@ export async function startOpenClaw(model, apiKey) {
       api: 'openai-completions',
       models: [],
     }
-    console.log(chalk.dim('  ➕ Added nvidia provider block to OpenClaw config (models.providers.nvidia)'))
+    // 📖 Color provider name the same way as in the main table
+    const providerRgb = PROVIDER_COLOR['nvidia'] ?? [105, 190, 245]
+    const coloredProviderName = chalk.bold.rgb(...providerRgb)('nvidia')
+    console.log(chalk.dim(`  ➕ Added ${coloredProviderName} provider block to OpenClaw config (models.providers.nvidia)`))
   }
   // 📖 Ensure models array exists even if the provider block was created by an older version
   if (!Array.isArray(config.models.providers.nvidia.models)) {

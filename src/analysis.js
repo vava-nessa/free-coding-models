@@ -39,7 +39,7 @@ import { MODELS, sources } from '../sources.js'
 import { findBestModel, filterByTier, formatCtxWindow, labelFromId, TIER_LETTER_MAP } from '../src/utils.js'
 import { isProviderEnabled, getApiKey } from '../src/config.js'
 import { ping } from '../src/ping.js'
-import { PROVIDER_COLOR } from '../src/render-table.js'
+import { PROVIDER_COLOR } from './render-table.js'
 import chalk from 'chalk'
 
 // 📖 runFiableMode: Analyze models for reliability over 10 seconds, output the best one.

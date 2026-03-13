@@ -38,6 +38,7 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { copyFileSync, existsSync } from 'fs'
 import { sources } from '../sources.js'
+import { PROVIDER_COLOR } from './render-table.js'
 import { resolveCloudflareUrl } from './ping.js'
 import { ProxyServer } from './proxy-server.js'
 import { loadOpenCodeConfig, saveOpenCodeConfig, syncToOpenCode } from './opencode-sync.js'
@@ -268,7 +269,10 @@ export async function startOpenCode(model, fcmConfig) {
         },
         models: {}
       }
-      console.log(chalk.green('  + Auto-configured NVIDIA NIM provider in OpenCode'))
+      // 📖 Color provider name the same way as in the main table
+      const providerRgb = PROVIDER_COLOR['nvidia'] ?? [105, 190, 245]
+      const coloredNimName = chalk.bold.rgb(...providerRgb)('NVIDIA NIM')
+      console.log(chalk.green(`  + Auto-configured ${coloredNimName} provider in OpenCode`))
     }
 
     console.log(chalk.green(`  Setting ${chalk.bold(model.label)} as default...`))
@@ -780,7 +784,10 @@ export async function startOpenCodeDesktop(model, fcmConfig) {
         },
         models: {}
       }
-      console.log(chalk.green('  + Auto-configured NVIDIA NIM provider in OpenCode'))
+      // 📖 Color provider name the same way as in the main table
+      const providerRgb = PROVIDER_COLOR['nvidia'] ?? [105, 190, 245]
+      const coloredNimName = chalk.bold.rgb(...providerRgb)('NVIDIA NIM')
+      console.log(chalk.green(`  + Auto-configured ${coloredNimName} provider in OpenCode`))
     }
 
     console.log(chalk.green(`  Setting ${chalk.bold(model.label)} as default for OpenCode Desktop...`))

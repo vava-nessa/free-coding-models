@@ -113,7 +113,7 @@ import { ensureFavoritesConfig, toFavoriteKey, syncFavoriteFlags, toggleFavorite
 import { checkForUpdateDetailed, checkForUpdate, runUpdate, promptUpdateNotification } from '../src/updater.js'
 import { promptApiKey } from '../src/setup.js'
 import { stripAnsi, maskApiKey, displayWidth, padEndDisplay, tintOverlayLines, keepOverlayTargetVisible, sliceOverlayLines, calculateViewport, sortResultsWithPinnedFavorites, renderProxyStatusLine, adjustScrollOffset } from '../src/render-helpers.js'
-import { renderTable } from '../src/render-table.js'
+import { renderTable, PROVIDER_COLOR } from '../src/render-table.js'
 import { setOpenCodeModelData, startOpenCode, startOpenCodeDesktop, startProxyAndLaunch, autoStartProxyIfSynced, ensureProxyRunning, buildProxyTopologyFromConfig, isProxyEnabledForConfig } from '../src/opencode.js'
 import { startOpenClaw } from '../src/openclaw.js'
 import { createOverlayRenderers } from '../src/overlays.js'

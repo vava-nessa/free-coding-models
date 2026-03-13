@@ -176,13 +176,15 @@ bunx free-coding-models YOUR_API_KEY
 
 ### 🆕 What's New
 
-**Version 0.2.7 brings three powerful new features:**
+**Version 0.2.6 brings powerful new features:**
 
 - **`--json` flag** — Output model results as JSON for scripting, CI/CD pipelines, and monitoring dashboards. Perfect for automation: `free-coding-models --tier S --json | jq '.[0].modelId'`
 
 - **Persistent ping cache** — Results are cached for 5 minutes between runs. Startup is nearly instant when cache is fresh, and you save API rate limits. Cache file: `~/.free-coding-models.cache.json`
 
 - **Config security check** — Automatically warns if your API key config file has insecure permissions and offers one-click auto-fix with `chmod 600`
+
+- **Provider colors everywhere** — Provider names are now colored consistently in logs, settings, and the main table for better visual recognition
 
 ---
 

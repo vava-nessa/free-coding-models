@@ -32,6 +32,7 @@ import { homedir } from 'os'
 import { dirname, join } from 'path'
 import { spawn } from 'child_process'
 import { sources } from '../sources.js'
+import { PROVIDER_COLOR } from './render-table.js'
 import { getApiKey, getProxySettings } from './config.js'
 import { ENV_VAR_NAMES, isWindows } from './provider-metadata.js'
 import { getToolMeta } from './tool-metadata.js'
@@ -262,7 +263,11 @@ export async function startExternalTool(mode, model, config) {
   const proxySettings = getProxySettings(config)
 
   if (!apiKey && mode !== 'amp') {
-    console.log(chalk.yellow(`  ⚠ No API key configured for ${model.providerKey}.`))
+    // 📖 Color provider name the same way as in the main table
+    const providerRgb = PROVIDER_COLOR[model.providerKey] ?? [105, 190, 245]
+    const providerName = sources[model.providerKey]?.name || model.providerKey
+    const coloredProviderName = chalk.bold.rgb(...providerRgb)(providerName)
+    console.log(chalk.yellow(`  ⚠ No API key configured for ${coloredProviderName}.`))
     console.log(chalk.dim('  Configure the provider first from the Settings screen (P) or via env vars.'))
     console.log()
     return 1
