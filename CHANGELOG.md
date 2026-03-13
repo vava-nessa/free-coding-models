@@ -24,7 +24,19 @@
   - Settings overlay (P) shows colored provider names
   - Fiable mode output uses colored provider names
   - Tool launcher messages use colored provider names
+  - Request log overlay (X) shows colored provider names
   - Consistent visual experience across all UI elements
+
+### Changed
+
+- 📝 **Increased default log limit from 200 to 500 entries** - Request log overlay now shows up to 500 entries by default (previously 200)
+- 🔀 **Added toggle for unlimited logs** - Press `A` in request log overlay to toggle between showing 500 entries or ALL logs
+- ❌ **Enhanced visual failure indication in logs** - Failed requests with zero tokens now have:
+  - Dark red background (`rgb(40, 0, 0)`) on the entire row
+  - Model name in red
+  - Token column shows red cross emoji (✗) instead of token count
+  - Quick visual identification of errors vs successful requests
+- 📝 **Updated documentation** - Added `--json` flag to CLI flags table in README.md with usage examples
 
 - 🔌 Added `terminalcp` MCP server configuration for Claude Code to spawn and interact with the TUI headlessly. Agents can now visually test the terminal interface by capturing output and sending keystrokes programmatically. See AGENTS.md → "Testing the TUI with terminalcp" for usage.
 

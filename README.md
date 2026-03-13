@@ -898,7 +898,8 @@ This script:
 - **D** — Cycle provider filter (All → NIM → Groq → ...)
 - **E** — Toggle configured-only mode (on by default, persisted across sessions and profiles)
 - **Z** — Cycle target tool (OpenCode CLI → OpenCode Desktop → OpenClaw → Crush → Goose)
-- **X** — Toggle request logs (recent proxied request/token usage logs)
+- **X** — Toggle request logs (recent proxied request/token usage logs, up to 500 entries)
+- **A (in logs)** — Toggle between showing 500 entries or ALL logs
 - **P** — Open Settings (manage API keys, toggles, updates, profiles)
 - **Y** — Open Install Endpoints (`provider → tool → all models` or `selected models only`, no proxy)
 - **Shift+P** — Cycle through saved profiles (switches live TUI settings)

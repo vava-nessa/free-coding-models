@@ -668,12 +668,14 @@ export function createOverlayRenderers(state, deps) {
     lines.push(`  ${chalk.cyanBright('🚀')} ${chalk.bold.cyanBright('free-coding-models')} ${chalk.dim(`v${LOCAL_VERSION}`)}`)
     lines.push(`  ${chalk.bold('📋 Request Log')}`)
     lines.push('')
-    lines.push(chalk.dim('  — recent requests • ↑↓ scroll • X or Esc close'))
+    lines.push(chalk.dim('  — recent requests • ↑↓ scroll • A toggle all/500 • X or Esc close'))
     lines.push(chalk.dim('  Works only when the multi-account proxy is enabled and requests go through it.'))
     lines.push(chalk.dim('  Direct provider launches do not currently write into this log.'))
 
     // 📖 Load recent log entries — bounded read, newest-first, malformed lines skipped.
-    const logRows = loadRecentLogs({ limit: 200 })
+    // 📖 Show up to 500 entries by default, or all if logShowAll is true.
+    const logLimit = state.logShowAll ? Number.MAX_SAFE_INTEGER : 500
+    const logRows = loadRecentLogs({ limit: logLimit })
     const totalTokens = logRows.reduce((sum, row) => sum + (Number(row.tokens) || 0), 0)
 
     if (logRows.length === 0) {
@@ -701,8 +703,15 @@ export function createOverlayRenderers(state, deps) {
       const hStatus = chalk.dim('Status'.padEnd(W_STATUS))
       const hTok    = chalk.dim('Tokens Used'.padEnd(W_TOKENS))
       const hLat    = chalk.dim('Latency'.padEnd(W_LAT))
+
+      // 📖 Show mode indicator (all vs limited)
+      const modeBadge = state.logShowAll
+        ? chalk.yellow.bold('ALL')
+        : chalk.cyan.bold('500')
+      const countBadge = chalk.dim(`Showing ${logRows.length} entries`)
+
       lines.push(`  ${hTime}  ${hProv}  ${hModel}  ${hRoute}  ${hStatus}  ${hTok}  ${hLat}`)
-      lines.push(chalk.dim('  ' + '─'.repeat(W_TIME + W_PROV + W_MODEL + W_ROUTE + W_STATUS + W_TOKENS + W_LAT + 12)))
+      lines.push(`  ${chalk.dim('─'.repeat(W_TIME + W_PROV + W_MODEL + W_ROUTE + W_STATUS + W_TOKENS + W_LAT + 12))}  ${modeBadge}  ${countBadge}`)
 
       for (const row of logRows) {
         // 📖 Format time as HH:MM:SS (strip the date part for compactness)
@@ -756,26 +765,47 @@ export function createOverlayRenderers(state, deps) {
           ? `SWITCHED ↻ ${row.switchReason || 'fallback'}`
           : 'direct'
 
-        const timeCell  = chalk.dim(timeStr.slice(0, W_TIME).padEnd(W_TIME))
-        const provCell  = chalk.cyan(row.provider.slice(0, W_PROV).padEnd(W_PROV))
+        // 📖 Detect failed requests with zero tokens - these get special red highlighting
+        const isFailedWithZeroTokens = row.status !== '200' && (!row.tokens || Number(row.tokens) === 0)
 
-        // 📖 Color model based on status
-        const modelColorFn = getModelColorByStatus(row.status)
-        const modelCell = row.switched
-          ? chalk.bold.rgb(255, 210, 90)(displayModel.slice(0, W_MODEL).padEnd(W_MODEL))
-          : modelColorFn(displayModel.slice(0, W_MODEL).padEnd(W_MODEL))
+        const timeCell  = chalk.dim(timeStr.slice(0, W_TIME).padEnd(W_TIME))
+        // 📖 Color provider the same way as in the main table (row.provider is already the providerKey, e.g. "nvidia")
+        const providerRgb = PROVIDER_COLOR[row.provider] ?? [105, 190, 245]
+        const provCell  = chalk.bold.rgb(...providerRgb)(row.provider.slice(0, W_PROV).padEnd(W_PROV))
+
+        // 📖 Color model based on status - red for failed requests with zero tokens
+        let modelCell
+        if (isFailedWithZeroTokens) {
+          modelCell = chalk.red.bold(displayModel.slice(0, W_MODEL).padEnd(W_MODEL))
+        } else {
+          const modelColorFn = getModelColorByStatus(row.status)
+          modelCell = row.switched
+            ? chalk.bold.rgb(255, 210, 90)(displayModel.slice(0, W_MODEL).padEnd(W_MODEL))
+            : modelColorFn(displayModel.slice(0, W_MODEL).padEnd(W_MODEL))
+        }
 
         const routeCell = row.switched
           ? chalk.bgRgb(120, 25, 25).yellow.bold(` ${routeLabel.slice(0, W_ROUTE - 2).padEnd(W_ROUTE - 2)} `)
           : chalk.dim(routeLabel.padEnd(W_ROUTE))
 
-        // 📖 Colorize tokens with opacity gradient
-        const tokCell = colorizeTokens(row.tokens, tokStr.padEnd(W_TOKENS))
+        // 📖 Colorize tokens - red cross emoji for failed requests with zero tokens
+        let tokCell
+        if (isFailedWithZeroTokens) {
+          tokCell = chalk.red.bold('✗'.padEnd(W_TOKENS))
+        } else {
+          tokCell = colorizeTokens(row.tokens, tokStr.padEnd(W_TOKENS))
+        }
 
         // 📖 Colorize latency with gradient (green → orange → yellow → red)
         const latCell = colorizeLatency(row.latency, latStr.padEnd(W_LAT))
 
-        lines.push(`  ${timeCell}  ${provCell}  ${modelCell}  ${routeCell}  ${statusCell}  ${tokCell}  ${latCell}`)
+        // 📖 Build the row line - add dark red background for failed requests with zero tokens
+        const rowText = `  ${timeCell}  ${provCell}  ${modelCell}  ${routeCell}  ${statusCell}  ${tokCell}  ${latCell}`
+        if (isFailedWithZeroTokens) {
+          lines.push(chalk.bgRgb(40, 0, 0)(rowText))
+        } else {
+          lines.push(rowText)
+        }
       }
     }
 

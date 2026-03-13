@@ -750,6 +750,12 @@ export function createKeyHandler(ctx) {
         state.logVisible = false
         return
       }
+      // 📖 A key: toggle between showing all logs and limited to 500
+      if (key.name === 'a') {
+        state.logShowAll = !state.logShowAll
+        state.logScrollOffset = 0
+        return
+      }
       if (key.name === 'up') { state.logScrollOffset = Math.max(0, state.logScrollOffset - 1); return }
       if (key.name === 'down') { state.logScrollOffset += 1; return }
       if (key.name === 'pageup') { state.logScrollOffset = Math.max(0, state.logScrollOffset - pageStep); return }

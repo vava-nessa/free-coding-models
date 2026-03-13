@@ -462,6 +462,7 @@ async function main() {
     // 📖 Log page overlay state (X key opens it)
     logVisible: false,            // 📖 Whether the log page overlay is active
     logScrollOffset: 0,           // 📖 Vertical scroll offset for log overlay viewport
+    logShowAll: false,             // 📖 Show all logs (true) or limited to 500 (false)
     // 📖 Proxy startup status — set by autoStartProxyIfSynced, consumed by Task 3 indicator
     // 📖 null = not configured/not attempted
     // 📖 { phase: 'starting' } — proxy start in progress
