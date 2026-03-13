@@ -104,8 +104,8 @@ Before using `free-coding-models`, make sure you have:
 1. **Node.js 18+** — Required for native `fetch` API
 2. **At least one free API key** — pick any or all of:
    - **NVIDIA NIM** — [build.nvidia.com](https://build.nvidia.com) → Profile → API Keys → Generate – free tier: 40 req/min (no credit card)
-   - **Groq** — [console.groq.com/keys](https://console.groq.com/keys) → Create API Key
-   - **Cerebras** — [cloud.cerebras.ai](https://cloud.cerebras.ai) → API Keys → Create
+   - **Groq** — [console.groq.com/keys](https://console.groq.com/keys) → Create API Key – free tier: 30‑50 RPM per model (varies)
+   - **Cerebras** — [cloud.cerebras.ai](https://cloud.cerebras.ai) → API Keys → Create – free tier: generous (developer tier 10× higher limits)
    - **SambaNova** — [sambanova.ai/developers](https://sambanova.ai/developers) → Developers portal → API key (dev tier generous)
    - **OpenRouter** — [openrouter.ai/keys](https://openrouter.ai/keys) → Create key (free requests on `:free` models, see details below)
 
@@ -137,9 +137,9 @@ Key things to know:
 ```
 
    - **Hugging Face Inference** — [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) → Access Tokens (free monthly credits)
-   - **Replicate** — [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens) → Create token (dev quota)
-   - **DeepInfra** — [deepinfra.com/login](https://deepinfra.com/login) → Login → API key (free dev tier)
-   - **Fireworks AI** — [fireworks.ai](https://fireworks.ai) → Settings → Access Tokens ($1 free credits)
+   - **Replicate** — [replicate.com/account/api-tokens](https://replicate.com/account/api-tokens) → Create token – free tier: 6 req/min (no payment) – up to 3,000 RPM (API) / 600 RPM (predictions) with payment
+   - **DeepInfra** — [deepinfra.com/login](https://deepinfra.com/login) → Login → API key – free tier: 200 concurrent requests (default)
+   - **Fireworks AI** — [fireworks.ai](https://fireworks.ai) → Settings → Access Tokens – $1 free credits; 10 req/min without payment (full limits with payment)
    - **Mistral Codestral** — [codestral.mistral.ai](https://codestral.mistral.ai) → API Keys (30 req/min, 2000/day — phone required)
    - **Hyperbolic** — [app.hyperbolic.ai/settings](https://app.hyperbolic.ai/settings) → API Keys ($1 free trial)
    - **Scaleway** — [console.scaleway.com/iam/api-keys](https://console.scaleway.com/iam/api-keys) → IAM → API Keys (1M free tokens)

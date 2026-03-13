@@ -2,6 +2,14 @@
 
 ---
 
+## 0.2.7
+
+### Updated
+
+- 📊 **Provider quota information refreshed** – Updated free‑tier request limits for NVIDIA NIM, Groq, Cerebras, Replicate, DeepInfra, and Fireworks AI in `src/provider-metadata.js` and the README.
+- 📖 **README requirements section** – Added the latest quota details for each provider (40 req/min for NVIDIA, 30‑50 RPM for Groq, generous dev tier for Cerebras, 6 req/min free Replicate, 200 concurrent DeepInfra, 10 req/min free Fireworks) and clarified payment‑method dependent limits.
+- 🛠️ **No functional code changes** – Metadata updates only; all tests continue to pass.
+
 ## 0.2.6
 
 ### Added
