@@ -820,12 +820,44 @@ export function createKeyHandler(ctx) {
           state.changelogScrollOffset = 0
           return
         }
+
+        // 📖 Calculate total content lines for proper scroll boundary clamping
+        const calcChangelogLines = () => {
+          const lines = []
+          lines.push(`  🚀 free-coding-models`)
+          lines.push(`  📋 v${state.changelogSelectedVersion}`)
+          lines.push(`  — ↑↓ / PgUp / PgDn scroll • B back • Esc close`)
+          lines.push('')
+          const changes = versions[state.changelogSelectedVersion]
+          if (changes) {
+            const sections = { added: '✨ Added', fixed: '🐛 Fixed', changed: '🔄 Changed', updated: '📝 Updated' }
+            for (const [key, label] of Object.entries(sections)) {
+              if (changes[key] && changes[key].length > 0) {
+                lines.push(`  ${label}`)
+                for (const item of changes[key]) {
+                  let displayText = item.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1')
+                  const maxWidth = state.terminalCols - 16
+                  if (displayText.length > maxWidth) {
+                    displayText = displayText.substring(0, maxWidth - 3) + '…'
+                  }
+                  lines.push(`    • ${displayText}`)
+                }
+                lines.push('')
+              }
+            }
+          }
+          return lines.length
+        }
+        const totalChangelogLines = calcChangelogLines()
+        const viewportRows = Math.max(1, state.terminalRows || 1)
+        const maxScrollOffset = Math.max(0, totalChangelogLines - viewportRows)
+
         if (key.name === 'up') { state.changelogScrollOffset = Math.max(0, state.changelogScrollOffset - 1); return }
-        if (key.name === 'down') { state.changelogScrollOffset += 1; return }
+        if (key.name === 'down') { state.changelogScrollOffset = Math.min(maxScrollOffset, state.changelogScrollOffset + 1); return }
         if (key.name === 'pageup') { state.changelogScrollOffset = Math.max(0, state.changelogScrollOffset - pageStep); return }
-        if (key.name === 'pagedown') { state.changelogScrollOffset += pageStep; return }
+        if (key.name === 'pagedown') { state.changelogScrollOffset = Math.min(maxScrollOffset, state.changelogScrollOffset + pageStep); return }
         if (key.name === 'home') { state.changelogScrollOffset = 0; return }
-        if (key.name === 'end') { state.changelogScrollOffset = Number.MAX_SAFE_INTEGER; return }
+        if (key.name === 'end') { state.changelogScrollOffset = maxScrollOffset; return }
       }
 
       if (key.ctrl && key.name === 'c') { exit(0); return }
