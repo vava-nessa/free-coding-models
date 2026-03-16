@@ -1290,12 +1290,32 @@ export function createOverlayRenderers(state, deps) {
           if (changes[key]) itemCount += changes[key].length
         }
 
-        // 📖 Format version line with selection highlight
-        const versionStr = `  v${version.padEnd(8)} — ${itemCount} ${itemCount === 1 ? 'change' : 'changes'}`
+        // 📖 Build a short summary from the first few items (max ~15 words, stripped of markdown)
+        const allItems = []
+        for (const k of ['added', 'fixed', 'changed', 'updated']) {
+          if (changes[k]) for (const item of changes[k]) allItems.push(item)
+        }
+        let summary = ''
+        if (allItems.length > 0) {
+          // 📖 Extract the bold title part if present, otherwise use the raw text
+          const firstItem = allItems[0]
+          const boldMatch = firstItem.match(/\*\*([^*]+)\*\*/)
+          const rawText = boldMatch ? boldMatch[1] : firstItem.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1')
+          // 📖 Truncate to ~15 words max
+          const words = rawText.split(/\s+/).slice(0, 15)
+          summary = words.join(' ')
+          if (rawText.split(/\s+/).length > 15) summary += '…'
+        }
+
+        // 📖 Format version line with selection highlight + dim summary
+        const countStr = `${itemCount} ${itemCount === 1 ? 'change' : 'changes'}`
+        const prefix = `  v${version.padEnd(8)} — ${countStr}`
         if (isSelected) {
-          lines.push(chalk.inverse(versionStr))
+          const full = summary ? `${prefix} · ${summary}` : prefix
+          lines.push(chalk.inverse(full))
         } else {
-          lines.push(versionStr)
+          const dimSummary = summary ? chalk.dim(` · ${summary}`) : ''
+          lines.push(`${prefix}${dimSummary}`)
         }
       }
 
@@ -1330,6 +1350,17 @@ export function createOverlayRenderers(state, deps) {
           }
         }
       }
+    }
+
+    // 📖 Keep selected changelog row visible by scrolling the overlay viewport (index phase)
+    if (state.changelogPhase === 'index') {
+      const targetLine = 4 + state.changelogCursor  // 📖 3 header lines + 1 blank = versions start at line 4
+      state.changelogScrollOffset = keepOverlayTargetVisible(
+        state.changelogScrollOffset,
+        targetLine,
+        lines.length,
+        state.terminalRows
+      )
     }
 
     // 📖 Use scrolling with overlay handler

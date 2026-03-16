@@ -2,6 +2,16 @@
 
 ---
 
+## 0.2.16
+
+### Fixed
+- **Changelog index viewport scrolling**: Cursor in changelog version list (N key) now scrolls the viewport to follow selection — previously scrolling past the last visible row would move the cursor off-screen into empty space.
+
+### Added
+- **Changelog version summaries**: Each version in the changelog index now shows a short summary (first change title, ~15 words) after the change count, displayed in dim for readability.
+
+---
+
 ## 0.2.15
 
 ### Changed
