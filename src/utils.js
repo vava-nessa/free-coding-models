@@ -393,7 +393,8 @@ export function findBestModel(results) {
 //   - Value flag: --tier <letter> (the next non-flag arg is the tier value)
 //
 // 📖 Returns:
-//   { apiKey, bestMode, fiableMode, openCodeMode, openCodeDesktopMode, openClawMode,
+//   { apiKey, bestMode,
+//     serveMode, fiableMode, openCodeMode, openCodeDesktopMode, openClawMode,
 //     aiderMode, crushMode, gooseMode, qwenMode, openHandsMode, ampMode,
 //     piMode, noTelemetry, jsonMode, helpMode, tierFilter }
 //
@@ -443,6 +444,7 @@ export function parseArgs(argv) {
   }
 
   const bestMode = flags.includes('--best')
+  const serveMode = flags.includes('--serve') || args.includes('serve')
   const fiableMode = flags.includes('--fiable')
   const openCodeMode = flags.includes('--opencode')
   const openCodeDesktopMode = flags.includes('--opencode-desktop')
@@ -481,6 +483,7 @@ export function parseArgs(argv) {
   return {
     apiKey,
     bestMode,
+    serveMode,
     fiableMode,
     openCodeMode,
     openCodeDesktopMode,

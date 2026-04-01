@@ -150,6 +150,21 @@ export function buildToolEnv(mode, model, config, options = {}) {
     includeProviderEnv = true,
     inheritedEnv = process.env,
   } = options
+
+  if (config.serveModeActive) {
+    const env = cloneInheritedEnv(inheritedEnv, sanitize ? SANITIZED_TOOL_ENV_KEYS : [])
+    const proxyUrl = 'http://127.0.0.1:8080/v1'
+    const proxyKey = 'nokey-localproxy'
+    if (includeCompatDefaults) {
+      env.OPENAI_API_KEY = proxyKey
+      env.OPENAI_BASE_URL = proxyUrl
+      env.OPENAI_API_BASE = proxyUrl
+      env.OPENAI_MODEL = model.modelId
+    }
+    return { env, apiKey: proxyKey, baseUrl: proxyUrl }
+  }
+
+
   const providerKey = model.providerKey
   const providerUrl = sources[providerKey]?.url || ''
   const baseUrl = getProviderBaseUrl(providerKey)

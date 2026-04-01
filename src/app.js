@@ -109,6 +109,7 @@ import { ALT_ENTER, ALT_LEAVE, ALT_HOME, PING_TIMEOUT, PING_INTERVAL, FPS, COL_M
 import { TIER_COLOR } from '../src/tier-colors.js'
 import { resolveCloudflareUrl, buildPingRequest, ping, extractQuotaPercent, getProviderQuotaPercentCached, usagePlaceholderForProvider } from '../src/ping.js'
 import { runFiableMode, filterByTierOrExit, fetchOpenRouterFreeModels } from '../src/analysis.js'
+import { startProxyServer } from '../src/server.js'
 import { PROVIDER_METADATA, ENV_VAR_NAMES, isWindows, isMac } from '../src/provider-metadata.js'
 import { parseTelemetryEnv, isTelemetryDebugEnabled, telemetryDebug, ensureTelemetryConfig, getTelemetryDistinctId, getTelemetrySystem, getTelemetryTerminal, isTelemetryEnabled, sendUsageTelemetry, sendBugReport } from '../src/telemetry.js'
 import { ensureFavoritesConfig, toFavoriteKey, syncFavoriteFlags, toggleFavoriteModel } from '../src/favorites.js'
@@ -648,7 +649,60 @@ export async function runApp(cliArgs, config) {
     }
 
     // 📖 Apply best mode filter if specified
-    if (cliArgs.bestMode) {
+
+  // 📖 Serve mode: Headless local proxy router
+  if (cliArgs.serveMode) {
+    let results = MODELS.map(([modelId, label, tier, sweScore, ctx, providerKey], i) => ({
+      idx: i + 1,
+      modelId,
+      label,
+      tier,
+      sweScore,
+      ctx,
+      providerKey,
+      status: 'pending',
+      pings: [],
+      httpCode: null
+    }));
+
+    // Setup continuous background pings
+    const pingLoop = async () => {
+      while (true) {
+        const pingPromises = results.map(r => {
+          if (!isProviderEnabled(config, r.providerKey)) return Promise.resolve()
+          const url = sources[r.providerKey]?.url
+          const key = getApiKey(config, r.providerKey)
+          return ping(key, r.modelId, r.providerKey, url).then(({ code, ms }) => {
+            r.pings.push({ ms, code })
+            if (code === '200') {
+              r.status = 'up'
+            } else if (code === '000') {
+              r.status = 'timeout'
+            } else {
+              r.status = 'down'
+              r.httpCode = code
+            }
+          }).catch(() => {})
+        })
+        await Promise.allSettled(pingPromises)
+        await new Promise(res => setTimeout(res, 60000))
+      }
+    }
+    pingLoop()
+
+    const stateRef = { current: { results } }
+    console.log(chalk.cyan('  🚀 Starting Local Proxy Server...'))
+    const { port } = await startProxyServer(8080, stateRef, config)
+    console.log(chalk.green(`  ✓ Proxy running on http://127.0.0.1:${port}/v1`))
+    console.log(chalk.dim('  Point your tools to this endpoint (model names will be dynamically routed)'))
+    return
+  }
+
+//   if (cliArgs.fiableMode) {
+    await runFiableMode(config)
+    return
+  }
+  if (cliArgs.bestMode) {
       outputResults = outputResults.filter(r => ['S+', 'S', 'A+'].includes(r.tier))
     }
 
