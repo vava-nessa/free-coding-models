@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>free-coding-models — Live Dashboard</title>
+  <meta name="description" content="Find the fastest free coding LLM model in seconds. Live dashboard monitoring 230+ models across 24 providers.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <!-- ─── Background Effects ─── -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow--1"></div>
+  <div class="bg-glow bg-glow--2"></div>
+  <div class="bg-glow bg-glow--3"></div>
+
+  <!-- ─── Header ─── -->
+  <header class="header" id="header">
+    <div class="header__left">
+      <div class="logo">
+        <span class="logo__icon">⚡</span>
+        <span class="logo__text">free-coding-models</span>
+      </div>
+      <span class="header__version" id="version-badge">v0.3.34</span>
+    </div>
+    <div class="header__center">
+      <div class="search-bar" id="search-bar">
+        <svg class="search-bar__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="search-bar__input" id="search-input" placeholder="Search models, providers, tiers..." autocomplete="off">
+        <kbd class="search-bar__kbd">Ctrl+K</kbd>
+      </div>
+    </div>
+    <div class="header__right">
+      <button class="btn btn--icon" id="theme-toggle" title="Toggle theme">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button class="btn btn--primary" id="settings-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </button>
+    </div>
+  </header>
+
+  <!-- ─── Stats Bar ─── -->
+  <section class="stats-bar" id="stats-bar">
+    <div class="stat-card" id="stat-total">
+      <div class="stat-card__icon">📊</div>
+      <div class="stat-card__body">
+        <div class="stat-card__value" id="stat-total-value">0</div>
+        <div class="stat-card__label">Total Models</div>
+      </div>
+    </div>
+    <div class="stat-card" id="stat-online">
+      <div class="stat-card__icon">🟢</div>
+      <div class="stat-card__body">
+        <div class="stat-card__value" id="stat-online-value">0</div>
+        <div class="stat-card__label">Online</div>
+      </div>
+    </div>
+    <div class="stat-card" id="stat-avg">
+      <div class="stat-card__icon">⚡</div>
+      <div class="stat-card__body">
+        <div class="stat-card__value" id="stat-avg-value">—</div>
+        <div class="stat-card__label">Avg Latency</div>
+      </div>
+    </div>
+    <div class="stat-card" id="stat-best">
+      <div class="stat-card__icon">🏆</div>
+      <div class="stat-card__body">
+        <div class="stat-card__value" id="stat-best-value">—</div>
+        <div class="stat-card__label">Fastest Model</div>
+      </div>
+    </div>
+    <div class="stat-card" id="stat-providers">
+      <div class="stat-card__icon">🌐</div>
+      <div class="stat-card__body">
+        <div class="stat-card__value" id="stat-providers-value">0</div>
+        <div class="stat-card__label">Providers</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Filters ─── -->
+  <section class="filters" id="filters">
+    <div class="filters__group">
+      <label class="filter-label">Tier</label>
+      <div class="tier-filters" id="tier-filters">
+        <button class="tier-btn tier-btn--active" data-tier="all">All</button>
+        <button class="tier-btn" data-tier="S+">S+</button>
+        <button class="tier-btn" data-tier="S">S</button>
+        <button class="tier-btn" data-tier="A+">A+</button>
+        <button class="tier-btn" data-tier="A">A</button>
+        <button class="tier-btn" data-tier="A-">A-</button>
+        <button class="tier-btn" data-tier="B+">B+</button>
+        <button class="tier-btn" data-tier="B">B</button>
+        <button class="tier-btn" data-tier="C">C</button>
+      </div>
+    </div>
+    <div class="filters__group">
+      <label class="filter-label">Status</label>
+      <div class="status-filters" id="status-filters">
+        <button class="status-btn status-btn--active" data-status="all">All</button>
+        <button class="status-btn" data-status="up">Online</button>
+        <button class="status-btn" data-status="down">Offline</button>
+        <button class="status-btn" data-status="pending">Pending</button>
+      </div>
+    </div>
+    <div class="filters__group">
+      <label class="filter-label">Provider</label>
+      <select class="provider-select" id="provider-filter">
+        <option value="all">All Providers</option>
+      </select>
+    </div>
+    <div class="filters__spacer"></div>
+    <div class="filters__group">
+      <div class="live-indicator" id="live-indicator">
+        <span class="live-dot"></span>
+        <span class="live-text">LIVE</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Main Table ─── -->
+  <main class="main" id="main">
+    <div class="table-container" id="table-container">
+      <table class="models-table" id="models-table">
+        <thead>
+          <tr>
+            <th class="th--rank sortable" data-sort="idx">#</th>
+            <th class="th--tier sortable" data-sort="tier">Tier</th>
+            <th class="th--model sortable" data-sort="label">Model</th>
+            <th class="th--provider sortable" data-sort="origin">Provider</th>
+            <th class="th--swe sortable" data-sort="sweScore">SWE %</th>
+            <th class="th--ctx sortable" data-sort="ctx">Context</th>
+            <th class="th--ping sortable" data-sort="latestPing">Ping</th>
+            <th class="th--avg sortable" data-sort="avg">Avg</th>
+            <th class="th--stability sortable" data-sort="stability">Stability</th>
+            <th class="th--verdict sortable" data-sort="verdict">Verdict</th>
+            <th class="th--uptime sortable" data-sort="uptime">Uptime</th>
+            <th class="th--sparkline">Trend</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr class="loading-row">
+            <td colspan="12">
+              <div class="loading-spinner">
+                <div class="spinner"></div>
+                <span>Connecting to ping engine...</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- ─── Settings Modal ─── -->
+  <div class="modal-overlay" id="settings-modal" hidden>
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title">⚙️ Settings</h2>
+        <button class="modal__close" id="settings-close">&times;</button>
+      </div>
+      <div class="modal__body" id="settings-body">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Model Detail Panel ─── -->
+  <div class="detail-panel" id="detail-panel" hidden>
+    <div class="detail-panel__header">
+      <h3 class="detail-panel__title" id="detail-title">Model Details</h3>
+      <button class="detail-panel__close" id="detail-close">&times;</button>
+    </div>
+    <div class="detail-panel__body" id="detail-body">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- ─── Footer ─── -->
+  <footer class="footer">
+    <div class="footer__left">
+      <span>Made with ❤️ by <a href="https://vavanessa.dev" target="_blank">Vava-Nessa</a></span>
+    </div>
+    <div class="footer__right">
+      <a href="https://github.com/vava-nessa/free-coding-models" target="_blank">GitHub</a>
+      <a href="https://discord.gg/ZTNFHvvCkU" target="_blank">Discord</a>
+    </div>
+  </footer>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

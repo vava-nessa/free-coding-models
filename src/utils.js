@@ -461,6 +461,9 @@ export function parseArgs(argv) {
   const helpMode = flags.includes('--help') || flags.includes('-h')
   const premiumMode = flags.includes('--premium')
 
+  // 📖 --web / --gui — launch the web dashboard instead of the TUI
+  const webMode = flags.includes('--web') || flags.includes('--gui')
+
   // New boolean flags
   const sortDesc = flags.includes('--desc')
   const sortAscFlag = flags.includes('--asc')
@@ -505,6 +508,7 @@ export function parseArgs(argv) {
     hideUnconfigured,
     showUnconfigured,
     premiumMode,
+    webMode,
     // 📖 Profile system removed - API keys now persist permanently across all sessions
     recommendMode,
   }

@@ -1,6 +1,15 @@
 # Changelog
 ---
 
+## [0.3.35] - 2026-04-07
+
+### Added
+- **Web Dashboard / GUI Mode** — Launch a premium graphical interface using \`--web\` or \`--gui\` flag.
+- **Glassmorphism Design** — Real-time ping visualization, 🥇🥈🥉 medals, live stability scores, and sparklines.
+- **Background SSE Streaming** — The built-in Node.js server streams live data to the browser with zero dependencies.
+- **Quick Search & Filters** — Sort by any column, filter by tiers, or use the real-time search box (Ctrl+K).
+- **Detail Panel** — Slide-out side panel showing P95 latency, jitter (σ), and historical trends.
+
 ## [0.3.34] - 2026-04-06
 
 ### Added
