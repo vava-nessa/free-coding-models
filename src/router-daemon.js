@@ -1174,6 +1174,11 @@ class RouterRuntime {
       model: getApiModelId(candidate.provider, candidate.model),
       stream: false,
     }
+    // 📖 Some providers/models fail if we send custom internal params, so strip them
+    if (upstreamBody.add_generation_prompt !== undefined) delete upstreamBody.add_generation_prompt
+    if (upstreamBody.continue_final_message !== undefined) delete upstreamBody.continue_final_message
+    if (upstreamBody.tools?.length === 0) delete upstreamBody.tools
+    
     const clientAbort = attachClientAbort(req, res, controller)
     try {
       const response = await fetch(providerUrl, {
@@ -1294,6 +1299,11 @@ class RouterRuntime {
       model: getApiModelId(candidate.provider, candidate.model),
       stream: true,
     }
+    // 📖 Some providers/models fail if we send custom internal params, so strip them
+    if (upstreamBody.add_generation_prompt !== undefined) delete upstreamBody.add_generation_prompt
+    if (upstreamBody.continue_final_message !== undefined) delete upstreamBody.continue_final_message
+    if (upstreamBody.tools?.length === 0) delete upstreamBody.tools
+    
     const timeout = setTimeout(() => controller.abort(), this.routerConfig().failover.requestTimeoutMs)
     let sentToClient = false
     const clientAbort = attachClientAbort(req, res, controller)
@@ -1395,7 +1405,11 @@ class RouterRuntime {
       }
       const reason = error.name === 'AbortError' ? 'timeout' : (error.message || String(error))
       this.markFailure(key, reason)
-      this.recordRouterError('upstream_stream_error', requestId, { model: key, reason, partial: sentToClient })
+      if (reason !== 'timeout') {
+        this.recordRouterError('upstream_stream_error', requestId, { model: key, reason, partial: sentToClient })
+      } else {
+        this.recordRouterError('timeout', requestId, { model: key, reason, partial: sentToClient })
+      }
       this.addRequestLog({ request_id: requestId, model: key, status: 'ERR', latency_ms: null, tokens: 0, failover: attemptIndex > 0, error: reason, stream: true })
       if (sentToClient) {
         this.logger.warn(`Streaming failure after partial response from ${key}`, { request_id: requestId, reason })
