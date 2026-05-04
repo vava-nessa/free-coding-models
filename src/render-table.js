@@ -488,13 +488,28 @@ export function renderTable(results, pendingPings, frame, cursor = null, sortCol
       sweCell = paintSweScore(sweVal, swePadded)
     }
     
-    // 📖 Context window column - colorized by size (larger = better)
+    // 📖 Context window column - colorized by size (larger = better), gradient from red→orange→yellow→green
     const ctxRaw = r.ctx ?? '—'
-    const ctxCell = ctxRaw !== '—' && (ctxRaw.includes('128k') || ctxRaw.includes('200k') || ctxRaw.includes('1m'))
-      ? themeColors.metricGood(ctxRaw.padEnd(W_CTX))
-      : ctxRaw !== '—' && (ctxRaw.includes('32k') || ctxRaw.includes('64k'))
-      ? themeColors.metricOk(ctxRaw.padEnd(W_CTX))
-      : themeColors.dim(ctxRaw.padEnd(W_CTX))
+    let ctxCell
+    if (ctxRaw === '—') {
+      ctxCell = themeColors.dim(ctxRaw.padEnd(W_CTX))
+    } else {
+      const ctxMatch = ctxRaw.match(/^(\d+)k$|^(\d+)M$/)
+      if (ctxMatch) {
+        const numK = ctxMatch[1] ? parseInt(ctxMatch[1]) : parseInt(ctxMatch[2]) * 1024
+        ctxCell = numK <= 32
+          ? themeColors.metricBad(ctxRaw.padEnd(W_CTX))
+          : numK <= 64
+          ? themeColors.metricWarn(ctxRaw.padEnd(W_CTX))
+          : numK <= 128
+          ? chalk.rgb(200, 180, 50).bold(ctxRaw.padEnd(W_CTX))
+          : numK <= 200
+          ? chalk.rgb(100, 200, 80).bold(ctxRaw.padEnd(W_CTX))
+          : themeColors.metricGood(ctxRaw.padEnd(W_CTX))
+      } else {
+        ctxCell = themeColors.dim(ctxRaw.padEnd(W_CTX))
+      }
+    }
 
     // 📖 Keep the row-local spinner small and inline so users can still read the last measured latency.
     const buildLatestPingDisplay = (value) => {
