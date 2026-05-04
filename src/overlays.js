@@ -933,7 +933,6 @@ export function createOverlayRenderers(state, deps) {
     lines.push(`  ${key('Y')}  Toggle favorites mode  ${hint('(Pinned + always visible ↔ Normal filter/sort behavior)')}`)
     lines.push(`  ${key('X')}  Clear active text filter  ${hint('(remove custom query applied from ⚡️ Command Palette)')}`)
     lines.push(`  ${key('Q')}  Smart Recommend  ${hint('(🎯 find the best model for your task — questionnaire + live analysis)')}`)
-    lines.push(`  ${key('Shift+R')}  Router Dashboard  ${hint('(🔀 daemon health, circuit breakers, tokens, request log)')}`)
     lines.push(`  ${key('G')}  Cycle theme  ${hint('(auto → dark → light)')}`)
 
     lines.push(`  ${key('P')}  Open settings  ${hint('(manage API keys, provider toggles, updates, legacy cleanup)')}`)
@@ -1523,7 +1522,7 @@ export function createOverlayRenderers(state, deps) {
     lines.push(`  ${totalRow.join(' ')}`)
 
     lines.push('')
-    lines.push(themeColors.dim('  Esc Back to main table  •  Shift+R Router Dashboard'))
+    lines.push(themeColors.dim('  Esc Back to main table'))
 
     const { visible, offset } = sliceOverlayLines(lines, state.tokenUsageScrollOffset, state.terminalRows)
     state.tokenUsageScrollOffset = offset
@@ -1558,7 +1557,7 @@ export function createOverlayRenderers(state, deps) {
       lines.push(themeColors.info('  Enabling router, please wait...'))
     } else if (state.routerOnboardingPhase === 'success') {
       lines.push(themeColors.success('  ✅ Router enabled! Dashboard opening...'))
-      lines.push(themeColors.dim('  Shift+R to reopen the dashboard anytime'))
+      lines.push(themeColors.dim('  Setup complete. Return to the main table to continue.'))
     } else if (state.routerOnboardingPhase === 'error') {
       lines.push(themeColors.error(`  ❌ ${state.routerOnboardingError || 'Failed to enable router'}`))
       lines.push(themeColors.dim('  Press Esc or Enter to continue to the main table'))
@@ -1590,26 +1589,6 @@ export function createOverlayRenderers(state, deps) {
     return tintedLines.map((l) => l + EL).join('\n')
   }
 
-  // ─── Router upgrade banner (inline in main table, not an overlay) ─────────────
-  // 📖 renderRouterUpgradeBanner: non-blocking notification at top of the table
-  // 📖 shown once to existing users who haven't seen router yet. Auto-dismisses after 10s.
-  function renderRouterUpgradeBanner() {
-    const EL = '\x1b[K'
-    const now = Date.now()
-    const BANNER_TTL_MS = 10_000
-    // Dismissed or already seen in this session?
-    if (state.routerUpgradeBannerDismissedAt > 0) return ''
-    if (state.routerUpgradeBannerShownAt === 0) state.routerUpgradeBannerShownAt = now
-    if (now - state.routerUpgradeBannerShownAt > BANNER_TTL_MS) {
-      state.routerUpgradeBannerDismissedAt = now
-      return ''
-    }
-    const remaining = Math.ceil((BANNER_TTL_MS - (now - state.routerUpgradeBannerShownAt)) / 1000)
-    const msg = `  ${themeColors.accentBold('🆕')}  ${themeColors.textBold('Smart Router is now available!')}  ${themeColors.dim('Press')}  ${themeColors.hotkey('Shift+R')}  ${themeColors.dim('to set it up.')}  ${themeColors.dim(`(dismisses in ${remaining}s)`)}`
-    const pad = state.terminalCols > displayWidth(msg) ? ' '.repeat(Math.max(0, state.terminalCols - displayWidth(msg))) : ''
-    return themeColors.warningBold(msg + pad)
-  }
-
   return {
     renderSettings,
     renderInstallEndpoints,
@@ -1623,7 +1602,6 @@ export function createOverlayRenderers(state, deps) {
     renderIncompatibleFallback,
     renderTokenUsage,
     renderRouterOnboarding,
-    renderRouterUpgradeBanner,
     startRecommendAnalysis,
     stopRecommendAnalysis,
     overlayLayout,

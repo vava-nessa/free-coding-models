@@ -351,11 +351,11 @@ describe('command palette fuzzy search', () => {
     assert.ok(ids.has('action-favorites-mode-normal'))
   })
 
-  it('exposes the Router Dashboard as the Shift+R page command', () => {
+  it('keeps router pages out of the visible command palette', () => {
     const entries = buildCommandPaletteEntries()
-    const dashboard = entries.find((entry) => entry.id === 'open-router-dashboard')
-    assert.ok(dashboard)
-    assert.equal(dashboard.shortcut, 'Shift+R')
+    const ids = new Set(entries.map((entry) => entry.id))
+    assert.equal(ids.has('open-router-dashboard'), false)
+    assert.equal(ids.has('open-token-usage'), false)
   })
 })
 
@@ -1127,13 +1127,13 @@ describe('renderTable sticky header and footer layout', () => {
     )
     const lines = visibleLines(output)
 
-    assert.ok(lines.length <= 20, `expected at most 20 lines, got ${lines.length}`)
+    assert.equal(lines.length, 20)
     assert.match(lines[0], /free-coding-models/)
-    assert.match(lines[1], /Search/)
-    assert.match(lines[2], /Model/)
-    assert.match(lines.at(-3), /F Favorite/)
-    assert.match(lines.at(-2), /Ctrl\+P Cmd Palette/)
-    assert.match(lines.at(-1), /Shift\+R Router/)
+    assert.match(lines[1], /Model/)
+    assert.doesNotMatch(output, /Search "\/"/)
+    assert.doesNotMatch(output, /Shift\+R Router|daemon not running|Smart Router is now available/)
+    assert.match(lines.at(-2), /F Favorite/)
+    assert.match(lines.at(-1), /Ctrl\+P Cmd Palette/)
   })
 
   it('keeps title, search filters, and column headers visible when scrolled', () => {
@@ -1154,11 +1154,10 @@ describe('renderTable sticky header and footer layout', () => {
     )
     const lines = visibleLines(output)
 
-    assert.ok(lines.length <= 20, `expected at most 20 lines, got ${lines.length}`)
+    assert.equal(lines.length, 20)
     assert.match(lines[0], /free-coding-models/)
-    assert.match(lines[1], /Search/)
-    assert.match(lines[2], /Model/)
-    assert.match(lines[3], /more above/)
+    assert.match(lines[1], /Model/)
+    assert.match(lines[2], /more above/)
   })
 
   it('reserves space for temporary footer rows without hiding the header', () => {
@@ -1194,12 +1193,37 @@ describe('renderTable sticky header and footer layout', () => {
     )
     const lines = visibleLines(output)
 
-    assert.ok(lines.length <= 20, `expected at most 20 lines, got ${lines.length}`)
+    assert.equal(lines.length, 20)
     assert.match(lines[0], /free-coding-models/)
-    assert.match(lines[1], /Search/)
-    assert.match(lines[2], /Model/)
+    assert.match(lines[1], /Model/)
     assert.match(output, /UPDATE AVAILABLE/)
     assert.match(output, /X Disable filter: "deep"/)
+  })
+
+  it('sticks the footer to the bottom when there are few model rows', () => {
+    const output = renderTable(
+      makeManyResults(3),
+      0,
+      0,
+      0,
+      'avg',
+      'asc',
+      10_000,
+      Date.now(),
+      'opencode',
+      0,
+      0,
+      12,
+      140
+    )
+    const lines = visibleLines(output)
+
+    assert.equal(lines.length, 12)
+    assert.match(lines[0], /free-coding-models/)
+    assert.match(lines[1], /Model/)
+    assert.ok(lines.slice(5, 10).every((line) => line === ''), 'expected blank padding before sticky footer')
+    assert.match(lines.at(-2), /F Favorite/)
+    assert.match(lines.at(-1), /Ctrl\+P Cmd Palette/)
   })
 
   it('always renders the full footer even when an old collapsed-footer flag is passed', () => {
@@ -1237,8 +1261,8 @@ describe('renderTable sticky header and footer layout', () => {
     )
 
     assert.doesNotMatch(output, /Toggle Footer/)
+    assert.doesNotMatch(output, /Shift\+R Router|daemon not running/)
     assert.match(output, /Ctrl\+P Cmd Palette/)
-    assert.match(output, /Shift\+R Router/)
   })
 })
 
@@ -1280,9 +1304,9 @@ describe('renderTable outdated footer banner', () => {
 
     assert.match(output, new RegExp(`UPDATE AVAILABLE — v${escapeRegex(localVersion)} → v9\\.9\\.9`))
     assert.match(output, /Click here or press Shift\+U to update/)
-    // 📖 After the update banner the next line is now the Router status row
-    // 📖 (Changelog moved to Settings, Ctrl+C Exit moved to Help overlay).
+    // 📖 The update banner stays in the footer budget without surfacing router hints.
     assert.match(output, /UPDATE AVAILABLE/)
+    assert.doesNotMatch(output, /Shift\+R Router|daemon not running/)
   })
 
   it('stays quiet when no newer version is known', () => {
@@ -1294,7 +1318,7 @@ describe('renderTable outdated footer banner', () => {
     assert.doesNotMatch(output, /UPDATE AVAILABLE/)
   })
 
-  it('shows the active custom text filter badge between changelog and exit hints', () => {
+  it('shows the active custom text filter badge on its own footer line', () => {
     const results = [
       mockResult({ providerKey: 'nvidia', totalTokens: 0 }),
     ]

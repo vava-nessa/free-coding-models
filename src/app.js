@@ -116,7 +116,7 @@ import { checkForUpdateDetailed, checkForUpdate, runUpdate, promptUpdateNotifica
 import { promptApiKey } from '../src/setup.js'
 import { syncShellEnv, ensureShellRcSource, promptShellEnvMigration, removeShellEnv } from '../src/shell-env.js'
 import { stripAnsi, maskApiKey, displayWidth, padEndDisplay, tintOverlayLines, keepOverlayTargetVisible, sliceOverlayLines, calculateViewport, sortResultsWithPinnedFavorites, adjustScrollOffset } from '../src/render-helpers.js'
-import { renderTable, getLastLayout, PROVIDER_COLOR } from '../src/render-table.js'
+import { renderTable, PROVIDER_COLOR } from '../src/render-table.js'
 import { setOpenCodeModelData, startOpenCode, startOpenCodeDesktop, startOpenCodeWeb } from '../src/opencode.js'
 import { startKilo } from '../src/kilo.js'
 import { startOpenClaw } from '../src/openclaw.js'
@@ -543,9 +543,6 @@ export async function runApp(cliArgs, config) {
     routerDashboardNotice: null,
     routerDashboardNoticeTimer: null,
     routerOnboardingScrollOffset: 0,
-    // 📖 Router upgrade banner (shown once to existing users who haven't seen router)
-    routerUpgradeBannerShownAt: 0, // 📖 Timestamp when banner was shown (0 = not shown)
-    routerUpgradeBannerDismissedAt: 0, // 📖 Timestamp when banner was dismissed (0 = not dismissed)
     routerDashboardEverOpened: false, // 📖 Set to true the first time dashboard opens (used for upgrade-path telemetry)
     // 📖 Custom text filter (Ctrl+P palette → type text → Enter). Ephemeral — not saved to config.
     customTextFilter: null,       // 📖 Active free-text filter string (null = off). Matches model name, ctx, provider key/name.
@@ -1048,21 +1045,7 @@ export async function runApp(cliArgs, config) {
         pinFavorites: state.favoritesPinnedAndSticky,
       })
     }
-    const canRenderRouterUpgradeBanner =
-      !state.routerOnboardingOpen &&
-      !state.settingsOpen &&
-      !state.installEndpointsOpen &&
-      !state.toolInstallPromptOpen &&
-      !state.installedModelsOpen &&
-      !state.routerDashboardOpen &&
-      !state.tokenUsageOpen &&
-      !state.commandPaletteOpen &&
-      !state.recommendOpen &&
-      !state.helpVisible &&
-      !state.changelogOpen &&
-      !state.incompatibleFallbackOpen
-    const routerUpgradeBanner = canRenderRouterUpgradeBanner ? overlays.renderRouterUpgradeBanner() : ''
-    const tableTerminalRows = routerUpgradeBanner ? Math.max(1, state.terminalRows - 1) : state.terminalRows
+    const tableTerminalRows = state.terminalRows
 
     let tableContent = null
     if (state.commandPaletteOpen) {
@@ -1101,12 +1084,7 @@ export async function runApp(cliArgs, config) {
           state.lastReleaseDate,
           false,
           state.verdictFilterMode,
-          state.healthFilterMode,
-          state.routerFooterRunning,
-          state.routerFooterActiveSet,
-          state.routerFooterTodayTokens,
-          state.routerFooterAllTimeTokens,
-          state.routerFooterRequests
+          state.healthFilterMode
         )
       }
       tableContent = state.commandPaletteFrozenTable
@@ -1144,25 +1122,8 @@ export async function runApp(cliArgs, config) {
         state.lastReleaseDate,
         false,
         state.verdictFilterMode,
-        state.healthFilterMode,
-        state.routerFooterRunning,
-        state.routerFooterActiveSet,
-        state.routerFooterTodayTokens,
-        state.routerFooterAllTimeTokens,
-        state.routerFooterRequests
+        state.healthFilterMode
       )
-    }
-
-    // 📖 Router upgrade banner: inline notification for existing users not yet seen router.
-    // 📖 The table is rendered one row shorter while the banner is visible so the
-    // 📖 alternate screen never scrolls the sticky title/search/header rows away.
-    if (routerUpgradeBanner) {
-      tableContent = routerUpgradeBanner + '\n' + tableContent
-      const layout = getLastLayout()
-      layout.headerRow++
-      if (layout.firstModelRow > 0) layout.firstModelRow++
-      if (layout.lastModelRow > 0) layout.lastModelRow++
-      if (state.scrollOffset > 0) state.scrollOffset = 0
     }
 
     const content = state.settingsOpen
@@ -1296,48 +1257,6 @@ export async function runApp(cliArgs, config) {
       }
     } catch {}
   }, VERSION_RECHECK_INTERVAL_MS)
-
-  // 📖 Router footer stats: poll daemon every 30s so the main table footer always
-  // 📖 shows live token counts and daemon status even when the Router Dashboard is closed.
-  const ROUTER_FOOTER_POLL_INTERVAL_MS = 30_000
-  const ROUTER_FOOTER_FETCH_TIMEOUT_MS = 1200
-
-  async function fetchRouterFooterStats() {
-    try {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), ROUTER_FOOTER_FETCH_TIMEOUT_MS)
-      const pidPath = `${process.env.HOME}/.free-coding-models-daemon.pid`
-      const portPath = `${process.env.HOME}/.free-coding-models-daemon.port`
-      let port = 19280
-      try {
-        const { readFileSync: rfs } = await import('node:fs')
-        const savedPort = rfs(portPath, 'utf8').trim()
-        if (/^\d+$/.test(savedPort)) port = Number(savedPort)
-      } catch {}
-      const res = await globalThis.fetch(`http://127.0.0.1:${port}/stats`, {
-        signal: controller.signal,
-      })
-      clearTimeout(timer)
-      if (!res.ok) { state.routerFooterRunning = false; return }
-      const raw = await res.json()
-      const tokens = raw.tokens || {}
-      const today = tokens.today || {}
-      const allTime = tokens.all_time || {}
-      state.routerFooterRunning = true
-      state.routerFooterActiveSet = raw.activeSet || null
-      state.routerFooterTodayTokens = today.total_tokens || 0
-      state.routerFooterAllTimeTokens = allTime.total_tokens || 0
-      state.routerFooterRequests = today.requests || 0
-      state.routerFooterLastFetchAt = Date.now()
-    } catch {
-      state.routerFooterRunning = false
-    }
-  }
-
-  state.routerFooterPollTimer = setInterval(() => {
-    void fetchRouterFooterStats()
-  }, ROUTER_FOOTER_POLL_INTERVAL_MS)
-  void fetchRouterFooterStats() // 📖 Initial fetch immediately so footer is populated on first render
 
   // 📖 Router ON by default — no onboarding prompt, just auto-enable silently.
   const routerCfg = state.config?.router

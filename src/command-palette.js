@@ -210,8 +210,6 @@ const BASE_COMMAND_TREE = [
   { id: 'open-changelog', label: 'Changelog', shortcut: 'N', icon: '📋', type: 'page', description: 'Version history', keywords: ['changelog', 'release'] },
 
   { id: 'open-recommend', label: 'Smart recommend', shortcut: 'Q', icon: '🎯', type: 'page', description: 'Find best model for task', keywords: ['recommend', 'best model'] },
-  { id: 'open-router-dashboard', label: 'Router dashboard', shortcut: 'Shift+R', icon: '🔀', type: 'page', description: 'Inspect daemon health, circuits, tokens, and request log', keywords: ['router', 'daemon', 'dashboard', 'health', 'stats', 'tokens', 'circuit'] },
-  { id: 'open-token-usage', label: 'Token usage', shortcut: 'Shift+T', icon: '📊', type: 'page', description: 'View token usage history, 7-day chart, today/all-time totals', keywords: ['token', 'usage', 'chart', 'history', 'router'] },
   { id: 'open-install-endpoints', label: 'Install endpoints', icon: '🔌', type: 'page', description: 'Install provider catalogs', keywords: ['install', 'endpoints', 'providers'] },
   { id: 'open-installed-models', label: 'Installed models', icon: '🗂️', type: 'page', description: 'View models configured in tools', keywords: ['installed', 'models', 'configured', 'tools', 'manager', 'goose', 'crush', 'aider'] },
 ]

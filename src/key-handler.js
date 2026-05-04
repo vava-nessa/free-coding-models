@@ -2558,12 +2558,12 @@ export function createKeyHandler(ctx) {
 
     // 📖 Profile system removed - API keys now persist permanently across all sessions
 
-    // // 📖 TEMP: Router hidden temporarily
-    // // 📖 Shift+R: open the Smart Model Router dashboard from the main table.
-    // if (key.name === 'r' && key.shift && !key.ctrl && !key.meta) {
-    //   openRouterDashboardOverlay(state)
-    //   return
-    // }
+    // 📖 Shift+R intentionally stays unadvertised in the main UI, but remains
+    // 📖 available as a tester entry point for the Router Dashboard.
+    if (key.name === 'r' && key.shift && !key.ctrl && !key.meta) {
+      openRouterDashboardOverlay(state)
+      return
+    }
 
     // 📖 Shift+T: open the Token Usage screen.
     if (key.name === 't' && key.shift && !key.ctrl && !key.meta) {

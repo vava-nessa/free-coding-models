@@ -1,4 +1,4 @@
-## [0.3.56] - 2026-05-04
+## [0.3.57] - 2026-05-04
 
 ### Added
 
@@ -28,11 +28,16 @@
 - **Router model set expanded** — Default router candidate selection now supports up to 8 models and uses refreshed high-ranking defaults.
 - **External tool configs generalized** — OpenCode and Kilo can now auto-configure newly added OpenAI-compatible providers through shared provider metadata.
 - **Footer collapse removed** — The main TUI table now always keeps the full footer visible, matching the sticky header behavior and avoiding hidden navigation hints.
+- **Main table header simplified** — Removed the extra `Search / Tier / Provider / Verdict / Health` filter row from the primary TUI table. Active tier/provider state still appears in the title row, and the column header now sits directly under the app/version row.
+- **Router UI hidden from the main flow** — Removed the visible Smart Router upgrade banner, footer daemon status, help entry, command palette entry, and README TUI shortcut documentation. The router implementation stays available, but the main table no longer advertises it.
+- **Footer now sticks to the terminal bottom** — The footer is padded into the bottom rows even when only a few models are visible, while the header remains fixed at the top.
+- **Release docs narrowed for router** — README now documents router CLI commands without promoting the in-TUI dashboard path to normal users.
 
 ### Fixed
 
-- **Sticky TUI header visibility** — Fixed the main table line budget so the app/version row, search/filter row, column headers, and footer are all reserved before model rows are rendered. This prevents the alternate screen from scrolling the header out of view.
-- **Smart Router banner spacing** — Reserved a dedicated row while the inline Smart Router upgrade banner is visible so temporary banners no longer push sticky header rows off-screen.
+- **Sticky TUI header visibility** — Fixed the main table line budget so the app/version row, column headers, model rows, and footer are all reserved before rows are rendered. This prevents the alternate screen from scrolling the header out of view.
+- **Shift+R router shortcut restored** — Re-enabled `Shift+R` as an unadvertised tester shortcut after it had been temporarily disabled.
+- **Footer line budgeting hardened** — Optional update, custom-filter, and release-date footer rows are now included in viewport calculations so temporary footer rows cannot push the table header off-screen.
 - **Router upstream hardening** — Fixed unsupported request parameter stripping, retryable failover behavior, content-type canonicalization, and long-stream timeout handling.
 - **Router auth/quota semantics** — Router now returns 401/429 when all candidates fail because of auth or quota instead of masking those cases as 503.
 - **OpenRouter sync-set filtering** — Router discovery no longer drops `openrouter/free` and `openrouter/owl-alpha` just because their IDs do not end with `:free`.

@@ -42,25 +42,20 @@ import {
   spinCell,
   PING_INTERVAL,
   WIDTH_WARNING_MIN_COLS,
+  TABLE_FOOTER_LINES,
   FRAMES
 } from './constants.js'
 import { themeColors, getProviderRgb, getTierRgb, getReadableTextRgb, getTheme } from './theme.js'
 import { TIER_COLOR } from './tier-colors.js'
 import { getAvg, getVerdict, getUptime, getStabilityScore, getVersionStatusInfo } from './utils.js'
-import { VERDICT_CYCLE } from './constants.js'
 import { usagePlaceholderForProvider } from './ping.js'
 import { calculateViewport, sortResultsWithPinnedFavorites, padEndDisplay, displayWidth } from './render-helpers.js'
 import { getToolMeta, TOOL_METADATA, TOOL_MODE_ORDER, isModelCompatibleWithTool } from './tool-metadata.js'
 import { getColumnSpacing } from './ui-config.js'
 import { detectPackageManager, getManualInstallCmd } from './updater.js'
-import { formatTokenTotalCompact } from './token-usage-reader.js'
 
 const require = createRequire(import.meta.url)
 const { version: LOCAL_VERSION } = require('../package.json')
-
-// 📖 HEALTH_CYCLE: cycles through health/status states (local constant for render-table.js)
-// VERDICT_CYCLE is now imported from constants.js
-const HEALTH_CYCLE = [null, 'up', 'timeout', 'down', 'auth_error', 'noauth', 'pending']
 
 // 📖 Mouse support: column boundary map updated every frame by renderTable().
 // 📖 Each entry maps a column name to its display X-start and X-end (1-based, inclusive).
@@ -326,77 +321,6 @@ export function renderTable(results, pendingPings, frame, cursor = null, sortCol
       '',
   ]
 
-  // 📖 Filter bar — llmfit-style horizontal filter pills (1 dedicated row above table)
-  // 📖 Each block: title with hotkey hint + active value colored by filter state
-  {
-    const filterParts = []
-    const filterSep = themeColors.dim(' │ ')
-    const blockSep = ' │ '
-
-    // 📖 Search filter block — shows active text filter or prompt
-    if (customTextFilter && customTextFilter.trim()) {
-      const badgeText = ` Search "/" ${blockSep} ${customTextFilter.trim().slice(0, 20)} `
-      filterParts.push(themeColors.badge(badgeText, [52, 120, 88], [255, 255, 255]))
-    } else {
-      filterParts.push(themeColors.dim(' Search "/" '))
-    }
-
-    // 📖 Tier filter block — T key cycles through TIER_CYCLE
-    if (tierFilterMode > 0) {
-      const tierLabel = TIER_CYCLE_NAMES[tierFilterMode]
-      const tierBg = getTierRgb(tierLabel)
-      filterParts.push(themeColors.badge(` Tier (${tierLabel}) `, tierBg, [255, 255, 255]))
-    } else {
-      filterParts.push(themeColors.dim(' Tier (T) '))
-    }
-
-    // 📖 Provider filter block — D key cycles through providers
-    if (originFilterMode > 0) {
-      const originKeys = [null, ...Object.keys(sources)]
-      const activeOriginKey = originKeys[originFilterMode]
-      const activeOriginName = activeOriginKey ? sources[activeOriginKey]?.name ?? activeOriginKey : null
-      if (activeOriginName) {
-        const normName = normalizeOriginLabel(activeOriginName, activeOriginKey)
-        const providerRgb = PROVIDER_COLOR[activeOriginKey] || [255, 255, 255]
-        filterParts.push(themeColors.badge(` Provider (${normName}) `, providerRgb, [255, 255, 255]))
-      }
-    } else {
-      filterParts.push(themeColors.dim(' Provider (D) '))
-    }
-
-    // 📖 Verdict filter block — V key cycles through verdicts
-    if (verdictFilterMode > 0) {
-      const verdictLabel = VERDICT_CYCLE[verdictFilterMode]
-      const verdictColors = {
-        'Perfect': themeColors.success,
-        'Normal': themeColors.metricGood,
-        'Slow': (t) => chalk.bold.rgb(...getTierRgb('A-'))(t),
-        'Spiky': (t) => chalk.bold.rgb(...getTierRgb('A+'))(t),
-        'Very Slow': (t) => chalk.bold.rgb(...getTierRgb('B+'))(t),
-        'Overloaded': (t) => chalk.bold.rgb(...getTierRgb('B'))(t),
-        'Unstable': themeColors.errorBold,
-        'Not Active': themeColors.dim,
-        'Pending': themeColors.dim,
-      }
-      const vc = verdictColors[verdictLabel] || themeColors.accent
-      filterParts.push(themeColors.badge(` Verdict (${verdictLabel}) `, [20, 20, 20], vc === themeColors.dim ? [130, 130, 130] : [255, 255, 255]))
-    } else {
-      filterParts.push(themeColors.dim(' Verdict (V) '))
-    }
-
-    // 📖 Health filter block — H key cycles through health states
-    if (healthFilterMode > 0) {
-      const healthLabel = HEALTH_CYCLE[healthFilterMode]
-      const healthDisplay = healthLabel === 'auth_error' ? 'Auth Err' : healthLabel === 'noauth' ? 'No Key' : healthLabel.charAt(0).toUpperCase() + healthLabel.slice(1)
-      const healthBg = healthLabel === 'up' ? [52, 120, 88] : healthLabel === 'timeout' ? [180, 130, 0] : healthLabel === 'down' ? [120, 40, 40] : [60, 60, 60]
-      filterParts.push(themeColors.badge(` Health (${healthDisplay}) `, healthBg, [255, 255, 255]))
-    } else {
-      filterParts.push(themeColors.dim(' Health (H) '))
-    }
-
-    lines.push(filterParts.join(blockSep))
-  }
-
   // 📖 Header row with sorting indicators
   // 📖 NOTE: padEnd on chalk strings counts ANSI codes, breaking alignment
   // 📖 Solution: build plain text first, then colorize
@@ -495,7 +419,8 @@ export function renderTable(results, pendingPings, frame, cursor = null, sortCol
 
   // 📖 Viewport clipping: only render models that fit on screen
   const hasCustomFilter = typeof customTextFilter === 'string' && customTextFilter.trim().length > 0
-  const extraFooterLines = (versionStatus.isOutdated ? 1 : 0) + (hasCustomFilter ? 1 : 0)
+  const hasReleaseFooter = typeof lastReleaseDate === 'string' && lastReleaseDate.trim().length > 0
+  const extraFooterLines = (versionStatus.isOutdated ? 1 : 0) + (hasCustomFilter ? 1 : 0) + (hasReleaseFooter ? 1 : 0)
   const vp = calculateViewport(terminalRows, scrollOffset, sorted.length, {
     extraFixedLines: extraFooterLines,
   })
@@ -792,11 +717,9 @@ export function renderTable(results, pendingPings, frame, cursor = null, sortCol
     lines.push(themeColors.dim(`  ... ${sorted.length - vp.endIdx} more below ...`))
   }
 
-  // 📖 Blank lines to push footer to bottom of terminal
-  // 📖 Only pad when there are items below (hasBelow) to separate "more below" from footer.
-  // 📖 When hasBelow=false, footer follows immediately — no empty gap needed.
-  if (terminalRows > 0 && vp.hasBelow) {
-    const footerLineCount = 3 + extraFooterLines
+  // 📖 Blank lines keep the footer glued to the bottom without touching the sticky header.
+  if (terminalRows > 0) {
+    const footerLineCount = TABLE_FOOTER_LINES + extraFooterLines
     const blankCount = Math.max(0, terminalRows - lines.length - footerLineCount)
     for (let i = 0; i < blankCount; i++) lines.push('')
   }
@@ -808,8 +731,6 @@ export function renderTable(results, pendingPings, frame, cursor = null, sortCol
   // 📖 states are obvious even when the user misses the smaller header badges.
   const configuredBadgeBg = getTheme() === 'dark' ? [52, 120, 88] : [195, 234, 206]
   const activeHotkey = (keyLabel, text, bg) => themeColors.badge(`${keyLabel}${text}`, bg, getReadableTextRgb(bg))
-  const favoritesModeBg = favoritesPinnedAndSticky ? [157, 122, 48] : [95, 95, 95]
-  const favoritesModeLabel = favoritesPinnedAndSticky ? ' Favorites Pinned' : ' Favorites Normal'
 
   // 📖 Mouse support: build footer hotkey zones alongside the footer lines.
   // 📖 Each zone records { key, row (1-based terminal row), xStart, xEnd (1-based display cols) }.
@@ -938,31 +859,7 @@ export function renderTable(results, pendingPings, frame, cursor = null, sortCol
     ? chalk.rgb(255, 182, 193)(`Last release: ${lastReleaseDate}`)
     : ''
 
-  // 📖 Router token stats + daemon status — Shift+R Router shown highlighted
-  // 📖 when the daemon is not running so it's the obvious entry point.
-  if (routerFooterRunning) {
-    const todayStr = formatTokenTotalCompact(routerFooterTodayTokens)
-    const allTimeStr = formatTokenTotalCompact(routerFooterAllTimeTokens)
-    const reqStr = String(routerFooterRequests)
-    const setLabel = routerFooterActiveSet ? themeColors.info(routerFooterActiveSet) : themeColors.dim('?')
-    lines.push(
-      '  ' + themeColors.success('●') + ' ' +
-      themeColors.dim('Router:') + ' ' + setLabel +
-      themeColors.dim('  •  Today:') + ' ' + themeColors.textBold(todayStr + ' tok') +
-      themeColors.dim('  •  All-time:') + ' ' + themeColors.textBold(allTimeStr + ' tok') +
-      themeColors.dim('  •  ' + reqStr + ' req') +
-      themeColors.dim('  •  ') + hotkey('Shift+R', ' Router') +
-      (releaseLabel ? themeColors.dim('  •  ') + releaseLabel : '')
-    )
-  } else {
-    // 📖 Highlighted Shift+R Router badge so the daemon entry point pops.
-    const routerBadge = chalk.bgRgb(88, 86, 214).rgb(255, 255, 255).bold(' Shift+R Router ')
-    lines.push(
-      '  ' + routerBadge + themeColors.dim('  •  ') + themeColors.error('○') + ' ' +
-      themeColors.dim('daemon not running') +
-      (releaseLabel ? themeColors.dim('  •  ') + releaseLabel : '')
-    )
-  }
+  if (releaseLabel) lines.push('  ' + releaseLabel)
   _lastLayout.footerHotkeys = footerHotkeys
 
   // 📖 Append \x1b[K (erase to EOL) to each line so leftover chars from previous

@@ -167,10 +167,6 @@ free-coding-models --web
 free-coding-models --daemon-bg
 free-coding-models --daemon-status
 
-# "I want to inspect the router without leaving the TUI"
-free-coding-models
-# then press Shift+R
-
 # "Start with an elite-focused preset, then adjust filters live"
 free-coding-models --premium
 
@@ -201,27 +197,6 @@ free-coding-models --daemon-stop
 free-coding-models --sync-set
 free-coding-models --sync-set my-coding-set
 ```
-
-Inside the TUI, press **`Shift+R`** to open the Router Dashboard. It polls `/health` and `/stats`, listens to `/stream/events`, and shows daemon state, active set, probe mode, circuit breaker health, token totals, and the live routed request log.
-
-Dashboard keys:
-
-| Key | Action |
-|-----|--------|
-| `S` | Switch to the next router set |
-| `I` | Cycle probe mode (`eco → balanced → aggressive`) |
-| `C` | Clear the local dashboard request log |
-| `R` | Reserved for Phase 7 service-manager restart |
-| `P` | Reserved until probe pause/resume backend support exists |
-| `Esc` | Return to the main model table |
-
-Press **`Shift+S`** to open the Set Manager — create, rename, duplicate, delete model sets, and reorder models within each set with `Shift+↑` / `Shift+↓`.
-
-Press **`Shift+T`** to open the Token Usage screen — shows today/all-time token totals and a 7-day history chart with top models per day.
-
-When you first start the TUI with no router configured, an onboarding prompt appears asking if you want to enable the Smart Router. Existing users who haven't yet opted in see a dismissable upgrade banner at the top of the table.
-
-**`Shift+A`** opens the position picker — navigate where a model lands in the priority order within a set.
 
 Configure tools with:
 
@@ -350,7 +325,6 @@ When a tool mode is active (via `Z`), models incompatible with that tool are hig
 | `G` | Cycle global theme (`Auto → Dark → Light`) |
 | `Ctrl+P` | Open ⚡️ command palette (search + run actions) |
 | `R/S/C/M/O/L/A/H/V/B/U` | Sort columns |
-| `Shift+R` | Router Dashboard (daemon health, circuits, tokens, request log) |
 | `Shift+U` | Update to latest version (when update available) |
 | `P` | Settings (API keys, providers, updates, theme) |
 | `Q` | Smart Recommend overlay |
