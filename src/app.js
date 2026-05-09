@@ -274,6 +274,7 @@ export async function runApp(cliArgs, config) {
       pi: cliArgs.piMode,
       rovo: cliArgs.rovoMode,
       gemini: cliArgs.geminiMode,
+      copilot: cliArgs.copilotMode,
     }
     return flagByMode[toolMode] === true
   })

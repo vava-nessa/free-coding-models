@@ -304,6 +304,17 @@ export const TOOL_BOOTSTRAP_METADATA = {
       },
     },
   },
+  copilot: {
+    binary: 'copilot',
+    docsUrl: 'https://github.com/github/copilot',
+    install: {
+      default: {
+        shellCommand: 'npm install -g @github/copilot',
+        summary: 'Install GitHub Copilot CLI globally via npm.',
+        note: 'After installation, run `copilot` to authenticate with GitHub.',
+      },
+    },
+  },
 }
 
 export function getToolBootstrapMeta(mode) {

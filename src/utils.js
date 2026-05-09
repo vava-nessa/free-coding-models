@@ -389,14 +389,16 @@ export function findBestModel(results) {
 //   - API key: first positional arg that does not look like a CLI flag (e.g., "nvapi-xxx")
 //   - Boolean flags: --best, --fiable, --opencode, --opencode-desktop, --opencode-web, --openclaw,
 //     --aider, --crush, --goose, --qwen, --kilo,
-//     --openhands, --amp, --pi, --daemon, --daemon-bg, --daemon-stop,
+//     --openhands, --amp, --pi, --rovo, --hermes, --continue, --cline,
+//     --xcode, --gemini, --jcode, --copilot,
+//     --daemon, --daemon-bg, --daemon-stop,
 //     --daemon-status, --no-telemetry, --json, --help/-h (case-insensitive)
 //   - Value flag: --tier <letter> (the next non-flag arg is the tier value)
 //
 // Returns:
 //   { apiKey, bestMode, fiableMode, openCodeMode, openCodeDesktopMode, openCodeWebMode, openClawMode,
 //     aiderMode, crushMode, gooseMode, qwenMode, openHandsMode, ampMode,
-//     piMode, jcodeMode, noTelemetry, jsonMode, helpMode, tierFilter }
+//     piMode, jcodeMode, copilotMode, noTelemetry, jsonMode, helpMode, tierFilter }
 //
 // 📖 Note: apiKey may be null here — the main CLI falls back to env vars and saved config.
 export function parseArgs(argv) {
@@ -471,6 +473,7 @@ export function parseArgs(argv) {
   const xcodeMode = flags.includes('--xcode')
   const geminiMode = flags.includes('--gemini')
   const jcodeMode = flags.includes('--jcode')
+  const copilotMode = flags.includes('--copilot')
   const noTelemetry = flags.includes('--no-telemetry')
   const devMode = flags.includes('--dev')
   const jsonMode = flags.includes('--json')
@@ -528,6 +531,7 @@ export function parseArgs(argv) {
     rovoMode,
     geminiMode,
     jcodeMode,
+    copilotMode,
     noTelemetry,
     jsonMode,
     helpMode,

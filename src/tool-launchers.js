@@ -64,6 +64,19 @@ function ensureDir(filePath) {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
 }
 
+// 📖 Parse a context window string (e.g. "128k", "1M", "32k") to token count number.
+function parseCtxToTokens(ctx) {
+  if (!ctx || typeof ctx !== 'string') return null
+  const match = ctx.match(/^\s*(\d+(?:\.\d+)?)\s*([kKmM]?)\s*$/)
+  if (!match) return null
+  const num = parseFloat(match[1])
+  const suffix = match[2].toLowerCase()
+  // 📖 LLM token counts use binary (1024), not decimal (1000).
+  if (suffix === 'k') return Math.round(num * 1024)
+  if (suffix === 'm') return Math.round(num * 1024 * 1024)
+  return Math.round(num)
+}
+
 function getDefaultToolPaths(homeDir = homedir()) {
   return {
     aiderConfigPath: join(homeDir, '.aider.conf.yml'),
@@ -833,6 +846,32 @@ export function prepareExternalToolLaunch(mode, model, config, options = {}) {
     }
   }
 
+  if (mode === 'copilot') {
+    // 📖 copilot: set BYOK env vars so copilot uses the selected provider/model
+    const copilotModelId = resolveLauncherModelId(model)
+    env.COPILOT_PROVIDER_BASE_URL = baseUrl
+    env.COPILOT_MODEL = copilotModelId
+    if (apiKey) env.COPILOT_PROVIDER_API_KEY = apiKey
+
+    // 📖 Set context window limits from model data
+    const promptTokens = parseCtxToTokens(model.ctx)
+    if (promptTokens) env.COPILOT_PROVIDER_MAX_PROMPT_TOKENS = String(promptTokens)
+    // 📖 16k max output as a safety cap — most S+/S tier coding models
+    // 📖 support 16-32k output. copilot falls back to built-in model
+    // 📖 catalog defaults when a model ID is recognized.
+    env.COPILOT_PROVIDER_MAX_OUTPUT_TOKENS = '16384'
+
+    return {
+      command: 'copilot',
+      args: [],
+      env,
+      apiKey,
+      baseUrl,
+      meta,
+      configArtifacts: [],
+    }
+  }
+
   return {
     blocked: true,
     exitCode: 1,
@@ -931,6 +970,11 @@ export async function startExternalTool(mode, model, config) {
 
   if (mode === 'jcode') {
     console.log(chalk.dim(`  📖 Launching jcode...`))
+    return spawnCommand(resolveLaunchCommand(mode, launchPlan.command), launchPlan.args, launchPlan.env)
+  }
+
+  if (mode === 'copilot') {
+    console.log(chalk.dim(`  📖 Copilot CLI configured with model: ${model.modelId}`))
     return spawnCommand(resolveLaunchCommand(mode, launchPlan.command), launchPlan.args, launchPlan.env)
   }
 

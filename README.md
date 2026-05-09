@@ -249,6 +249,7 @@ Routing behavior:
 | `--pi` | π Pi |
 | `--rovo` | 🦘 Rovo Dev CLI |
 | `--gemini` | ♊ Gemini CLI |
+| `--copilot` | 🤖 Copilot CLI |
 
 Press **`Z`** in the TUI to cycle between tools without restarting.
 

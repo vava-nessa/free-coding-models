@@ -415,7 +415,7 @@ export function createKeyHandler(ctx) {
 
   async function launchSelectedModel(selected, options = {}) {
     const { uiAlreadyStopped = false } = options
-    userSelected = { modelId: selected.modelId, label: selected.label, tier: selected.tier, providerKey: selected.providerKey }
+    userSelected = { modelId: selected.modelId, label: selected.label, tier: selected.tier, providerKey: selected.providerKey, ctx: selected.ctx }
 
     if (!uiAlreadyStopped) {
       readline.emitKeypressEvents(process.stdin)
