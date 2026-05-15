@@ -46,15 +46,10 @@ export const nvidiaNim = [
   ['moonshotai/kimi-k2.6',                         'Kimi K2.6',           'S+', '76.8%', '256k'],
   ['deepseek-ai/deepseek-v4-pro',                  'DeepSeek V4 Pro',     'S+', '73.1%', '128k'],
   ['deepseek-ai/deepseek-v4-flash',                'DeepSeek V4 Flash',   'S+', '72.0%', '128k'],
-  ['z-ai/glm4.7',                                  'GLM 4.7',             'S+', '73.8%', '200k'],
-  ['moonshotai/kimi-k2-thinking',                  'Kimi K2 Thinking',    'S+', '71.3%', '256k'], // ⚠️ Deprecation pending
-  ['minimaxai/minimax-m2.5',                       'MiniMax M2.5',        'S+', '80.2%', '200k'],
+  ['z-ai/glm5',                                    'GLM 5',               'S+', '73.8%', '200k'],
   ['stepfun-ai/step-3.5-flash',                    'Step 3.5 Flash',      'S+', '74.4%', '256k'],
   ['qwen/qwen3-coder-480b-a35b-instruct',          'Qwen3 Coder 480B',    'S+', '70.6%', '256k'],
-  ['mistralai/devstral-2-123b-instruct-2512',      'Devstral 2 123B',     'S+', '72.2%', '256k'],
   // ── S tier — SWE-bench Verified 60–70% ──
-  ['moonshotai/kimi-k2-instruct-0905',             'Kimi K2 Instruct 0905', 'S', '65.8%', '256k'],
-  ['moonshotai/kimi-k2-instruct',                  'Kimi K2 Instruct',    'S',  '65.8%', '128k'],
   ['minimaxai/minimax-m2',                         'MiniMax M2',          'S',  '69.4%', '128k'],
   ['qwen/qwen3-next-80b-a3b-thinking',             'Qwen3 80B Thinking',  'S',  '68.0%', '128k'],
   ['qwen/qwen3-next-80b-a3b-instruct',             'Qwen3 80B Instruct',  'S',  '65.0%', '128k'],
@@ -70,13 +65,9 @@ export const nvidiaNim = [
   ['nvidia/nemotron-3-super-120b-a12b',             'Nemotron 3 Super',    'A+', '56.0%', '128k'],
   ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning','Nemotron 3 Omni',     'A+', '52.0%', '128k'],
   // ── A tier — SWE-bench Verified 40–50% ──
-  ['mistralai/mistral-medium-3-instruct',          'Mistral Medium 3',    'A',  '48.0%', '128k'],
-  ['mistralai/magistral-small-2506',               'Magistral Small',     'A',  '45.0%', '32k'],
   ['nvidia/llama-3.3-nemotron-super-49b-v1.5',     'Nemotron Super 49B',  'A',  '49.0%', '128k'],
   ['nvidia/nemotron-3-nano-30b-a3b',               'Nemotron Nano 30B',   'A',  '43.0%', '128k'],
   ['openai/gpt-oss-20b',                           'GPT OSS 20B',         'A',  '42.0%', '128k'],
-  ['qwen/qwen2.5-coder-32b-instruct',              'Qwen2.5 Coder 32B',   'A',  '46.0%', '32k'],
-  ['meta/llama-3.1-405b-instruct',                 'Llama 3.1 405B',      'A',  '44.0%', '128k'],
   ['google/gemma-4-31b-it',                         'Gemma 4 31B',         'A',  '45.0%', '256k'],
   // ── A- tier — SWE-bench Verified 35–40% ──
   ['meta/llama-3.3-70b-instruct',                  'Llama 3.3 70B',       'A-', '39.5%', '128k'],
