@@ -15,15 +15,12 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.10)
-      agent-tui:
-        specifier: ^1.0.1
-        version: 1.0.1
       react:
         specifier: ^19.2.4
-        version: 19.2.5
+        version: 19.2.6
       react-dom:
         specifier: ^19.2.4
-        version: 19.2.5(react@19.2.5)
+        version: 19.2.5(react@19.2.6)
       vite:
         specifier: ^8.0.5
         version: 8.0.10
@@ -601,35 +598,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  agent-tui-darwin-arm64@1.0.1:
-    resolution: {integrity: sha512-4Ii3elIH9n2Axf2xsJonBns4ptcx7Qy0ARtrX50VxxOwHYwCr0dCP9Rl84zWjjpKmPkCtZxpXiXbJooYzbdRFQ==}
-    engines: {node: '>=16'}
-    cpu: [arm64]
-    os: [darwin]
-
-  agent-tui-darwin-x64@1.0.1:
-    resolution: {integrity: sha512-JPzQM1J8biBipoaXr4Vye23wO25f/kBpSfaZd733zscVjG4b3rLs9taxMq6wFgMjAluzJE3GH400F6DOao+MQw==}
-    engines: {node: '>=16'}
-    cpu: [x64]
-    os: [darwin]
-
-  agent-tui-linux-arm64@1.0.1:
-    resolution: {integrity: sha512-bUK8tCLp4kZYeaTXpoeyMOoaAxGBEx7vVk2PaBBIL+JBEyWMm+llDxSlo4qHM0nevfwvx1+cx30d+VJ9Kv3rwA==}
-    engines: {node: '>=16'}
-    cpu: [arm64]
-    os: [linux]
-
-  agent-tui-linux-x64@1.0.1:
-    resolution: {integrity: sha512-5/7l+qjJ8LSs60MnKEnYLy3894bb/9xK/cxciMdikCqE2NZKn4H8sGe7jNKDCcq/ZD5BV67dCGT7BxI63Ypeeg==}
-    engines: {node: '>=16'}
-    cpu: [x64]
-    os: [linux]
-
-  agent-tui@1.0.1:
-    resolution: {integrity: sha512-xVBMNvcFb2zd9evtwnImmbTq/qTgrtE3xUYlOLGMJ21j6nRrxI6HfLGLgcyJ5WNborhjfznQG5qEvnrxgPw3MA==}
-    engines: {node: '>=16'}
-    hasBin: true
-
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
@@ -788,8 +756,8 @@ packages:
     peerDependencies:
       react: ^19.2.5
 
-  react@19.2.5:
-    resolution: {integrity: sha512-llUJLzz1zTUBrskt2pwZgLq59AemifIftw4aB7JxOqf1HY2FDaGDxgwpAPVzHU1kdWabH7FauP4i1oEeer2WCA==}
+  react@19.2.6:
+    resolution: {integrity: sha512-sfWGGfavi0xr8Pg0sVsyHMAOziVYKgPLNrS7ig+ivMNb3wbCBw3KxtflsGBAwD3gYQlE/AEZsTLgToRrSCjb0Q==}
     engines: {node: '>=0.10.0'}
 
   rolldown@1.0.0-rc.17:
@@ -1198,25 +1166,6 @@ snapshots:
   '@voidzero-dev/vite-plus-win32-x64-msvc@0.1.20':
     optional: true
 
-  agent-tui-darwin-arm64@1.0.1:
-    optional: true
-
-  agent-tui-darwin-x64@1.0.1:
-    optional: true
-
-  agent-tui-linux-arm64@1.0.1:
-    optional: true
-
-  agent-tui-linux-x64@1.0.1:
-    optional: true
-
-  agent-tui@1.0.1:
-    optionalDependencies:
-      agent-tui-darwin-arm64: 1.0.1
-      agent-tui-darwin-x64: 1.0.1
-      agent-tui-linux-arm64: 1.0.1
-      agent-tui-linux-x64: 1.0.1
-
   assertion-error@2.0.1: {}
 
   chalk@5.6.2: {}
@@ -1359,12 +1308,12 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  react-dom@19.2.5(react@19.2.5):
+  react-dom@19.2.5(react@19.2.6):
     dependencies:
-      react: 19.2.5
+      react: 19.2.6
       scheduler: 0.27.0
 
-  react@19.2.5: {}
+  react@19.2.6: {}
 
   rolldown@1.0.0-rc.17:
     dependencies:
