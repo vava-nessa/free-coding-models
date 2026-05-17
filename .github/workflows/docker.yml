@@ -79,18 +79,18 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: ${{ and(eq(github.repository_owner, 'vava-nessa'), or(eq(github.event_name, 'push'), and(eq(github.event_name, 'workflow_dispatch'), eq(github.event.inputs.test_mode, 'false')))) }}
+          push: ${{ github.repository_owner == 'vava-nessa' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_mode == 'false')) }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64
-          no-cache: ${{ and(eq(github.event_name, 'workflow_dispatch'), eq(github.event.inputs.test_mode, 'true')) }}
-          load: ${{ and(eq(github.event_name, 'workflow_dispatch'), eq(github.event.inputs.test_mode, 'true')) }}
+          no-cache: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.test_mode == 'true' }}
+          load: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.test_mode == 'true' }}
         env:
           DOCKER_BUILDKIT: '1'
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
       - name: Run Trivy vulnerability scanner
-        if: ${{ and(eq(github.repository_owner, 'vava-nessa'), or(ne(github.event_name, 'workflow_dispatch'), eq(github.event.inputs.test_mode, 'false'))) }}
+        if: ${{ github.repository_owner == 'vava-nessa' && (github.event_name != 'workflow_dispatch' || github.event.inputs.test_mode == 'false') }}
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
@@ -100,7 +100,7 @@ jobs:
           exit-code: '1'
 
       - name: Upload Trivy results to GitHub Security tab
-        if: ${{ and(eq(github.repository_owner, 'vava-nessa'), or(ne(github.event_name, 'workflow_dispatch'), eq(github.event.inputs.test_mode, 'false'))) }}
+        if: ${{ github.repository_owner == 'vava-nessa' && (github.event_name != 'workflow_dispatch' || github.event.inputs.test_mode == 'false') }}
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
