@@ -63,8 +63,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,mode=max
+          cache-to: type=gha,mode=max,ignore-error
           load: ${{ github.event.inputs.test_mode == 'true' }}
         env:
           DOCKER_BUILDKIT: '1'
