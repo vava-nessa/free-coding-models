@@ -221,6 +221,35 @@ function isLoopbackHostname(hostname) {
   return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1' || h.endsWith('.localhost')
 }
 
+// 📖 Private-network hostname check. Allows RFC 1918 IPs (10.x, 172.16–31.x,
+// 📖 192.168.x) and hostnames that end in `.local` or `.internal`. This
+// 📖 enables Docker and LAN setups where the browser hits the FCM web UI
+// 📖 from a different machine but still on a trusted network.
+function isPrivateNetworkHostname(hostname) {
+  if (!hostname) return false
+  const h = hostname.toLowerCase()
+  // 📖 mDNS / zero-conf hostnames
+  if (h.endsWith('.local') || h.endsWith('.internal')) return true
+  // 📖 IPv4 private ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+  if (/^10\./.test(h) || /^192\.168\./.test(h)) return true
+  if (/^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(h)) return true
+  return false
+}
+
+// 📖 Cache the FCM_ALLOWED_ORIGINS env var split into a Set on first access.
+// 📖 Format: comma-separated origin URLs, e.g. "http://mybox:19280,http://10.0.0.5:19280"
+let _allowedOriginsCache = null
+function getAllowedOrigins() {
+  if (_allowedOriginsCache === null) {
+    const raw = process.env.FCM_ALLOWED_ORIGINS || ''
+    _allowedOriginsCache = raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  }
+  return _allowedOriginsCache
+}
+
 function isSameOriginOrLocal(req) {
   const origin = req.headers.origin
   const referer = req.headers.referer || req.headers.referrer
@@ -235,6 +264,10 @@ function isSameOriginOrLocal(req) {
     try {
       const parsed = new URL(c)
       if (isLoopbackHostname(parsed.hostname)) return true
+      // 📖 Allow Docker / LAN access from private networks
+      if (isPrivateNetworkHostname(parsed.hostname)) return true
+      // 📖 Allow user-specified origins via env var
+      if (getAllowedOrigins().includes(c)) return true
     } catch {
       return false
     }

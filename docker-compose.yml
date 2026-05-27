@@ -10,6 +10,9 @@ services:
     environment:
       FREE_CODING_MODELS_TELEMETRY: "0"
       FCM_HOST: "0.0.0.0"
+      # 📖 Optional: comma-separated origins allowed to access the web UI
+      # 📖 from outside the container (e.g. "http://your-host:19280")
+      FCM_ALLOWED_ORIGINS: ${FCM_ALLOWED_ORIGINS:-}
       NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       CEREBRAS_API_KEY: ${CEREBRAS_API_KEY:-}
