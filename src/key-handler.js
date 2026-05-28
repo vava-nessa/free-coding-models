@@ -33,7 +33,8 @@
 
 import { loadChangelog } from './changelog-loader.js'
 import { getToolMeta, isModelCompatibleWithTool, getCompatibleTools, findSimilarCompatibleModels } from './tool-metadata.js'
-import { loadConfig, saveConfig, replaceConfigContents } from './config.js'
+import { loadConfig, saveConfig, replaceConfigContents, getApiKey } from './config.js'
+import { sources } from '../sources.js'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
@@ -1075,6 +1076,80 @@ export function createKeyHandler(ctx) {
     }
   }
 
+  // 📖 runWithConcurrency: Execute tasks with limited parallelism (maxConcurrent simultaneous).
+  function runWithConcurrency(tasks, maxConcurrent) {
+    const results = new Array(tasks.length)
+    let nextIndex = 0
+    const workers = new Array(maxConcurrent).fill(null).map(async () => {
+      while (true) {
+        const index = nextIndex++
+        if (index >= tasks.length) break
+        try {
+          results[index] = await tasks[index]()
+        } catch (err) {
+          results[index] = { error: err }
+        }
+      }
+    })
+    return Promise.all(workers).then(() => results)
+  }
+
+  // 📖 runGlobalBenchmark: Benchmark all visible models with up to 5 concurrent requests.
+  // 📖 Results are stored in state.benchmarkResults (same format as individual benchmarks).
+  async function runGlobalBenchmark(state) {
+    if (state.globalBenchmarkRunning) return
+    state.globalBenchmarkRunning = true
+
+    const models = state.visibleSorted
+    const total = models.length
+    state.globalBenchmarkTotal = total
+    state.globalBenchmarkCompleted = 0
+
+    const tasks = models.map(model => async () => {
+      const benchmarkKey = `${model.providerKey}/${model.modelId}`
+      // Skip if already running (e.g., from Ctrl+A)
+      if (state.benchmarkRunning.has(benchmarkKey)) {
+        state.globalBenchmarkCompleted++
+        return { skipped: true }
+      }
+
+      const apiKey = getApiKey(state.config, model.providerKey) ?? null
+      const providerUrl = sources[model.providerKey]?.url ?? null
+      if (!providerUrl) {
+        state.globalBenchmarkCompleted++
+        return { skipped: true }
+      }
+
+      state.benchmarkRunning.add(benchmarkKey)
+      try {
+        const result = await benchmarkModel({
+          apiKey,
+          modelId: model.modelId,
+          providerKey: model.providerKey,
+          url: providerUrl,
+        })
+        state.benchmarkResults[benchmarkKey] = result
+        return { ok: result.ok }
+      } catch (err) {
+        state.benchmarkResults[benchmarkKey] = {
+          ok: false,
+          code: 'ERR',
+          totalMs: 0,
+          error: err?.message || 'Benchmark failed',
+        }
+        return { ok: false }
+      } finally {
+        state.benchmarkRunning.delete(benchmarkKey)
+        state.globalBenchmarkCompleted++
+      }
+    })
+
+    await runWithConcurrency(tasks, 5)
+    state.globalBenchmarkRunning = false
+    state.globalBenchmarkTotal = 0
+    state.globalBenchmarkCompleted = 0
+  }
+
   // 📖 Favorites display mode:
   // 📖 - true  => favorites stay pinned + always visible (legacy behavior)
   // 📖 - false => favorites are just starred rows and obey normal sort/filter rules
@@ -1383,6 +1458,12 @@ export function createKeyHandler(ctx) {
       if (!commandPaletteHasBlockingOverlay()) {
         openCommandPalette()
       }
+      return
+    }
+
+    // 📖 Ctrl+U: Global AI Speed Benchmark (benchmark all visible models, 5 concurrent)
+    if (key.ctrl && key.name === 'u') {
+      await runGlobalBenchmark(state)
       return
     }
 

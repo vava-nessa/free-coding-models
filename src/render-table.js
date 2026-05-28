@@ -475,12 +475,12 @@ export function renderTable({
     return themeColors.hotkey('U') + themeColors.dim('p%' + padding)
   })()
 
-  // 📖 Answer Speed header — no sort hotkey, just the label
-  const answerLabel = isCompact ? 'Answ.' : 'Answer Speed'
+  // 📖 Answer Speed header — renamed to AI Speed, no sort hotkey
+  const answerLabel = isCompact ? 'AI Sp.' : 'AI Speed'
   const answerH_c = (() => {
     const plain = answerLabel
     const padding = ' '.repeat(Math.max(0, W_ANSWER - plain.length))
-    return themeColors.dim('Ans') + themeColors.hotkey('w') + themeColors.dim('er' + (isCompact ? '.' : ' Speed') + padding)
+    return themeColors.dim(plain + padding)
   })()
 
   // 📖 Usage column removed from UI – no header or separator for it.
@@ -998,9 +998,26 @@ export function renderTable({
     ? chalk.rgb(255, 182, 193)(`Last release: ${lastReleaseDate}`)
     : ''
   const speedTestLabel = chalk.bgRgb(0, 60, 0).rgb(57, 255, 20).bold(' NEW ⭐️ Ctrl+A 🤖 AI Speed Test ')
+  const globalBenchmarkLabel = chalk.bgRgb(180, 0, 255).white.bold(' NEW Ctrl+U : Global AI Speed Test (Uses a lot of requests!) ')
 
-  if (releaseLabel || speedTestLabel) {
-    const line = '  ' + speedTestLabel + '  ' + releaseLabel
+  // 📖 Line 3: Speed Test (Ctrl+A) + Global Benchmark (Ctrl+U) + Last release
+  if (releaseLabel || speedTestLabel || globalBenchmarkLabel) {
+    const parts = [
+      { text: '  ', key: null },
+      { text: speedTestLabel, key: 'a' },
+      { text: '  ', key: null },
+      { text: globalBenchmarkLabel, key: 'u' },
+      { text: '  ', key: null },
+      { text: releaseLabel, key: null },
+    ]
+    const footerRow3 = lines.length + 1
+    let xPos = 1
+    for (const part of parts) {
+      const w = displayWidth(part.text)
+      if (part.key) footerHotkeys.push({ key: part.key, row: footerRow3, xStart: xPos, xEnd: xPos + w - 1 })
+      xPos += w
+    }
+    const line = parts.map(p => p.text).join('')
     lines.push(line)
   }
   _lastLayout.footerHotkeys = footerHotkeys

@@ -268,5 +268,10 @@ export function createTuiState({
 
     // 📖 Set of benchmark keys currently running (for spinner display)
     benchmarkRunning: new Set(),
+
+    // 📖 Global benchmark state (Ctrl+U)
+    globalBenchmarkRunning: false,
+    globalBenchmarkTotal: 0,
+    globalBenchmarkCompleted: 0,
   }
 }
