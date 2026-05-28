@@ -116,14 +116,16 @@ export function getToolModeOrder() {
 // 📖 Used as the default compatible set for normal provider models.
 const REGULAR_TOOLS = Object.keys(TOOL_METADATA).filter(k => !TOOL_METADATA[k].cliOnly)
 
-// 📖 Zen-only tools: OpenCode Zen models can ONLY run on OpenCode CLI / OpenCode Desktop.
-const ZEN_COMPATIBLE_TOOLS = ['opencode', 'opencode-desktop', 'opencode-web']
+// 📖 Zen models use OpenAI-compatible endpoints (https://opencode.ai/zen/v1/chat/completions)
+// 📖 and can be used by ANY tool that supports custom OpenAI-compatible providers.
+// 📖 They are NOT locked to OpenCode — confirmed by OpenCode's own "no lock-in" design goal.
+// 📖 Only CLI-only tools (rovo, gemini) are excluded since they have their own exclusive models.
 
 /**
  * 📖 Returns the list of tool keys a model is compatible with.
  *   - Rovo models → only 'rovo'
  *   - Gemini models → only 'gemini'
- *   - OpenCode Zen models → only 'opencode', 'opencode-desktop'
+ *   - OpenCode Zen models → all non-cliOnly tools (Zen uses OpenAI-compatible endpoints)
  *   - Regular models → all non-cliOnly tools
  * @param {string} providerKey — the source key from sources.js (e.g. 'nvidia', 'rovo', 'opencode-zen')
  * @returns {string[]} — array of compatible tool keys
@@ -131,7 +133,8 @@ const ZEN_COMPATIBLE_TOOLS = ['opencode', 'opencode-desktop', 'opencode-web']
 export function getCompatibleTools(providerKey) {
   if (providerKey === 'rovo') return ['rovo']
   if (providerKey === 'gemini') return ['gemini']
-  if (providerKey === 'opencode-zen') return ZEN_COMPATIBLE_TOOLS
+  // 📖 Zen models use /v1/chat/completions — compatible with any OpenAI-compatible tool
+  if (providerKey === 'opencode-zen') return REGULAR_TOOLS
   return REGULAR_TOOLS
 }
 

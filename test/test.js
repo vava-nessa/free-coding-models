@@ -3066,9 +3066,16 @@ describe('tool compatibility matrix', () => {
     assert.deepEqual(tools, ['gemini'])
   })
 
-  it('opencode-zen models are only compatible with opencode, opencode-desktop and opencode-web', () => {
+  it('opencode-zen models are compatible with all non-cliOnly tools (OpenAI-compatible endpoint)', () => {
     const tools = getCompatibleTools('opencode-zen')
-    assert.deepEqual(tools, ['opencode', 'opencode-desktop', 'opencode-web'])
+    // 📖 Zen uses /v1/chat/completions — any OpenAI-compatible tool can use it
+    assert.ok(tools.includes('opencode'), 'zen should work with opencode')
+    assert.ok(tools.includes('opencode-desktop'), 'zen should work with opencode-desktop')
+    assert.ok(tools.includes('pi'), 'zen should work with pi')
+    assert.ok(tools.includes('aider'), 'zen should work with aider')
+    assert.ok(tools.includes('goose'), 'zen should work with goose')
+    assert.ok(!tools.includes('rovo'), 'zen should NOT work with cli-only rovo')
+    assert.ok(!tools.includes('gemini'), 'zen should NOT work with cli-only gemini')
   })
 
   it('isModelCompatibleWithTool returns true for matching pairs', () => {
@@ -3078,13 +3085,16 @@ describe('tool compatibility matrix', () => {
     assert.ok(isModelCompatibleWithTool('opencode-zen', 'opencode'))
     assert.ok(isModelCompatibleWithTool('opencode-zen', 'opencode-desktop'))
     assert.ok(isModelCompatibleWithTool('opencode-zen', 'opencode-web'))
+    assert.ok(isModelCompatibleWithTool('opencode-zen', 'pi'), 'zen should work with pi')
+    assert.ok(isModelCompatibleWithTool('opencode-zen', 'goose'), 'zen should work with goose')
+    assert.ok(isModelCompatibleWithTool('opencode-zen', 'aider'), 'zen should work with aider')
   })
 
   it('isModelCompatibleWithTool returns false for incompatible pairs', () => {
     assert.ok(!isModelCompatibleWithTool('rovo', 'opencode'))
     assert.ok(!isModelCompatibleWithTool('gemini', 'openclaw'))
-    assert.ok(!isModelCompatibleWithTool('opencode-zen', 'goose'))
-    assert.ok(!isModelCompatibleWithTool('opencode-zen', 'rovo'))
+    assert.ok(!isModelCompatibleWithTool('opencode-zen', 'rovo'), 'zen is not compatible with cli-only rovo')
+    assert.ok(!isModelCompatibleWithTool('opencode-zen', 'gemini'), 'zen is not compatible with cli-only gemini')
     assert.ok(!isModelCompatibleWithTool('nvidia', 'rovo'))
   })
 

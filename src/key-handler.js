@@ -438,7 +438,6 @@ export function createKeyHandler(ctx) {
     // 📖 CLI-only tool compatibility checks:
     // 📖 Case A: Active tool mode is CLI-only (rovo/gemini) but selected model doesn't belong to it
     // 📖 Case B: Selected model belongs to a CLI-only provider but active mode is something else
-    // 📖 Case C: Selected model is from opencode-zen but active mode is not opencode/opencode-desktop
     const activeMeta = getToolMeta(state.mode)
     const isActiveModeCliOnly = activeMeta.cliOnly === true
     const isModelFromCliOnly = selected.providerKey === 'rovo' || selected.providerKey === 'gemini'
@@ -478,18 +477,8 @@ export function createKeyHandler(ctx) {
       console.log()
     }
 
-    // 📖 Case C: Zen model selected but active mode is not OpenCode CLI / OpenCode Desktop
-    // 📖 Auto-switch to OpenCode CLI since Zen models only run on OpenCode
-    if (isModelFromZen && state.mode !== 'opencode' && state.mode !== 'opencode-desktop') {
-      console.log(chalk.yellow(`  ⚠ ${selected.label} is an OpenCode Zen model.`))
-      console.log(chalk.yellow(`  Zen models only run on OpenCode CLI or OpenCode Desktop.`))
-      console.log(chalk.yellow(`  Your current tool is: ${activeMeta.label}`))
-      console.log()
-      console.log(chalk.cyan(`  Switching to OpenCode CLI and launching...`))
-      setToolMode('opencode')
-      console.log(chalk.green(`  ✓ Switched to OpenCode CLI`))
-      console.log()
-    }
+    // 📖 Case C removed: Zen models now work with any OpenAI-compatible tool (Pi, Aider, etc.)
+    // 📖 The Zen endpoint (https://opencode.ai/zen/v1/chat/completions) is standard OpenAI-compatible.
 
     // 📖 OpenClaw, CLI-only tools, and Zen models manage auth differently — skip API key warning for them.
     if (state.mode !== 'openclaw' && !isModelFromCliOnly && !isModelFromZen) {
