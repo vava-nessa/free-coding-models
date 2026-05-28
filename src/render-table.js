@@ -50,7 +50,7 @@ import { TIER_COLOR } from './tier-colors.js'
 import { getAvg, getVerdict, getUptime, getStabilityScore, getVersionStatusInfo } from './utils.js'
 import { usagePlaceholderForProvider } from './ping.js'
 import { formatBenchmarkResult } from './benchmark.js'
-import { calculateViewport, sortResultsWithPinnedFavorites, padEndDisplay, displayWidth } from './render-helpers.js'
+import { calculateViewport, sortResultsWithPinnedFavorites, padEndDisplay, displayWidth, stripAnsi } from './render-helpers.js'
 import { getToolMeta, TOOL_METADATA, TOOL_MODE_ORDER, isModelCompatibleWithTool } from './tool-metadata.js'
 import { getColumnSpacing } from './ui-config.js'
 import { detectPackageManager, getManualInstallCmd } from './updater.js'
@@ -998,8 +998,17 @@ export function renderTable({
   const releaseLabel = lastReleaseDate
     ? chalk.rgb(255, 182, 193)(`Last release: ${lastReleaseDate}`)
     : ''
+  const benchmarkHint = themeColors.dim('Ctrl+A ') + chalk.rgb(57, 255, 20).bold('⚡ Speed Test')
 
-  if (releaseLabel) lines.push('  ' + releaseLabel)
+  if (releaseLabel) {
+    const leftText = '  ' + releaseLabel
+    const leftPlain = stripAnsi(leftText)
+    const rightPlain = stripAnsi(benchmarkHint)
+    const padding = terminalCols > 0
+      ? Math.max(2, terminalCols - leftPlain.length - rightPlain.length)
+      : 2
+    lines.push(leftText + ' '.repeat(padding) + benchmarkHint)
+  }
   _lastLayout.footerHotkeys = footerHotkeys
 
   // 📖 Append \x1b[K (erase to EOL) to each line so leftover chars from previous
