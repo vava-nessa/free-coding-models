@@ -43,8 +43,15 @@ export const BENCHMARK_MAX_TOKENS = 140
 // 📖 BENCHMARK_TEMPERATURE: Zero temperature for deterministic, reproducible results.
 export const BENCHMARK_TEMPERATURE = 0
 
-// 📖 BENCHMARK_TIMEOUT_MS: How long to wait before treating a benchmark as failed.
+// 📖 BENCHMARK_TIMEOUT_MS: How long to wait before treating a benchmark attempt as timed out.
 export const BENCHMARK_TIMEOUT_MS = 20_000
+
+// 📖 BENCHMARK_MAX_RETRIES: Number of attempts before giving up. Models that are timeout,
+// 📖 429, or temporarily down may succeed on a later attempt — this is the whole point.
+export const BENCHMARK_MAX_RETRIES = 3
+
+// 📖 BENCHMARK_RETRY_DELAY_MS: Wait time between failed attempts so the server can recover.
+export const BENCHMARK_RETRY_DELAY_MS = 15_000
 
 // 📖 estimateTokensFromText: Fallback token counter when the API does not return usage.
 // 📖 Uses a simple heuristic: avg English token ≈ 4 chars. This is explicitly an ESTIMATE
@@ -60,26 +67,33 @@ function benchmarkSpinner(frame) {
   return ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'][spinIdx]
 }
 
+// 📖 retryBadge: compact retry indicator appended to latency when > 0 attempts failed.
+function retryBadge(retries) {
+  return (typeof retries === 'number' && retries > 0) ? `↻${retries}` : ''
+}
+
 // 📖 formatBenchmarkLatency: Turn a raw benchmark result into the AI Latency column value.
-// 📖 Success: "4.3s" / "12s". Error: compact error code. Empty: "—".
+// 📖 Success: "4.3s" / "12s↻2" (with retry badge). Error: compact error code. Empty: "—".
 export function formatBenchmarkLatency(result, { running = false, frame = 0 } = {}) {
   if (running) return benchmarkSpinner(frame)
   if (!result) return '—'
   if (!result.ok) return result.code || 'ERR'
 
   const totalSeconds = result.totalMs / 1000
+  const badge = retryBadge(result.retries)
   return totalSeconds >= 10
-    ? totalSeconds.toFixed(0) + 's'
-    : totalSeconds.toFixed(1) + 's'
+    ? totalSeconds.toFixed(0) + 's' + badge
+    : totalSeconds.toFixed(1) + 's' + badge
 }
 
 // 📖 formatBenchmarkTps: Turn a raw benchmark result into the TPS column value.
-// 📖 Success is the rounded tokens/second number only because the header carries "TPS".
+// 📖 Success is the rounded tokens/second number. Retry badge shown when retries > 0.
 // 📖 Errors and empty state stay as a dim dash in the table to avoid duplicating codes.
 export function formatBenchmarkTps(result, { running = false, frame = 0 } = {}) {
   if (running) return benchmarkSpinner(frame)
   if (!result || !result.ok) return '—'
-  return String(Math.round(result.tokensPerSecond ?? 0))
+  const badge = retryBadge(result.retries)
+  return String(Math.round(result.tokensPerSecond ?? 0)) + badge
 }
 
 // 📖 formatBenchmarkResult: legacy combined formatter retained for integrations/tests
@@ -160,17 +174,8 @@ export function buildBenchmarkRequest(apiKey, modelId, providerKey, url) {
 // 📖     totalMs: 15000,
 // 📖     error: "Request timed out"
 // 📖   }
-export async function benchmarkModel({ apiKey, modelId, providerKey, url, timeoutMs = BENCHMARK_TIMEOUT_MS }) {
-  // 📖 Guard: unsupported providers that don't do chat completions
-  if (providerKey === 'rovo' || providerKey === 'gemini' || providerKey === 'opencode-zen') {
-    return {
-      ok: false,
-      code: 'UNSUPPORTED',
-      totalMs: 0,
-      error: 'Provider does not support chat completions',
-    }
-  }
-
+// 📖 benchmarkSingleAttempt: One HTTP attempt. Extracted so the retry loop stays clean.
+async function benchmarkSingleAttempt({ apiKey, modelId, providerKey, url, timeoutMs }) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   const t0 = performance.now()
@@ -188,14 +193,9 @@ export async function benchmarkModel({ apiKey, modelId, providerKey, url, timeou
 
     // 📖 Parse response body regardless of HTTP status so we can extract partial data
     let bodyText = ''
-    try {
-      bodyText = await resp.text()
-    } catch {}
-
+    try { bodyText = await resp.text() } catch {}
     let data = null
-    try {
-      data = JSON.parse(bodyText)
-    } catch {}
+    try { data = JSON.parse(bodyText) } catch {}
 
     // 📖 Non-2xx: return compact error code
     if (!resp.ok) {
@@ -217,11 +217,9 @@ export async function benchmarkModel({ apiKey, modelId, providerKey, url, timeou
     if (data?.usage?.completion_tokens != null) {
       outputTokens = Number(data.usage.completion_tokens) || 0
     } else {
-      // 📖 FALLBACK: estimate from character count when API omits usage
       outputTokens = estimateTokensFromText(content)
     }
 
-    // 📖 Guard division by zero
     const seconds = totalMs / 1000
     const tokensPerSecond = seconds > 0 ? outputTokens / seconds : 0
 
@@ -244,4 +242,48 @@ export async function benchmarkModel({ apiKey, modelId, providerKey, url, timeou
   } finally {
     clearTimeout(timer)
   }
+}
+
+// 📖 benchmarkModel: Retry wrapper — up to BENCHMARK_MAX_RETRIES attempts with
+// 📖 BENCHMARK_RETRY_DELAY_MS between failures. Models that are timeout, 429, down,
+// 📖 or auth-failing may succeed on a later attempt. The `retries` field in the
+// 📖 result tells the TUI how many attempts were needed (0 = first try, 2 = 3rd try).
+// 📖
+// 📖 Returns on success:
+// 📖   { ok: true, totalMs, outputTokens, tokensPerSecond, answerPreview, retries }
+// 📖
+// 📖 Returns on failure (all attempts exhausted):
+// 📖   { ok: false, code, totalMs, error, retries }
+export async function benchmarkModel({ apiKey, modelId, providerKey, url, timeoutMs = BENCHMARK_TIMEOUT_MS, maxRetries = BENCHMARK_MAX_RETRIES, retryDelayMs = BENCHMARK_RETRY_DELAY_MS }) {
+  // 📖 Guard: unsupported providers that don't do chat completions
+  if (providerKey === 'rovo' || providerKey === 'gemini' || providerKey === 'opencode-zen') {
+    return {
+      ok: false,
+      code: 'UNSUPPORTED',
+      totalMs: 0,
+      error: 'Provider does not support chat completions',
+      retries: 0,
+    }
+  }
+
+  let lastResult = null
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    lastResult = await benchmarkSingleAttempt({ apiKey, modelId, providerKey, url, timeoutMs })
+
+    // 📖 Success — return immediately with retry count
+    if (lastResult.ok) {
+      lastResult.retries = attempt
+      return lastResult
+    }
+
+    // 📖 Failed — wait before retrying (skip delay on last attempt)
+    if (attempt < maxRetries - 1) {
+      await new Promise(resolve => setTimeout(resolve, retryDelayMs))
+    }
+  }
+
+  // 📖 All attempts failed — return last error with retry count
+  lastResult.retries = maxRetries - 1
+  return lastResult
 }
