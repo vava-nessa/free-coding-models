@@ -16,8 +16,9 @@
  *   1. Builds a `providers` list from `Object.keys(sources)` so new providers added to
  *      sources.js automatically appear in the wizard without any code changes here.
  *   2. Uses `readline.createInterface` for line-at-a-time input (not raw mode).
- *   3. Calls `saveConfig(config)` once after collecting all answers.
- *   4. Returns the nvidia key (or the first entered key) for backward-compatibility with
+ *   3. Asks whether the opt-in startup AI Speed Test should run on every launch.
+ *   4. Calls `saveConfig(config)` once after collecting all answers.
+ *   5. Returns the nvidia key (or the first entered key) for backward-compatibility with
  *      the `main()` caller that originally checked for `nvidiKey !== null` before continuing.
  *
  * @functions
@@ -86,18 +87,27 @@ export async function promptApiKey(config) {
     }
   }
 
-  rl.close()
-
-  // 📖 Check at least one key was entered
+  // 📖 Check at least one key was entered before asking optional behavior questions.
   const anyKey = Object.values(config.apiKeys).some(v => v)
   if (!anyKey) {
+    rl.close()
     return null
   }
+
+  console.log(chalk.bold('  ⚡ Startup AI Speed Scan'))
+  console.log(chalk.dim('  FCM can automatically run the Ctrl+U benchmark after launch to fill AI Latency + TPS.'))
+  console.log(chalk.dim('  This uses real provider requests, so it is opt-in and can be changed later in Settings.'))
+  const autoBenchmarkAnswer = await ask(chalk.dim('  Run the AI Speed Scan automatically on every launch? (y/N): '))
+  if (!config.settings || typeof config.settings !== 'object') config.settings = {}
+  config.settings.runAiSpeedTestOnStartup = ['y', 'yes', 'oui', 'o'].includes(autoBenchmarkAnswer.toLowerCase())
+  console.log()
+
+  rl.close()
 
   saveConfig(config)
   const savedCount = Object.values(config.apiKeys).filter(v => v).length
   console.log(chalk.green(`  ✅ ${savedCount} key(s) saved to ~/.free-coding-models.json`))
-  console.log(chalk.dim('  You can add or change keys anytime with the ') + chalk.yellow('P') + chalk.dim(' key in the TUI.'))
+  console.log(chalk.dim('  You can add/change keys and toggle Startup AI Speed Scan anytime with the ') + chalk.yellow('P') + chalk.dim(' key in the TUI.'))
   console.log()
 
   // 📖 Return nvidia key for backward-compat (main() checks it exists before continuing)

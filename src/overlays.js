@@ -118,7 +118,8 @@ export function createOverlayRenderers(state, deps) {
     const updateRowIdx = providerKeys.length
     const themeRowIdx = updateRowIdx + 1
     const favoritesModeRowIdx = themeRowIdx + 1
-    const cleanupLegacyProxyRowIdx = favoritesModeRowIdx + 1
+    const startupAiSpeedScanRowIdx = favoritesModeRowIdx + 1
+    const cleanupLegacyProxyRowIdx = startupAiSpeedScanRowIdx + 1
     const changelogViewRowIdx = cleanupLegacyProxyRowIdx + 1
     const shellEnvRowIdx = changelogViewRowIdx + 1
     const EL = '\x1b[K'
@@ -259,6 +260,15 @@ export function createOverlayRenderers(state, deps) {
     cursorLineByRow[favoritesModeRowIdx] = lines.length
     lines.push(state.settingsCursor === favoritesModeRowIdx ? themeColors.bgCursorSettingsList(favoritesModeRow) : favoritesModeRow)
 
+    // 📖 Startup AI Speed Scan row controls the opt-in Ctrl+U auto-run at launch.
+    const startupAiSpeedScanEnabled = state.config.settings?.runAiSpeedTestOnStartup === true
+    const startupAiSpeedScanStatus = startupAiSpeedScanEnabled
+      ? themeColors.successBold('✅ Enabled — runs Ctrl+U after startup')
+      : themeColors.dim('❌ Disabled — manual Ctrl+U only')
+    const startupAiSpeedScanRow = `${bullet(state.settingsCursor === startupAiSpeedScanRowIdx)}${themeColors.textBold('Startup AI Speed Scan').padEnd(44)} ${startupAiSpeedScanStatus}`
+    cursorLineByRow[startupAiSpeedScanRowIdx] = lines.length
+    lines.push(state.settingsCursor === startupAiSpeedScanRowIdx ? themeColors.bgCursorSettingsList(startupAiSpeedScanRow) : startupAiSpeedScanRow)
+
     if (updateState === 'error' && state.settingsUpdateError) {
       lines.push(themeColors.error(`      ${state.settingsUpdateError}`))
     }
@@ -290,7 +300,7 @@ export function createOverlayRenderers(state, deps) {
     if (state.settingsEditMode) {
       lines.push(themeColors.dim('  Type API key  •  Enter Save  •  Esc Cancel'))
     } else {
-      lines.push(themeColors.dim('  ↑↓ Navigate  •  Enter Edit/Run/Cycle  •  + Add key  •  - Remove key  •  Space Toggle/Cycle  •  T Test key  •  U Updates  •  G Global theme  •  Y Favorites mode  •  Esc Close'))
+      lines.push(themeColors.dim('  ↑↓ Navigate  •  Enter Edit/Run/Cycle  •  + Add key  •  - Remove key  •  Space Toggle/Cycle  •  T Test key  •  U Updates  •  G Theme  •  Y Favorites  •  Esc Close'))
     }
     // 📖 Show sync/restore status message if set
     if (state.settingsSyncStatus) {
@@ -931,6 +941,7 @@ export function createOverlayRenderers(state, deps) {
     lines.push(`  ${key('W')}  Toggle ping mode  ${hint('(speed 2s → normal 10s → slow 30s → forced 4s)')}`)
     lines.push(`  ${key('Ctrl+P')}  Open ⚡️ command palette  ${hint('(search and run actions quickly)')}`)
     lines.push(`  ${key('Ctrl+A')}  AI Speed Test  ${hint('(benchmark selected model → time + TPS)')}`)
+    lines.push(`  ${key('Ctrl+U')}  Global AI Speed Test  ${hint('(benchmark all models; Settings can auto-run it on startup)')}`)
     lines.push(`  ${key('E')}  Cycle filter mode  ${hint('(Normal → Configured only → Usable only)')}`)
     lines.push(`  ${key('Z')}  Cycle tool mode  ${hint('(📦 OpenCode → π Pi → 🪼 jcode → 📦 Desktop → 🦞 OpenClaw → 💘 Crush → 🪿 Goose → 🛠 Aider → 🐉 Qwen → 🤲 OpenHands → ⚡ Amp → 🦘 Rovo → ♊ Gemini)')}`)
     lines.push(`  ${key('F')}  Toggle favorite on selected row  ${hint('(1️⃣2️⃣3️⃣ = router fallback order, capped at 🔟)')}`)

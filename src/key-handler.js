@@ -782,6 +782,21 @@ export function createKeyHandler(ctx) {
     applyThemeSetting(cycleThemeSetting(currentTheme))
   }
 
+  function toggleStartupAiSpeedScan() {
+    if (!state.config.settings || typeof state.config.settings !== 'object') state.config.settings = {}
+    state.config.settings.runAiSpeedTestOnStartup = state.config.settings.runAiSpeedTestOnStartup !== true
+    saveConfig(state.config)
+    state.settingsSyncStatus = {
+      type: 'success',
+      msg: state.config.settings.runAiSpeedTestOnStartup
+        ? '✅ Startup AI Speed Scan enabled — Ctrl+U benchmark will run after launch.'
+        : '✅ Startup AI Speed Scan disabled — use Ctrl+U manually when needed.',
+    }
+    trackAppAction('startup_ai_speed_scan_toggled', {
+      enabled: state.config.settings.runAiSpeedTestOnStartup === true,
+    })
+  }
+
   function toggleShellEnv() {
     if (!state.config.settings) state.config.settings = {}
     const currentlyEnabled = state.config.settings.shellEnvEnabled === true
@@ -2513,7 +2528,8 @@ export function createKeyHandler(ctx) {
       const updateRowIdx = providerKeys.length
       const themeRowIdx = updateRowIdx + 1
       const favoritesModeRowIdx = themeRowIdx + 1
-      const cleanupLegacyProxyRowIdx = favoritesModeRowIdx + 1
+      const startupAiSpeedScanRowIdx = favoritesModeRowIdx + 1
+      const cleanupLegacyProxyRowIdx = startupAiSpeedScanRowIdx + 1
       const changelogViewRowIdx = cleanupLegacyProxyRowIdx + 1
       const shellEnvRowIdx = changelogViewRowIdx + 1
         // 📖 Profile system removed - API keys now persist permanently across all sessions
@@ -2670,6 +2686,11 @@ export function createKeyHandler(ctx) {
           return
         }
 
+        if (state.settingsCursor === startupAiSpeedScanRowIdx) {
+          toggleStartupAiSpeedScan()
+          return
+        }
+
         if (state.settingsCursor === cleanupLegacyProxyRowIdx) {
           runLegacyProxyCleanup()
           return
@@ -2723,6 +2744,10 @@ export function createKeyHandler(ctx) {
           toggleFavoritesDisplayMode()
           return
         }
+        if (state.settingsCursor === startupAiSpeedScanRowIdx) {
+          toggleStartupAiSpeedScan()
+          return
+        }
         // 📖 Profile system removed - API keys now persist permanently across all sessions
 
         // 📖 Toggle enabled/disabled for selected provider
@@ -2739,6 +2764,7 @@ export function createKeyHandler(ctx) {
           state.settingsCursor === updateRowIdx
           || state.settingsCursor === themeRowIdx
           || state.settingsCursor === favoritesModeRowIdx
+          || state.settingsCursor === startupAiSpeedScanRowIdx
           || state.settingsCursor === cleanupLegacyProxyRowIdx
           || state.settingsCursor === changelogViewRowIdx
         ) return

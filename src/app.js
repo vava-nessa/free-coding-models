@@ -939,6 +939,15 @@ export async function runApp(cliArgs, config) {
     state.recommendScrollOffset = 0
   }
 
+  // 📖 Startup AI Speed Scan: opt-in setting that reuses the Ctrl+U path so the
+  // 📖 automatic launch stays identical to the manual global benchmark behavior.
+  const startAiSpeedScanOnStartup = () => {
+    if (state.config.settings?.runAiSpeedTestOnStartup !== true) return
+    setImmediate(() => {
+      onKeyPress?.('\x15', { name: 'u', ctrl: true, meta: false, shift: false })?.catch(() => {})
+    })
+  }
+
   // ── Continuous ping loop — ping all models every N seconds forever ──────────
 
   // 📖 Initial ping of all models
@@ -1000,6 +1009,7 @@ export async function runApp(cliArgs, config) {
   scheduleNextPing()
 
   await initialPing
+  startAiSpeedScanOnStartup()
 
   // 📖 Save cache after initial pings complete for faster next startup
   saveCache(state.results, state.pingMode)

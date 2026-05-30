@@ -422,6 +422,8 @@ When a tool mode is active (via `Z`), models incompatible with that tool are hig
 | `X` | Clear active custom text filter |
 | `G` | Cycle global theme (`Auto → Dark → Light`) |
 | `Ctrl+P` | Open ⚡️ command palette (search + run actions) |
+| `Ctrl+A` | Run AI Speed Test for the selected model |
+| `Ctrl+U` | Run Global AI Speed Test (uses real provider requests) |
 | `R/S/C/M/O/L/A/H/V/B/U` | Sort columns |
 | `Shift+U` | Update to latest version (when update available) |
 | `P` | Settings (API keys, providers, updates, theme) |
@@ -456,7 +458,7 @@ When a tool mode is active (via `Z`), models incompatible with that tool are hig
 ## ✨ Features
 
 - **Parallel pings** — all ~165 API/Zen-callable models tested simultaneously via native `fetch` (~170 total cataloged models including CLI-only Gemini rows)
-- **AI benchmark columns** — `Ctrl+A` benchmarks the selected model, `Ctrl+U` benchmarks visible models, and results split cleanly into **AI Latency** plus **TPS**.
+- **AI benchmark columns** — `Ctrl+A` benchmarks the selected model, `Ctrl+U` benchmarks visible models, and results split cleanly into **AI Latency** plus **TPS**. Settings includes an opt-in **Startup AI Speed Scan** toggle to run the global benchmark automatically after launch.
 - **Tiny verdict indicator** — the first `❔` column mirrors the full Verdict as a compact emoji (`🟩`, `🟢`, `🟡`, `🟠`, etc.) and sorts by the same verdict order.
 - **Adaptive monitoring** — 2s burst for 60s → 10s normal → 30s idle
 - **Stability score** — composite 0–100 (p95 latency, jitter, spike rate, uptime)

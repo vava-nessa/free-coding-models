@@ -242,6 +242,7 @@ function normalizeSettingsSection(settings) {
     ...safeSettings,
     hideUnconfiguredModels: typeof safeSettings.hideUnconfiguredModels === 'boolean' ? safeSettings.hideUnconfiguredModels : true,
     favoritesPinnedAndSticky: typeof safeSettings.favoritesPinnedAndSticky === 'boolean' ? safeSettings.favoritesPinnedAndSticky : false,
+    runAiSpeedTestOnStartup: typeof safeSettings.runAiSpeedTestOnStartup === 'boolean' ? safeSettings.runAiSpeedTestOnStartup : false,
     theme: ['dark', 'light', 'auto'].includes(safeSettings.theme) ? safeSettings.theme : 'auto',
   }
 }
@@ -1007,7 +1008,7 @@ export function isProviderEnabled(config, providerKey) {
 /**
  * 📖 _emptyProfileSettings: Default TUI settings.
  *
- * @returns {{ tierFilter: string|null, sortColumn: string, sortAsc: boolean, pingInterval: number, hideUnconfiguredModels: boolean, favoritesPinnedAndSticky: boolean, preferredToolMode: string, theme: string }}
+ * @returns {{ tierFilter: string|null, sortColumn: string, sortAsc: boolean, pingInterval: number, hideUnconfiguredModels: boolean, favoritesPinnedAndSticky: boolean, runAiSpeedTestOnStartup: boolean, preferredToolMode: string, theme: string }}
  */
 export function _emptyProfileSettings() {
   return {
@@ -1017,6 +1018,7 @@ export function _emptyProfileSettings() {
     pingInterval: 10000,  // 📖 default ms between pings in the steady "normal" mode
     hideUnconfiguredModels: true, // 📖 true = default to providers that are actually configured
     favoritesPinnedAndSticky: false, // 📖 default mode keeps favorites as normal starred rows; press Y to pin+stick them.
+    runAiSpeedTestOnStartup: false, // 📖 opt-in: automatically fire the Ctrl+U global AI Speed Test after startup.
     preferredToolMode: 'opencode', // 📖 remember the last Z-selected launcher across app restarts
     theme: 'auto',        // 📖 'auto' follows the terminal/OS theme, override with 'dark' or 'light' if needed
   }

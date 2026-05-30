@@ -1565,6 +1565,22 @@ describe('renderSettings provider test badges', () => {
     assert.match(output, /Global Theme/)
     assert.match(output, /Auto/)
   })
+
+  it('shows the Startup AI Speed Scan toggle as disabled by default', () => {
+    const renderSettings = buildSettingsRenderer({ apiKeys: {}, providers: {}, settings: {} })
+    const output = renderSettings()
+
+    assert.match(output, /Startup AI Speed Scan/)
+    assert.match(output, /manual Ctrl\+U only/)
+  })
+
+  it('shows enabled status for Startup AI Speed Scan', () => {
+    const renderSettings = buildSettingsRenderer({ apiKeys: {}, providers: {}, settings: { runAiSpeedTestOnStartup: true } })
+    const output = renderSettings()
+
+    assert.match(output, /Startup AI Speed Scan/)
+    assert.match(output, /runs Ctrl\+U after startup/)
+  })
 })
 
 describe('findBestModel', () => {
@@ -2261,11 +2277,13 @@ describe('config profile functions', () => {
     assert.equal(settings.pingInterval, 10000)
     assert.equal(settings.hideUnconfiguredModels, true)
     assert.equal(settings.favoritesPinnedAndSticky, false)
+    assert.equal(settings.runAiSpeedTestOnStartup, false)
   })
 
   it('defaults configured-only mode and preferred tool mode in profile settings', () => {
     assert.equal(_emptyProfileSettings().hideUnconfiguredModels, true)
     assert.equal(_emptyProfileSettings().favoritesPinnedAndSticky, false)
+    assert.equal(_emptyProfileSettings().runAiSpeedTestOnStartup, false)
     assert.equal(_emptyProfileSettings().preferredToolMode, 'opencode')
     assert.equal(_emptyProfileSettings().theme, 'auto')
   })
