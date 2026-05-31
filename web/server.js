@@ -25,12 +25,12 @@ import { fileURLToPath } from 'node:url'
 import { exec } from 'node:child_process'
 
 import { sources, MODELS } from '../sources.js'
-import { loadConfig, getApiKey, saveConfig, isProviderEnabled } from '../src/config.js'
-import { ping } from '../src/ping.js'
+import { loadConfig, getApiKey, saveConfig, isProviderEnabled } from '../src/core/config.js'
+import { ping } from '../src/core/ping.js'
 import {
   getAvg, getVerdict, getUptime, getP95, getJitter,
   getStabilityScore, TIER_ORDER
-} from '../src/utils.js'
+} from '../src/core/utils.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SERVER_SIGNATURE = 'free-coding-models-web'

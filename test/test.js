@@ -39,36 +39,36 @@ import {
   TIER_ORDER, VERDICT_ORDER, TIER_LETTER_MAP,
   scoreModelForTask, getTopRecommendations, TASK_TYPES, PRIORITY_TYPES, CONTEXT_BUDGETS,
   formatCtxWindow, labelFromId
-} from '../src/utils.js'
+} from '../src/core/utils.js'
 import {
   _emptyProfileSettings,
   normalizeEndpointInstalls, getApiKey,
   buildPersistedConfig,
   normalizeRouterConfig,
   DEFAULT_ROUTER_SETTINGS
-} from '../src/config.js'
-import { buildDefaultRouterSet, cloneHeadersForUpstream, createRouterRuntimeForTest, formatOpenAiError } from '../src/router-daemon.js'
-import { formatRouterDuration, normalizeRouterDashboardSnapshot, parseRouterDashboardSseFrame } from '../src/router-dashboard.js'
-import { buildProviderModelTokenKey, loadTokenUsageByProviderModel, formatTokenTotalCompact } from '../src/token-usage-reader.js'
-import { renderTable, getLastLayout } from '../src/render-table.js'
-import { createOverlayRenderers } from '../src/overlays.js'
-import { buildProviderModelsUrl, parseProviderModelIds, listProviderTestModels, classifyProviderTestOutcome, buildProviderTestDetail } from '../src/key-handler.js'
-import { buildCliHelpText } from '../src/cli-help.js'
-import { buildSyncCandidates } from '../src/sync-set.js'
-import { detectPackageManager, getInstallArgs, getManualInstallCmd } from '../src/updater.js'
+} from '../src/core/config.js'
+import { buildDefaultRouterSet, cloneHeadersForUpstream, createRouterRuntimeForTest, formatOpenAiError } from '../src/core/router-daemon.js'
+import { formatRouterDuration, normalizeRouterDashboardSnapshot, parseRouterDashboardSseFrame } from '../src/core/router-dashboard.js'
+import { buildProviderModelTokenKey, loadTokenUsageByProviderModel, formatTokenTotalCompact } from '../src/core/token-usage-reader.js'
+import { renderTable, getLastLayout } from '../src/tui/render-table.js'
+import { createOverlayRenderers } from '../src/tui/overlays.js'
+import { buildProviderModelsUrl, parseProviderModelIds, listProviderTestModels, classifyProviderTestOutcome, buildProviderTestDetail } from '../src/tui/key-handler.js'
+import { buildCliHelpText } from '../src/tui/cli-help.js'
+import { buildSyncCandidates } from '../src/core/sync-set.js'
+import { detectPackageManager, getInstallArgs, getManualInstallCmd } from '../src/core/updater.js'
 import {
   buildToolEnv,
   prepareExternalToolLaunch,
   resolveLauncherModelId,
-} from '../src/tool-launchers.js'
-import { getToolInstallPlan, isToolInstalled, resolveToolBinaryPath } from '../src/tool-bootstrap.js'
-import { TOOL_METADATA, TOOL_MODE_ORDER, getCompatibleTools, isModelCompatibleWithTool, findSimilarCompatibleModels } from '../src/tool-metadata.js'
-import { sortResultsWithPinnedFavorites, stripAnsi } from '../src/render-helpers.js'
-import { parseMouseEvents, containsMouseSequence, createMouseHandler, MOUSE_ENABLE, MOUSE_DISABLE } from '../src/mouse.js'
-import { COLUMN_SORT_MAP } from '../src/render-table.js'
-import { startOpenClaw } from '../src/openclaw.js'
-import { getConfiguredInstallableProviders, getInstallTargetModes, installProviderEndpoints } from '../src/endpoint-installer.js'
-import { cleanupLegacyProxyArtifacts } from '../src/legacy-proxy-cleanup.js'
+} from '../src/core/tool-launchers.js'
+import { getToolInstallPlan, isToolInstalled, resolveToolBinaryPath } from '../src/core/tool-bootstrap.js'
+import { TOOL_METADATA, TOOL_MODE_ORDER, getCompatibleTools, isModelCompatibleWithTool, findSimilarCompatibleModels } from '../src/core/tool-metadata.js'
+import { sortResultsWithPinnedFavorites, stripAnsi } from '../src/tui/render-helpers.js'
+import { parseMouseEvents, containsMouseSequence, createMouseHandler, MOUSE_ENABLE, MOUSE_DISABLE } from '../src/tui/mouse.js'
+import { COLUMN_SORT_MAP } from '../src/tui/render-table.js'
+import { startOpenClaw } from '../src/core/openclaw.js'
+import { getConfiguredInstallableProviders, getInstallTargetModes, installProviderEndpoints } from '../src/core/endpoint-installer.js'
+import { cleanupLegacyProxyArtifacts } from '../src/core/legacy-proxy-cleanup.js'
 import {
   buildEnvContent,
   buildRcSourceLine,
@@ -78,7 +78,7 @@ import {
   syncShellEnv,
   ensureShellRcSource,
   removeShellEnv,
-} from '../src/shell-env.js'
+} from '../src/core/shell-env.js'
 import {
   buildFixTasks,
   classifyToolTranscript,
@@ -88,14 +88,14 @@ import {
   normalizeTestfcmToolName,
   pickTestfcmSelectionIndex,
   resolveTestfcmToolSpec,
-} from '../src/testfcm.js'
+} from '../src/core/testfcm.js'
 import {
   buildCommandPaletteEntries,
   fuzzyMatchCommand,
   filterCommandPaletteEntries,
-} from '../src/command-palette.js'
+} from '../src/tui/command-palette.js'
 import { startWebServer, inspectExistingWebServer } from '../web/server.js'
-import { buildTelemetryProperties, sendUsageTelemetry } from '../src/telemetry.js'
+import { buildTelemetryProperties, sendUsageTelemetry } from '../src/core/telemetry.js'
 import {
   formatBenchmarkLatency,
   formatBenchmarkTps,
@@ -103,8 +103,8 @@ import {
   estimateTokensFromText,
   buildBenchmarkRequest,
   benchmarkModel,
-} from '../src/benchmark.js'
-import { buildChatCompletionPingBody, buildPingRequest, ping } from '../src/ping.js'
+} from '../src/core/benchmark.js'
+import { buildChatCompletionPingBody, buildPingRequest, ping } from '../src/core/ping.js'
 
 // ─── Helper: create a mock model result ──────────────────────────────────────
 // 📖 Builds a minimal result object matching the shape used by the main script
@@ -2020,8 +2020,8 @@ describe('package.json sanity', () => {
   })
 
   it('packages the router daemon through the npm files allowlist', () => {
-    assert.ok(pkg.files.includes('src/'), 'src/ must stay packaged because it contains src/router-daemon.js')
-    assert.ok(existsSync(join(ROOT, 'src/router-daemon.js')), 'router daemon entry should exist')
+    assert.ok(pkg.files.includes('src/'), 'src/ must stay packaged because it contains src/core/router-daemon.js')
+    assert.ok(existsSync(join(ROOT, 'src/core/router-daemon.js')), 'router daemon entry should exist')
   })
 })
 
@@ -2037,7 +2037,7 @@ describe('CLI entry point sanity', () => {
   })
 
   it('imports from lib/utils.js', () => {
-    assert.ok(binContent.includes("from '../src/utils.js'"), 'Should import lib/utils.js')
+    assert.ok(binContent.includes("from '../src/core/utils.js'"), 'Should import lib/utils.js')
   })
 })
 

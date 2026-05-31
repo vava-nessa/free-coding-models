@@ -10,13 +10,13 @@ if (process.argv.includes('--dev')) {
 }
 
 import chalk from 'chalk';
-import { parseArgs, TIER_LETTER_MAP } from '../src/utils.js';
-import { loadConfig } from '../src/config.js';
-import { ensureTelemetryConfig } from '../src/telemetry.js';
-import { ensureFavoritesConfig } from '../src/favorites.js';
-import { buildCliHelpText } from '../src/cli-help.js';
-import { ALT_LEAVE } from '../src/constants.js';
-import { runApp } from '../src/app.js';
+import { parseArgs, TIER_LETTER_MAP } from '../src/core/utils.js';
+import { loadConfig } from '../src/core/config.js';
+import { ensureTelemetryConfig } from '../src/core/telemetry.js';
+import { ensureFavoritesConfig } from '../src/core/favorites.js';
+import { buildCliHelpText } from '../src/tui/cli-help.js';
+import { ALT_LEAVE } from '../src/core/constants.js';
+import { runApp } from '../src/tui/app.js';
 
 // Global error handlers to ensure terminal is restored if something crashes catastrophically
 process.on('uncaughtException', (err) => {
@@ -61,7 +61,7 @@ async function main() {
       runRouterDaemon,
       startRouterDaemonBackground,
       stopRouterDaemon,
-    } = await import('../src/router-daemon.js');
+    } = await import('../src/core/router-daemon.js');
 
     if (cliArgs.daemonMode) {
       await runRouterDaemon();
@@ -80,7 +80,7 @@ async function main() {
 
   // 📖 --sync-set [name] — auto-discover, probe, and populate a router set
   if (cliArgs.syncSetMode) {
-    const { syncSet } = await import('../src/sync-set.js');
+    const { syncSet } = await import('../src/core/sync-set.js');
     const result = await syncSet({ name: cliArgs.syncSetName || 'auto' });
     console.log(JSON.stringify(result, null, 2));
     process.exit(result.ok ? 0 : 1);

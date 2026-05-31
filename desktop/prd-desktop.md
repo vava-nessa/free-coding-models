@@ -24,11 +24,11 @@ The CLI, the Docker/Web dashboard, and the Desktop app all share the **exact sam
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  📦 Shared Core (Node.js)                │
+│              📦 Shared Core Engine (src/core/)          │
 │                                                          │
-│  sources.js · utils.js · ping.js · config.js             │
+│  sources.js (root)                                       │
+│  utils.js · ping.js · config.js · constants.js           │
 │  router-daemon.js · benchmark.js · telemetry.js          │
-│  constants.js · security.js · analysis.js                │
 │  provider-quota-fetchers.js · quota-capabilities.js      │
 │  cache.js · ping-loop.js · model-merger.js               │
 │  favorites.js · sync-set.js · provider-metadata.js       │
@@ -211,19 +211,22 @@ The project retains its current structure and integrates the `desktop` folder at
 free-coding-models/ (Root)
 ├── docs/                         # Common documentation - Source of Truth for CLI, Web, Desktop, Backend
 ├── sources.js                    # Absolute source of truth (shared)
-├── src/                          # Shared core engine + CLI-specific modules
-│   ├── utils.js                  # Scoring, sorting, filtering, verdicts (shared)
-│   ├── ping.js                   # HTTP ping infrastructure (shared)
-│   ├── config.js                 # Config management (shared)
-│   ├── router-daemon.js          # Router + proxy + web API (shared)
-│   ├── constants.js              # Timeouts, limits (shared)
-│   ├── benchmark.js              # AI speed test engine (shared)
-│   ├── telemetry.js              # Anonymous telemetry (shared)
-│   ├── ...                       # Other shared modules
-│   ├── key-handler.js            # ❌ CLI-only (terminal keypresses)
-│   ├── render-table.js           # ❌ CLI-only (ANSI table)
-│   ├── overlays.js               # ❌ CLI-only (TUI modals)
-│   └── ...                       # Other CLI-only modules
+├── src/                          # Project Logic Segregation
+│   ├── core/                     # ⚙️ Shared Core Engine (100% Shared with Desktop Sidecar)
+│   │   ├── utils.js              # Scoring, sorting, filtering, verdicts
+│   │   ├── ping.js               # HTTP ping infrastructure
+│   │   ├── config.js             # Config management (~/.free-coding-models.json)
+│   │   ├── router-daemon.js      # Router + proxy + web API
+│   │   ├── constants.js          # Timeouts, limits, speed thresholds
+│   │   ├── benchmark.js          # AI speed test engine
+│   │   ├── telemetry.js          # Anonymous telemetry
+│   │   └── ...                   # Other shared modules (cache.js, sync-set.js, etc.)
+│   └── tui/                      # 📟 CLI Terminal User Interface (Excluded from Desktop Sidecar)
+│       ├── app.js                # TUI main interactive loop
+│       ├── key-handler.js        # Terminal stdin keyboard event handlers
+│       ├── render-table.js       # ANSI visual grid rendering
+│       ├── overlays.js           # Visual popups (Settings, Recommend questionnaire, Help)
+│       └── ...                   # Other CLI-only assets (theme.js, mouse.js, etc.)
 ├── web/                          # React UI (shared between Web/Docker and Desktop)
 │   ├── README.md                 # Web-specific documentation
 │   ├── src/                      # React components, hooks, styles
@@ -309,39 +312,39 @@ The sidecar is compiled into a standalone binary before Tauri packaging using on
 | Module | Size | What it does |
 |--------|------|-------------|
 | `sources.js` | 29 KB | Provider & model catalog — the single source of truth |
-| `src/utils.js` | 39 KB | Scoring, sorting, filtering, verdict engine — pure functions |
-| `src/ping.js` | 11 KB | HTTP ping infrastructure — provider-specific request building |
-| `src/config.js` | 42 KB | Config management — `~/.free-coding-models.json` |
-| `src/router-daemon.js` | 92 KB | Router proxy, failover, circuit breaker, web API, SSE |
-| `src/constants.js` | 7 KB | Timeouts, limits, defaults |
-| `src/benchmark.js` | 11 KB | AI speed test engine |
-| `src/telemetry.js` | 16 KB | Anonymous usage telemetry |
-| `src/ping-loop.js` | 4 KB | Adaptive ping cadence loop |
-| `src/provider-quota-fetchers.js` | 12 KB | Per-provider quota fetching |
-| `src/quota-capabilities.js` | 5 KB | Quota support detection |
-| `src/security.js` | 7 KB | Config validation, security checks |
-| `src/analysis.js` | 9 KB | Result analysis helpers |
-| `src/provider-metadata.js` | 12 KB | Provider env vars, URLs |
-| `src/cache.js` | 5 KB | TTL cache utility |
-| `src/favorites.js` | 6 KB | Favorites management |
-| `src/model-merger.js` | 2 KB | Dynamic model merging |
-| `src/sync-set.js` | 16 KB | Router set auto-discovery |
+| `src/core/utils.js` | 39 KB | Scoring, sorting, filtering, verdict engine — pure functions |
+| `src/core/ping.js` | 11 KB | HTTP ping infrastructure — provider-specific request building |
+| `src/core/config.js` | 42 KB | Config management — `~/.free-coding-models.json` |
+| `src/core/router-daemon.js` | 92 KB | Router proxy, failover, circuit breaker, web API, SSE |
+| `src/core/constants.js` | 7 KB | Timeouts, limits, defaults |
+| `src/core/benchmark.js` | 11 KB | AI speed test engine |
+| `src/core/telemetry.js` | 16 KB | Anonymous usage telemetry |
+| `src/core/ping-loop.js` | 4 KB | Adaptive ping cadence loop |
+| `src/core/provider-quota-fetchers.js` | 12 KB | Per-provider quota fetching |
+| `src/core/quota-capabilities.js` | 5 KB | Quota support detection |
+| `src/core/security.js` | 7 KB | Config validation, security checks |
+| `src/core/analysis.js` | 9 KB | Result analysis helpers |
+| `src/core/provider-metadata.js` | 12 KB | Provider env vars, URLs |
+| `src/core/cache.js` | 5 KB | TTL cache utility |
+| `src/core/favorites.js` | 6 KB | Favorites management |
+| `src/core/model-merger.js` | 2 KB | Dynamic model merging |
+| `src/core/sync-set.js` | 16 KB | Router set auto-discovery |
 
 ### Modules that stay CLI-only (~340 KB)
 
 | Module | Size | Why CLI-only |
 |--------|------|-------------|
-| `src/key-handler.js` | 144 KB | Terminal stdin keypress handling |
-| `src/overlays.js` | 83 KB | TUI modals (chalk + ANSI) |
-| `src/render-table.js` | 53 KB | ANSI table rendering |
-| `src/command-palette.js` | 19 KB | TUI command palette |
-| `src/render-helpers.js` | 13 KB | chalk formatting helpers |
-| `src/theme.js` | 12 KB | ANSI terminal themes |
-| `src/tui-state.js` | 10 KB | TUI state machine |
-| `src/mouse.js` | 7 KB | Terminal mouse event parsing |
-| `src/tui-filters.js` | 6 KB | TUI filter cycling |
-| `src/tier-colors.js` | 2 KB | chalk color mappings |
-*(Key-handler, Overlays, Table rendering, TUI state, etc.)*
+| `src/tui/key-handler.js` | 144 KB | Terminal stdin keypress handling |
+| `src/tui/overlays.js` | 83 KB | TUI modals (chalk + ANSI) |
+| `src/tui/render-table.js` | 53 KB | ANSI table rendering |
+| `src/tui/command-palette.js` | 19 KB | TUI command palette |
+| `src/tui/render-helpers.js` | 13 KB | chalk formatting helpers |
+| `src/tui/theme.js` | 12 KB | ANSI terminal themes |
+| `src/tui/tui-state.js` | 10 KB | TUI state machine |
+| `src/tui/mouse.js` | 7 KB | Terminal mouse event parsing |
+| `src/tui/tui-filters.js` | 6 KB | TUI filter cycling |
+| `src/tui/tier-colors.js` | 2 KB | chalk color mappings |
+*(Key-handler, Overlays, Table rendering, TUI state, theme, mouse, etc. under src/tui/)*
 
 ---
 

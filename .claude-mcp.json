@@ -1,5 +1,0 @@
-{
-  "description": "Local MCP server configuration for free-coding-models TUI testing",
-  "mcpServers": {},
-  "note": "TUI testing uses agent-tui CLI (installed globally). See AGENTS.md → 'Testing the TUI with agent-tui' for usage."
-}
