@@ -49,18 +49,19 @@ jobs:
           fi
 
           # ── Check 2: npm registry reachable ──
-          NPM_STATUS=$(curl -sf -o /dev/null -w '%{http_code}' https://registry.npmjs.org/)
+          NPM_STATUS=$(curl -s -o /dev/null -w '%{http_code}' https://registry.npmjs.org/ || echo "000")
           echo "  npm registry: HTTP $NPM_STATUS"
           if [ "$NPM_STATUS" != "200" ]; then
-            echo "⚠️  npm registry returned HTTP $NPM_STATUS — cannot publish"
+            echo "⚠️  npm registry is unreachable or returned HTTP $NPM_STATUS — cannot publish"
             FAIL=1
           fi
 
           # ── Check 3: GitHub API reachable ──
-          GH_STATUS=$(curl -sf -o /dev/null -w '%{http_code}' https://api.github.com/zen)
+          # We check the status code without -f so curl does not fail on API rate limits (HTTP 403)
+          GH_STATUS=$(curl -s -o /dev/null -w '%{http_code}' https://api.github.com/ || echo "000")
           echo "  GitHub API: HTTP $GH_STATUS"
-          if [ "$GH_STATUS" != "200" ]; then
-            echo "⚠️  GitHub API returned HTTP $GH_STATUS — cannot create release"
+          if [ "$GH_STATUS" = "000" ]; then
+            echo "⚠️  GitHub API is completely unreachable — cannot create release"
             FAIL=1
           fi
 
