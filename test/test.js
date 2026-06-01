@@ -3225,6 +3225,56 @@ describe('router daemon integration hardening', () => {
     })
   })
 
+  it('returns missing_key outcome on POST /api/key/:provider/test for an unconfigured provider', async () => {
+    // 📖 Build a config with NO api keys — every provider should report missing_key.
+    const config = buildRouterTestConfig([])
+    config.apiKeys = {}
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/api/key/groq/test`, { method: 'POST' })
+      assert.equal(response.status, 200, 'test endpoint always returns 200, outcome is in body')
+      const payload = await response.json()
+      assert.equal(payload.outcome, 'missing_key')
+      assert.match(payload.detail, /groq/)
+    })
+  })
+
+  it('returns 404 on POST /api/key/:provider/test for an unknown provider', async () => {
+    const config = buildRouterTestConfig([])
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/api/key/not-a-real-provider/test`, { method: 'POST' })
+      assert.equal(response.status, 404)
+      const payload = await response.json()
+      assert.equal(payload.error?.code, 'unknown_provider')
+    })
+  })
+
+  it('rejects cross-origin POST /api/key/:provider/test', async () => {
+    // 📖 Same-origin guard must apply to the test endpoint too — the probe
+    // 📖 can be used as a credential-validation oracle by a malicious site.
+    const config = buildRouterTestConfig([])
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/api/key/groq/test`, {
+        method: 'POST',
+        headers: { 'Origin': 'https://evil.example.com' },
+      })
+      assert.equal(response.status, 403, 'cross-origin key probe must be blocked')
+    })
+  })
+
+  it('returns 404 on GET /api/key/:provider/test (the /test suffix is POST-only)', async () => {
+    // 📖 The /test endpoint is POST-only. A GET on the same path is parsed
+    // 📖 as a request for provider "groq/test" (which does not exist), so
+    // 📖 the daemon naturally returns 404 — the POST-only contract is
+    // 📖 enforced by the same provider-existence check, not by a method gate.
+    const config = buildRouterTestConfig([])
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/api/key/groq/test`)
+      assert.equal(response.status, 404)
+      const payload = await response.json()
+      assert.equal(payload.error?.code, 'unknown_provider')
+    })
+  })
+
   it('appends a model to the active set via POST /sets/:name/models', async () => {
     const config = buildRouterTestConfig([
       { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
