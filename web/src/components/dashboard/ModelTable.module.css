@@ -1,12 +1,18 @@
 /**
  * @file web/src/components/dashboard/ModelTable.module.css
  * @description Styles for ModelTable with TanStack Table — full horizontal scroll.
+ * 📖 Seamless layout: the container is flush with the page edges (no margin,
+ * 📖 no left/right border) so the table runs full-bleed below the sticky
+ * 📖 header + sticky FilterBar. Only the bottom border remains.
  */
 .container {
   background: var(--color-bg-card);
-  border: 1px solid var(--color-border-hover);
-  border-radius: var(--radius-lg);
-  margin: 16px;
+  border-top: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
+  margin: 0;
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -19,7 +25,7 @@
   min-width: 1200px;
   border-collapse: collapse;
   font-size: 12px;
-  border: 1px solid var(--color-border-hover);
+  border: 0;
 }
 
 /* ─── Header ─── */
@@ -39,9 +45,130 @@
   top: 0;
   z-index: 10;
   text-align: center;
+  /* 📖 Disable user-select on the whole header so dragging the resize handle
+     📖 never accidentally selects the cell text on rapid drags. */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 .th:last-child { border-right: 0; }
 .th:hover { color: var(--color-accent); background: var(--color-bg-active); }
+
+/* 📖 Inner flex container: header label on the left, resize handle on the right.
+   📖 Letting the label shrink keeps the column tight when the user makes it narrow. */
+.thInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+.thLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* 📖 Resize handle: a 6px-wide grab zone on the right edge of every header.
+   📖 The visible bar is 2px wide and centered in the grab zone so users get
+   📖 generous hit-target without it looking like a hard line. */
+.resizeHandle {
+  flex-shrink: 0;
+  width: 6px;
+  height: 22px;
+  margin-left: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  position: relative;
+  touch-action: none;
+  /* 📖 Stop the click from also triggering the header's sort handler. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.resizeHandle::after {
+  content: '';
+  display: block;
+  width: 2px;
+  height: 14px;
+  background: transparent;
+  border-radius: 1px;
+  transition: background 120ms var(--ease-out, ease);
+}
+.resizeHandle:hover::after,
+.resizeHandleActive::after {
+  background: var(--color-accent);
+}
+.resizeHandleActive {
+  cursor: col-resize;
+}
+/* 📖 While a column is actively resizing, highlight its entire header and freeze
+   📖 the cursor on the whole document so dragging off the handle still works. */
+.th:has(.resizeHandleActive) {
+  background: var(--color-bg-active);
+  color: var(--color-accent);
+}
+:global(.col-resizing) {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* 📖 Floating toolbar that appears only when the user has custom column widths.
+   📖 Sits at the top-right of the table area without pushing rows down. */
+.resizeToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  position: sticky;
+  top: 0;
+  z-index: 11;
+}
+.resizeToolbarHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.2px;
+}
+.resizeToolbarHint strong {
+  color: var(--color-text);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.resizeResetButton {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border-hover);
+  color: var(--color-text-muted);
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms var(--ease-out, ease), color 120ms var(--ease-out, ease), border-color 120ms var(--ease-out, ease);
+  white-space: nowrap;
+}
+.resizeResetButton:hover {
+  background: var(--color-bg-active);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.resizeResetButton:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
 
 /* Center certain columns */
 .th:nth-child(6) { text-align: left; }   /* Model */
@@ -98,25 +225,25 @@
 .pingSlow   { color: #ff4444; }
 .pingNone   { color: var(--color-text-dim); }
 
+/* 📖 Light theme: darker SWE + ping colors. */
+:global([data-theme="light"]) .sweHigh   { color: #7a5e00; }
+:global([data-theme="light"]) .sweMid    { color: #1f7a3e; }
+:global([data-theme="light"]) .pingFast   { color: #008f4d; }
+:global([data-theme="light"]) .pingMedium { color: #b86b00; }
+:global([data-theme="light"]) .pingSlow   { color: #c8143a; }
+
 .uptime { font-family: var(--font-mono); font-size: 11px; }
 
 /* ─── Model cell ─── */
 .modelCell    { display: flex; align-items: center; gap: 6px; overflow: hidden; }
 .modelMeta    { flex: 1; min-width: 0; }
-.modelHeader  { display: flex; align-items: center; gap: 4px; }
+.modelHeader  { display: flex; align-items: center; gap: 5px; }
 .modelName    { font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .modelId      { font-family: var(--font-mono); font-size: 9px; color: var(--color-text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.noKey {
-  font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px; flex-shrink: 0;
-  background: rgba(255,170,0,0.12); color: #ffaa00; border: 1px solid rgba(255,170,0,0.2);
-}
 
-/* ─── Provider pill ─── */
-.providerPill {
-  display: inline-block; font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 999px;
-  background: var(--color-accent-dim); color: var(--color-text-muted);
-  border: 1px solid var(--color-border); white-space: nowrap;
-}
+/* 📖 Provider cell now uses <ProviderLogo /> (icon + wordmark) — see
+   📖 atoms/ProviderLogo.module.css for the layout. The old bordered pill
+   📖 was replaced; no extra styling is needed here. */
 
 /* ─── Benchmarking row highlight ── */
 @keyframes benchRowPulse {
@@ -142,3 +269,65 @@
 }
 
 .empty { text-align: center; padding: 60px 0; color: var(--color-text-muted); }
+
+/* ─── M1: favorites star button (TUI `F` key) ─── */
+.favBtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 120ms, background 120ms, transform 120ms;
+}
+.favBtn:hover {
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.10);
+  transform: scale(1.1);
+}
+.favBtnActive {
+  color: #ffd700;
+}
+.favBtnActive:hover {
+  color: #ffae00;
+  background: rgba(255, 174, 0, 0.14);
+}
+:global([data-theme="light"]) .favBtn { color: #999; }
+:global([data-theme="light"]) .favBtn:hover { color: #b08800; background: rgba(176, 136, 0, 0.10); }
+:global([data-theme="light"]) .favBtnActive { color: #b08800; }
+
+/* ─── M1: clickable AI Lat. cell (TUI `Ctrl+A`) ─── */
+.aiLatencyWrap {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  position: relative;
+  transition: background 100ms;
+}
+.aiLatencyWrap:hover {
+  background: rgba(180, 0, 255, 0.08);
+}
+.aiLatencyWrap.aiLatencyRunning { cursor: progress; }
+.aiLatencyWrap.aiLatencyRunning:hover { background: transparent; }
+.aiLatencyPlay {
+  opacity: 0;
+  color: #b400ff;
+  transition: opacity 100ms;
+}
+.aiLatencyWrap:hover .aiLatencyPlay { opacity: 1; }
+.aiLatencyRunning .aiLatencyPlay { display: none; }
+
+/* ─── M1: dark-red row for tool-incompatible models ─── */
+.incompatible td {
+  background: rgba(255, 0, 0, 0.06) !important;
+  color: var(--color-text-muted) !important;
+}
+.incompatible:hover td {
+  background: rgba(255, 0, 0, 0.10) !important;
+}
+:global([data-theme="light"]) .incompatible td {
+  background: rgba(200, 20, 58, 0.06) !important;
+  color: #888 !important;
+}

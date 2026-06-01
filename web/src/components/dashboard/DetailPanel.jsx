@@ -3,10 +3,12 @@
  * @description Slide-in detail panel showing full model stats, metrics, and a latency chart.
  * 📖 Rendered as a fixed overlay on the right side. Controlled by `model` prop (null = hidden).
  * Displays model ID, provider, tier, SWE score, context, status, pings, stability, verdict, uptime,
- * ping count, API key status, and a larger SVG latency trend chart.
+ * ping count, API key status, a larger SVG latency trend chart, and an M1 favorites + benchmark
+ * 📖 action section (star + reorder + per-row AI Speed Test button).
  * @functions DetailPanel → main panel component, buildDetailChart → SVG chart builder
  */
 import { useMemo } from 'react'
+import { IconStar, IconStarFilled, IconChevronUp, IconChevronDown, IconPlayerPlayFilled } from '@tabler/icons-react'
 import TierBadge from '../atoms/TierBadge.jsx'
 import VerdictBadge from '../atoms/VerdictBadge.jsx'
 import StatusDot from '../atoms/StatusDot.jsx'
@@ -68,10 +70,14 @@ function StatRow({ label, children }) {
   )
 }
 
-export default function DetailPanel({ model, onClose }) {
+export default function DetailPanel({ model, onClose, favorites, onBenchmark, onToast }) {
   if (!model) return null
 
   const chartSvg = buildDetailChart(model.pingHistory)
+  const isFav = favorites?.isFavorite(model) ?? false
+  const favRank = favorites?.favoriteRank(model) ?? Number.MAX_SAFE_INTEGER
+  const isFavAtTop = isFav && favRank === 0
+  const isFavAtBottom = isFav && favRank === (favorites?.favorites.length ?? 0) - 1
 
   return (
     <div className={styles.panel}>
@@ -121,6 +127,61 @@ export default function DetailPanel({ model, onClose }) {
         <StatRow label="API Key">
           {model.hasApiKey ? '✅ Configured' : '❌ Missing'}
         </StatRow>
+
+        {/* ── M1: favorites + per-row benchmark action section ── */}
+        {(favorites || onBenchmark) && (
+          <div className={styles.actions}>
+            {favorites && (
+              <div className={styles.favBlock}>
+                <button
+                  className={`${styles.favBtn} ${isFav ? styles.favBtnActive : ''}`}
+                  onClick={() => favorites.toggle(model)}
+                  title={isFav ? `Unfavorite ${model.label} (TUI: F)` : `Favorite ${model.label} (TUI: F)`}
+                >
+                  {isFav ? <IconStarFilled size={14} stroke={1.5} /> : <IconStar size={14} stroke={1.5} />}
+                  <span>{isFav ? 'Favorited' : 'Add to favorites'}</span>
+                </button>
+                {isFav && (
+                  <div className={styles.reorderRow}>
+                    <button
+                      className={styles.reorderBtn}
+                      disabled={isFavAtTop}
+                      onClick={() => favorites.reorder(model, 'up')}
+                      title="Move up in router priority (TUI: Shift+↑)"
+                      aria-label="Move favorite up"
+                    >
+                      <IconChevronUp size={12} stroke={1.5} /> Up
+                    </button>
+                    <button
+                      className={styles.reorderBtn}
+                      disabled={isFavAtBottom}
+                      onClick={() => favorites.reorder(model, 'down')}
+                      title="Move down in router priority (TUI: Shift+↓)"
+                      aria-label="Move favorite down"
+                    >
+                      <IconChevronDown size={12} stroke={1.5} /> Down
+                    </button>
+                    <span className={styles.rankBadge}>#{favRank + 1}</span>
+                  </div>
+                )}
+              </div>
+            )}
+            {onBenchmark && (
+              <button
+                className={styles.benchBtn}
+                onClick={() => {
+                  onBenchmark(model)
+                  onToast?.(`Benchmark started for ${model.label}…`, 'info')
+                }}
+                title="Run AI Speed Test on this model (TUI: Ctrl+A)"
+              >
+                <IconPlayerPlayFilled size={12} stroke={1.5} />
+                <span>AI Speed Test</span>
+              </button>
+            )}
+          </div>
+        )}
+
         <div className={styles.chart}>
           <div className={styles.chartTitle}>Latency Trend (last 20 pings)</div>
           {chartSvg}

@@ -30,6 +30,7 @@ import { Server } from 'socket.io'
 
 import { sources, MODELS } from '../sources.js'
 import { loadConfig, getApiKey, saveConfig, isProviderEnabled } from '../src/core/config.js'
+import { ensureFavoritesConfig } from '../src/core/favorites.js'
 import { ping } from '../src/core/ping.js'
 import {
   getAvg, getVerdict, getUptime, getP95, getJitter,
@@ -350,6 +351,8 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.webmanifest': 'application/manifest+json',
+  '.xml': 'application/xml; charset=utf-8',
 }
 
 function serveFile(res, filename, contentType) {
@@ -366,6 +369,15 @@ function serveFile(res, filename, contentType) {
 function serveDistFile(res, pathname) {
   const filePath = join(__dirname, 'dist', pathname === '/' ? 'index.html' : pathname)
   if (!existsSync(filePath)) {
+    // 📖 SPA fallback: GETs to non-asset paths return index.html so the React
+    // 📖 router can take over. Static assets (favicons, /assets/*, anything
+    // 📖 with a known extension) must 404 — never serve HTML for a missing PNG.
+    const hasExt = extname(pathname) !== ''
+    if (hasExt || pathname.startsWith('/assets/') || pathname.startsWith('/favicons/')) {
+      res.writeHead(404)
+      res.end('Not Found')
+      return
+    }
     serveFile(res, 'dist/index.html', 'text/html; charset=utf-8')
     return
   }
@@ -617,6 +629,50 @@ async function handleRequest(req, res) {
         return
       }
 
+      // ── M1: /api/favorites — single source of truth for favorites, shared
+      // ── with the TUI through ~/.free-coding-models.json. Read on load,
+      // ── write on toggle/reorder/pinnedAndSticky changes.
+      case '/api/favorites': {
+        ensureFavoritesConfig(config)
+        if (req.method === 'GET') {
+          sendJson(res, 200, {
+            favorites: config.favorites,
+            pinnedAndSticky: Boolean(config.settings?.favoritesPinnedAndSticky),
+          })
+          return
+        }
+        if (req.method !== 'POST') {
+          res.writeHead(405)
+          res.end('Method Not Allowed')
+          return
+        }
+        const body = await readJsonBody(req)
+        noteUserActivity()
+
+        if (Array.isArray(body.favorites)) {
+          // 📖 Validate each entry is a non-empty string. Anything else is dropped
+          // 📖 silently so a partial / malformed payload never breaks the config.
+          const cleaned = body.favorites.filter((entry) => typeof entry === 'string' && entry.trim().length > 0)
+          config.favorites = Array.from(new Set(cleaned))
+        }
+        if (typeof body.pinnedAndSticky === 'boolean') {
+          if (!config.settings || typeof config.settings !== 'object') config.settings = {}
+          config.settings.favoritesPinnedAndSticky = body.pinnedAndSticky
+        }
+
+        const saveResult = saveConfig(config, { replaceFavorites: true })
+        if (!saveResult.success) {
+          sendJson(res, 500, { success: false, error: saveResult.error || 'Failed to persist favorites' })
+          return
+        }
+        sendJson(res, 200, {
+          success: true,
+          favorites: config.favorites,
+          pinnedAndSticky: Boolean(config.settings?.favoritesPinnedAndSticky),
+        })
+        return
+      }
+
       case '/api/benchmark': {
         if (req.method !== 'POST') {
           res.writeHead(405)
@@ -698,7 +754,21 @@ async function handleRequest(req, res) {
       }
 
       default:
-        if (url.pathname.startsWith('/assets/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+        // 📖 Serve Vite's /assets/* bundle, and our static favicon set that
+        // 📖 Vite copies verbatim from web/public/ into web/dist/. The legacy
+        // 📖 /favicon.ico lives at web/public/favicon.ico (root of public/).
+        if (
+          url.pathname.startsWith('/assets/')
+          || url.pathname.startsWith('/favicons/')
+          || url.pathname === '/favicon.ico'
+          || url.pathname.endsWith('.js')
+          || url.pathname.endsWith('.css')
+          || url.pathname.endsWith('.png')
+          || url.pathname.endsWith('.svg')
+          || url.pathname.endsWith('.webmanifest')
+          || url.pathname.endsWith('.xml')
+          || url.pathname.endsWith('.ico')
+        ) {
           serveDistFile(res, url.pathname)
           return
         }

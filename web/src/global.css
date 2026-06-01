@@ -59,8 +59,6 @@
   --font-mono:  'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 
   --header-h: 60px;
-  --sidebar-w: 64px;
-  --sidebar-w-expanded: 200px;
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
@@ -94,10 +92,42 @@
   --color-accent-hover: #333333;
   --color-accent-glow:  rgba(0, 0, 0, 0.05);
   --color-accent-dim:   rgba(0, 0, 0, 0.02);
-  --color-danger-dim:   rgba(255, 68, 68, 0.08);
-  --color-warning-dim:  rgba(255, 170, 0, 0.08);
-  --color-success-dim:  rgba(0, 255, 136, 0.08);
-  --color-info-dim:     rgba(6, 182, 212, 0.08);
+
+  /* 📖 Bright neon colors that look great on black become unreadable on white.
+     📖 We swap them for darker, AA-contrast equivalents in light mode. The
+     📖 hex values are picked to stay visually similar to the dark variant
+     📖 (still "green" / "cyan" / "gold") while passing WCAG AA on #fff. */
+  --color-success:      #008f4d;     /* was #00ff88 (neon) */
+  --color-warning:      #b86b00;     /* was #ffaa00 (neon amber) */
+  --color-danger:       #c8143a;     /* was #ff4444 (neon red) */
+  --color-info:         #0e7490;     /* was #06b6d4 (neon cyan) */
+  --color-danger-dim:   rgba(200, 20, 58, 0.08);
+  --color-warning-dim:  rgba(184, 107, 0, 0.08);
+  --color-success-dim:  rgba(0, 143, 77, 0.08);
+  --color-info-dim:     rgba(14, 116, 144, 0.08);
+
+  /* 📖 Tier + verdict palette: shift toward darker, more saturated variants
+     📖 so badges stay legible on white. The original "neon" feel is dropped
+     📖 in favor of "saturated-but-deep" colors that pass contrast. */
+  --tier-splus:  #b08800;     /* was #ffd700 (gold) */
+  --tier-s:      #c45a00;     /* was #ff8c00 (dark orange) */
+  --tier-aplus:  #0073a8;     /* was #00c8ff (neon cyan) */
+  --tier-a:      #1f7a3e;     /* was #3ddc84 (mid green) */
+  --tier-aminus: #2f7a2f;     /* was #7ecf7e (light green) */
+  --tier-bplus:  #5a5a8a;     /* was #a8a8c8 (lavender) */
+  --tier-b:      #555566;     /* was #808098 (gray-blue) */
+  --tier-c:      #6a6a7a;     /* was #606078 (slate) */
+
+  --verdict-perfect:    #008f4d;     /* was #00ff88 */
+  --verdict-normal:     #4a7a00;     /* was #76b900 */
+  --verdict-slow:       #b86b00;     /* was #ffaa00 */
+  --verdict-spiky:      #c45000;     /* was #ff6600 */
+  --verdict-veryslow:   #c8143a;     /* was #ff4444 */
+  --verdict-overloaded: #b8101f;     /* was #ff2222 */
+  --verdict-unstable:   #990000;     /* was #cc0000 */
+  --verdict-notactive:  #6a6a7a;     /* was #555570 */
+  --verdict-pending:    #6a6a8a;     /* was #444460 */
+
   --shadow-sm:   none;
   --shadow-md:   none;
   --shadow-lg:   none;
@@ -121,6 +151,7 @@ body {
   overflow-x: hidden;
   position: relative;
   display: flex;
+  flex-direction: column;
 }
 
 a { color: var(--color-accent); text-decoration: none; }
@@ -145,21 +176,30 @@ code { font-family: var(--font-mono); font-size: 12px; background: var(--color-s
 }
 
 /* ─── App Layout ─── */
-.app-content {
+.app-shell {
   flex: 1;
-  margin-left: var(--sidebar-w);
-  position: relative;
-  z-index: 1;
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  transition: margin-left var(--transition-medium);
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.app-content {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  min-height: calc(100vh - var(--header-h));
+  display: flex;
+  flex-direction: column;
 }
 
 .view {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
 }
 
 /* ─── Scrollbar ─── */
@@ -171,26 +211,23 @@ code { font-family: var(--font-mono); font-size: 12px; background: var(--color-s
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
-  .app-content { margin-left: 0; }
+  /* 📖 No sidebar to collapse on small viewports — the header itself collapses
+     📖 (see Header.module.css). The model table keeps its 100% width. */
 }
 
 /* ─── Full-page horizontal/vertical scroll layout ─── */
 .app-content {
   flex: 1;
-  margin-left: var(--sidebar-w);
   position: relative;
   z-index: 1;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--header-h));
   display: flex;
   flex-direction: column;
-  overflow: auto; /* allow scrolling in both directions */
-  transition: margin-left var(--transition-medium);
 }
 
 .view {
   display: flex;
   flex-direction: column;
   flex: 1;
-  overflow: hidden; /* let inner components scroll */
   min-height: 0;
 }

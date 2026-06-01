@@ -1,0 +1,121 @@
+/**
+ * @file web/src/components/palette/CommandPalette.module.css
+ * @description Styles for the ⌘K command palette modal — M1 placeholder version.
+ */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 500;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+}
+
+.modal {
+  width: min(560px, 92vw);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-hover);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+  overflow: hidden;
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+.searchIcon { color: var(--color-text-dim); flex-shrink: 0; }
+.input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--color-text);
+  font-size: 15px;
+  font-family: var(--font-sans);
+}
+.input::placeholder { color: var(--color-text-dim); }
+.kbd {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--color-text-dim);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text);
+  transition: background 80ms;
+  user-select: none;
+}
+.itemActive { background: var(--color-accent-dim); }
+.itemDisabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.itemDisabled:hover { background: transparent; }
+.itemIcon { color: var(--color-text-muted); flex-shrink: 0; }
+.itemLabel { flex: 1; }
+.itemEnter {
+  font-size: 11px;
+  color: var(--color-text-dim);
+  font-family: var(--font-mono);
+}
+
+.empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--color-text-dim);
+  font-size: 13px;
+}
+
+.footer {
+  display: flex;
+  gap: 16px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--color-border);
+  font-size: 11px;
+  color: var(--color-text-dim);
+  background: var(--color-bg-card);
+}
+.footer kbd {
+  display: inline-block;
+  font-family: var(--font-mono);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 3px;
+  font-size: 10px;
+}

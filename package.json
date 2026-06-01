@@ -1,6 +1,6 @@
 {
   "name": "free-coding-models",
-  "version": "0.5.1",
+  "version": "0.5.3",
   "description": "Find the fastest coding LLM models in seconds — ping free models from multiple providers, pick the best one for OpenCode, Cursor, or any AI coding assistant.",
   "keywords": [
     "nvidia",
@@ -55,7 +55,8 @@
     "prepack": "npm run build:web",
     "dev": "node scripts/dev-web.mjs",
     "dev:web": "node scripts/dev-web.mjs",
-    "build:web": "vite build",
+    "build:favicons": "node scripts/build-favicons.mjs",
+    "build:web": "npm run build:favicons && vite build",
     "preview:web": "vite preview",
     "test:fcm": "node scripts/testfcm-runner.mjs",
     "test:fcm:mock": "node scripts/testfcm-runner.mjs --tool crush --tool-bin-dir test/fixtures/mock-bin"

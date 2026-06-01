@@ -9,14 +9,14 @@
   Track ~153 models across 16 trusted free or free-limited AI providers in real time<br><br>
   <strong>Install Free API endpoints to your favorite AI coding tools:</strong><br>
   OpenCode CLI / Desktop / WebUI, OpenClaw, Crush, Goose, Aider, Kilo CLI, Qwen Code, OpenHands, Amp, Hermes, Continue, Cline, Xcode, Pi, Rovo, Gemini and more...<br><br>
-  <strong>Use Kimi K2, DeepSeek V3, GPT-OSS, Qwen3, MiniMax M2, GLM, Llama 4, Gemma 4, Devstral and more — for free</strong>
+  <strong>Use Kimi K2, DeepSeek V3, GPT-OSS, Qwen3, MiniMax M3, GLM, Llama 4, Gemma 4, Devstral and more — for free</strong>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/npm/v/free-coding-models?color=3d6b00&label=npm&logo=npm" alt="npm version" width="200"><br>
   <img src="https://img.shields.io/node/v/free-coding-models?color=3d6b00&logo=node.js" alt="node version" width="200"><br>
   <img src="https://img.shields.io/npm/l/free-coding-models?color=3d6b00" alt="license" width="200"><br>
-  <img src="https://img.shields.io/badge/models-153+-3d6b00?logo=nvidia" alt="models count" width="200"><br>
+  <img src="https://img.shields.io/badge/models-154+-3d6b00?logo=nvidia" alt="models count" width="200"><br>
   <img src="https://img.shields.io/badge/providers-16-1a56db" alt="providers count" width="200">
 </p>
 
@@ -154,6 +154,31 @@ free-coding-models web
 ```
 
 This starts the realtime Web Dashboard locally, opens it in your browser, and uses `http://localhost:3333/` by default. Override the port with `FCM_WEB_PORT=3334 free-coding-models web`.
+
+#### Web Dashboard features (M1 parity with TUI)
+
+The local Web Dashboard is a real-time control center for the model catalog
+— not just a static table. The header holds every navigation entry, the
+model table uses **100% of the viewport width** (no left rail, no right rail),
+and every TUI capability that's safe to port ships behind a button or chip.
+
+| Area | What's there |
+|---|---|
+| **Header** | Logo + version · primary nav (Dashboard, Settings, Analytics, Recommend, Router) · kebab menu (Help, Changelog, Install Endpoints, Installed Models) · `⌘K` command palette · AI Latency · theme · export |
+| **Model table** | Full-bleed (no left/right border, no margin) under the sticky header + filter bar · 16 columns, resizable widths persisted in localStorage, ⭐ star per row, medal borders for top-3, dark-red row class for tool-incompatible models, click AI Lat. cell to run a per-row benchmark · table header row stays sticky while scrolling |
+| **Filter bar** | Sticky right below the header (always visible) · Tier / Status / Verdict / Health chip rows · Visibility dropdown (Normal / Configured only / Usable only) · Provider select · custom text filter chip with `X` clear · Reset button (TUI `N`) · ping mode (Speed / Normal / Slow / Forced) · "next ping in Xs" countdown (TUI style, always shown) |
+| **Stats bar** | Removed in M1 (users found it noisy; the table + chips carry the same info at a glance) |
+| **Detail panel** | Slide-in from the right on row click · per-row benchmark button (TUI `Ctrl+A`) · favorite toggle (TUI `F`) + up/down reorder (TUI `Shift+↑↓`) · latency trend chart · all stats |
+| **Command palette** | `⌘K` / `Ctrl+P` (the only global keyboard shortcut) · fuzzy search across views, theme, ping mode, reset, export |
+| **Keyboard** | `Esc` closes any modal · `Cmd+K` toggles the palette — that's it. Everything else is mouse-first. |
+| **URL deep-linking** | `?tier=S+&sort=verdict&origin=groq&view=dashboard&q=…` hydrates the dashboard on load. CLI flags become shareable links. |
+| **Favorites** | Shared with the TUI through `~/.free-coding-models.json` — a star in the Web is a star in the TUI. Includes pinned+sticky display mode (TUI `Y`). |
+| **Theme** | Tri-state `auto / dark / light` cycle (TUI `G`) — auto follows the OS preference. |
+
+Roadmap items (header menu badges show "M2 / M3 / M4" until they land):
+- **M2** — Help modal, Changelog viewer, Settings parity (theme toggle, test key, shell-env, legacy cleanup, startup AI scan), Update flow, URL write-back, full command palette backed by the TUI registry.
+- **M3** — Smart Recommend (3-question wizard → 10s analysis → Top 3), tool mode picker, per-row Launch, missing-tool install prompt, incompatible-fallback modal.
+- **M4** — Router Dashboard, Token Usage, Install Endpoints wizard, Installed Models manager.
 
 ### Available Image Tags
 
@@ -387,7 +412,7 @@ Press **`Z`** in the TUI to cycle between tools without restarting.
 
 ### OpenCode Zen Free Models
 
-[OpenCode Zen](https://opencode.ai/zen) is a hosted AI gateway offering **4 free coding models** exclusively through OpenCode CLI and OpenCode Desktop. These models are **not** available through other tools.
+[OpenCode Zen](https://opencode.ai/zen) is a hosted AI gateway offering **5 free coding models** exclusively through OpenCode CLI and OpenCode Desktop. These models are **not** available through other tools.
 
 | Model | Tier | SWE-bench | Context |
 |-------|------|-----------|---------|
@@ -395,6 +420,7 @@ Press **`Z`** in the TUI to cycle between tools without restarting.
 | DeepSeek V4 Flash Free | S+ | 79.0% | 200k |
 | MiMo-V2.5 Free | S+ | - | 200k |
 | Nemotron 3 Super Free | A+ | 52.0% | 200k |
+| MiniMax M3 Free | S+ | 59.0% | 1M |
 
 To use Zen models: sign up at [opencode.ai/auth](https://opencode.ai/auth) and enter your Zen API key via `P` (Settings). Zen models appear in the main table and auto-switch to OpenCode CLI on launch.
 
@@ -522,9 +548,9 @@ For every model in this tool, **you own the generated output** — code, text, o
 | **Llama Community License** | Llama 3.3 70B, Llama 4 Scout/Maverick | ✅ Attribution required. >700M MAU → separate Meta license |
 | **DeepSeek License** | DeepSeek V3/V3.1/V3.2/V4 family | ✅ Use restrictions on model (no military, no harm) — output is yours |
 | **NVIDIA Nemotron License** | Nemotron Super/Ultra/Nano | ✅ Updated Mar 2026, now near-Apache 2.0 permissive |
-| **MiniMax Model License** | MiniMax M2, M2.5 | ✅ Royalty-free, non-exclusive. Prohibited uses policy applies to model |
+| **MiniMax Model License** | MiniMax M2, M2.5, M3 | ✅ Royalty-free, non-exclusive. Prohibited uses policy applies to model |
 | **Proprietary / hosted API terms** | Gemini, GitHub Models, Mistral/Codestral, OpenRouter-hosted models | ✅ Provider ToS applies |
-| **OpenCode Zen** | Big Pickle, GPT 5 Nano, MiniMax M2.5 Free, Nemotron 3 Super Free, HY3/Ling/Trinity previews | ✅ Per OpenCode Zen ToS |
+| **OpenCode Zen** | Big Pickle, GPT 5 Nano, MiniMax M3 Free, Nemotron 3 Super Free, HY3/Ling/Trinity previews | ✅ Per OpenCode Zen ToS |
 
 ### Key Points
 

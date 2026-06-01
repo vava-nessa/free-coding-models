@@ -75,6 +75,10 @@
 .pingSlow { color: #ff4444; }
 .pingNone { color: var(--color-text-dim); }
 
+:global([data-theme="light"]) .pingFast   { color: #008f4d; }
+:global([data-theme="light"]) .pingMedium { color: #b86b00; }
+:global([data-theme="light"]) .pingSlow   { color: #c8143a; }
+
 .chart {
   margin: 20px 0;
   padding: 16px;
@@ -96,4 +100,130 @@
   color: var(--color-text-dim);
   text-align: center;
   padding: 20px;
+}
+
+/* ─── M1: favorites + per-row benchmark actions ─── */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 12px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.favBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.favBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--color-bg-card);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms;
+  text-align: left;
+}
+.favBtn:hover {
+  border-color: #ffd700;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.08);
+}
+.favBtnActive {
+  border-color: #ffd700;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.12);
+}
+.favBtnActive:hover {
+  background: rgba(255, 215, 0, 0.16);
+}
+:global([data-theme="light"]) .favBtn { color: #555; }
+:global([data-theme="light"]) .favBtn:hover { color: #b08800; border-color: #b08800; background: rgba(176, 136, 0, 0.06); }
+:global([data-theme="light"]) .favBtnActive { color: #b08800; border-color: #b08800; background: rgba(176, 136, 0, 0.10); }
+
+.reorderRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+}
+.reorderBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  background: var(--color-bg-card);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 120ms;
+}
+.reorderBtn:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+.reorderBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.rankBadge {
+  margin-left: auto;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+:global([data-theme="light"]) .rankBadge {
+  color: #b08800;
+  background: rgba(176, 136, 0, 0.12);
+  border-color: rgba(176, 136, 0, 0.3);
+}
+
+.benchBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  background: rgba(180, 0, 255, 0.12);
+  color: #b400ff;
+  border: 1px solid rgba(180, 0, 255, 0.4);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.benchBtn:hover {
+  background: rgba(180, 0, 255, 0.20);
+  border-color: rgba(180, 0, 255, 0.7);
+}
+:global([data-theme="light"]) .benchBtn {
+  background: rgba(140, 0, 200, 0.06);
+  color: #6a00a0;
+  border-color: rgba(140, 0, 200, 0.3);
+}
+:global([data-theme="light"]) .benchBtn:hover {
+  background: rgba(140, 0, 200, 0.12);
 }

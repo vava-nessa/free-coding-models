@@ -4821,3 +4821,323 @@ describe('sync-set', () => {
     })
   })
 })
+
+// ─── useColumnSizing pure helpers ─────────────────────────────────────────────
+// 📖 The React hook is a thin wrapper around these pure functions, so testing
+// 📖 them covers all the storage/validation edge cases without needing a DOM.
+import {
+  sanitizeSizing,
+  clampSizing,
+  mergeSizing,
+  hasCustomSizing,
+  readSizingFromStorage,
+  writeSizingToStorage,
+  removeSizingFromStorage,
+  COLUMN_SIZING_STORAGE_KEY,
+  COLUMN_SIZING_MIN,
+  COLUMN_SIZING_MAX,
+} from '../web/src/hooks/useColumnSizing.js'
+
+// 📖 In-memory localStorage shim — matches the Storage interface our helpers use.
+function makeMockStorage(initial = {}) {
+  let store = { ...initial }
+  return {
+    getItem: (k) => (k in store ? store[k] : null),
+    setItem: (k, v) => { store[k] = String(v) },
+    removeItem: (k) => { delete store[k] },
+    clear: () => { store = {} },
+    key: (i) => Object.keys(store)[i] ?? null,
+    get length() { return Object.keys(store).length },
+  }
+}
+
+describe('useColumnSizing: sanitizeSizing', () => {
+  it('keeps only finite positive numbers keyed by string', () => {
+    assert.deepEqual(
+      sanitizeSizing({ a: 1, b: 2.5, c: 'x', d: NaN, e: Infinity, f: -1, g: 0, h: 42 }),
+      { a: 1, b: 2.5, h: 42 }
+    )
+  })
+
+  it('returns an empty object for null / arrays / primitives', () => {
+    assert.deepEqual(sanitizeSizing(null), {})
+    assert.deepEqual(sanitizeSizing(undefined), {})
+    assert.deepEqual(sanitizeSizing([]), {})
+    assert.deepEqual(sanitizeSizing('nope'), {})
+    assert.deepEqual(sanitizeSizing(42), {})
+  })
+})
+
+describe('useColumnSizing: clampSizing', () => {
+  it('clamps to [min, max] and rounds to integers', () => {
+    assert.deepEqual(
+      clampSizing({ a: 10, b: 30, c: 1500, d: 200.4, e: -3 }),
+      { a: COLUMN_SIZING_MIN, b: 30, c: COLUMN_SIZING_MAX, d: 200, e: COLUMN_SIZING_MIN }
+    )
+  })
+
+  it('respects custom min/max bounds', () => {
+    assert.deepEqual(clampSizing({ a: 5, b: 200 }, 50, 100), { a: 50, b: 100 })
+  })
+
+  it('drops non-finite values silently', () => {
+    assert.deepEqual(clampSizing({ a: NaN, b: Infinity, c: 'x', d: 50 }), { d: 50 })
+  })
+
+  it('returns an empty object for null / undefined input', () => {
+    assert.deepEqual(clampSizing(null), {})
+    assert.deepEqual(clampSizing(undefined), {})
+  })
+})
+
+describe('useColumnSizing: mergeSizing', () => {
+  it('layers stored on top of defaults, runtime on top of stored', () => {
+    const defaults = { a: 1, b: 2, c: 3 }
+    const stored = { a: 99, b: 50 }
+    const runtime = { b: 77, d: 4 }
+    assert.deepEqual(mergeSizing(defaults, stored, runtime), { a: 99, b: 77, c: 3, d: 4 })
+  })
+
+  it('falls back gracefully when one layer is missing', () => {
+    assert.deepEqual(mergeSizing({ a: 1 }, null, { a: 9 }), { a: 9 })
+    assert.deepEqual(mergeSizing({ a: 1 }, {}, {}), { a: 1 })
+    assert.deepEqual(mergeSizing(undefined, undefined, undefined), {})
+  })
+})
+
+describe('useColumnSizing: hasCustomSizing', () => {
+  it('returns true when any column differs from its default', () => {
+    assert.equal(hasCustomSizing({ a: 10, b: 20 }, { a: 10, b: 30 }), true)
+    assert.equal(hasCustomSizing({ a: 10, b: 20 }, { a: 10, b: 20 }), false)
+  })
+
+  it('handles null inputs', () => {
+    assert.equal(hasCustomSizing(null, { a: 1 }), false)
+    assert.equal(hasCustomSizing({ a: 1 }, null), false)
+  })
+})
+
+describe('useColumnSizing: storage adapters', () => {
+  it('round-trips a sizing object through the mock storage', () => {
+    const storage = makeMockStorage()
+    const data = { mood: 40, idx: 50, label: 250 }
+    assert.equal(writeSizingToStorage(storage, COLUMN_SIZING_STORAGE_KEY, data), true)
+    assert.deepEqual(
+      readSizingFromStorage(storage, COLUMN_SIZING_STORAGE_KEY, {}),
+      data
+    )
+  })
+
+  it('returns the fallback when the key is missing', () => {
+    const storage = makeMockStorage()
+    const fallback = { x: 1 }
+    assert.deepEqual(readSizingFromStorage(storage, 'missing-key', fallback), fallback)
+  })
+
+  it('returns the fallback when JSON is corrupt', () => {
+    const storage = makeMockStorage({ [COLUMN_SIZING_STORAGE_KEY]: '{not json' })
+    assert.deepEqual(
+      readSizingFromStorage(storage, COLUMN_SIZING_STORAGE_KEY, { fb: 1 }),
+      { fb: 1 }
+    )
+  })
+
+  it('sanitizes non-numeric values on read', () => {
+    const storage = makeMockStorage({
+      [COLUMN_SIZING_STORAGE_KEY]: JSON.stringify({ good: 42, bad: 'oops', neg: -5, zero: 0 }),
+    })
+    assert.deepEqual(
+      readSizingFromStorage(storage, COLUMN_SIZING_STORAGE_KEY, {}),
+      { good: 42 }
+    )
+  })
+
+  it('removes a key and reports success', () => {
+    const storage = makeMockStorage({ [COLUMN_SIZING_STORAGE_KEY]: '{"a":1}' })
+    assert.equal(removeSizingFromStorage(storage, COLUMN_SIZING_STORAGE_KEY), true)
+    assert.equal(storage.getItem(COLUMN_SIZING_STORAGE_KEY), null)
+  })
+
+  it('swallows storage errors instead of throwing', () => {
+    const broken = {
+      getItem: () => { throw new Error('quota') },
+      setItem: () => { throw new Error('quota') },
+      removeItem: () => { throw new Error('quota') },
+    }
+    assert.deepEqual(readSizingFromStorage(broken, 'k', { fb: 9 }), { fb: 9 })
+    assert.equal(writeSizingToStorage(broken, 'k', { a: 1 }), false)
+    assert.equal(removeSizingFromStorage(broken, 'k'), false)
+  })
+
+  it('treats a null/undefined storage as empty (SSR + private mode)', () => {
+    assert.deepEqual(readSizingFromStorage(null, 'k', { fb: 7 }), { fb: 7 })
+    assert.equal(writeSizingToStorage(undefined, 'k', {}), false)
+  })
+})
+
+// ─── useFilter benchmark sort ─────────────────────────────────────────────────
+// 📖 The 3-bucket sort (completed → running → never tested) is the heart of the
+// 📖 AI Latency / TPS ordering. These tests pin down every bucket transition
+// 📖 so a future refactor can't silently merge "running" back into "missing".
+import { benchmarkBucket, compareBenchmark } from '../web/src/hooks/useFilter.js'
+
+// 📖 Tiny model factory — only the fields compareBenchmark reads.
+function bmModel({ ok, totalMs, tokensPerSecond, isBenchmarking }) {
+  return {
+    benchmark: ok ? { ok: true, totalMs, tokensPerSecond } : null,
+    isBenchmarking: Boolean(isBenchmarking),
+  }
+}
+
+describe('useFilter: benchmarkBucket', () => {
+  it('classifies a successful benchmark as bucket 0', () => {
+    assert.equal(benchmarkBucket(bmModel({ ok: true, totalMs: 100 })), 0)
+  })
+
+  it('classifies a benchmark with ok:false as not-completed', () => {
+    // 📖 Only ok: true counts as "completed". A failed benchmark falls through
+    // 📖 to the running/missing branch.
+    const failed = { benchmark: { ok: false, error: 'timeout' }, isBenchmarking: false }
+    assert.equal(benchmarkBucket(failed), 2)
+  })
+
+  it('classifies a running benchmark as bucket 1 even when no result exists', () => {
+    assert.equal(benchmarkBucket(bmModel({ isBenchmarking: true })), 1)
+  })
+
+  it('classifies a never-tested model as bucket 2', () => {
+    assert.equal(benchmarkBucket({ benchmark: null, isBenchmarking: false }), 2)
+    assert.equal(benchmarkBucket({}), 2)
+  })
+
+  it('prioritizes completed over running when both flags are set', () => {
+    // 📖 Defensive: a successful benchmark that just so happens to also be
+    // 📖 marked isBenchmarking should still count as completed.
+    const both = { benchmark: { ok: true, totalMs: 200 }, isBenchmarking: true }
+    assert.equal(benchmarkBucket(both), 0)
+  })
+})
+
+describe('useFilter: compareBenchmark', () => {
+  const getLatency = (bench) => bench.totalMs
+  const getTps = (bench) => bench.tokensPerSecond ?? 0
+
+  it('sorts completed rows by value in ascending order', () => {
+    const slow = bmModel({ ok: true, totalMs: 800 })
+    const fast = bmModel({ ok: true, totalMs: 200 })
+    assert.ok(compareBenchmark(fast, slow, 1, getLatency) < 0)
+    assert.ok(compareBenchmark(slow, fast, 1, getLatency) > 0)
+  })
+
+  it('sorts completed rows by value in descending order when direction is -1', () => {
+    const slow = bmModel({ ok: true, totalMs: 800 })
+    const fast = bmModel({ ok: true, totalMs: 200 })
+    assert.ok(compareBenchmark(slow, fast, -1, getLatency) < 0)
+    assert.ok(compareBenchmark(fast, slow, -1, getLatency) > 0)
+  })
+
+  it('places running rows AFTER completed rows, regardless of direction', () => {
+    const completed = bmModel({ ok: true, totalMs: 50 })
+    const running = bmModel({ isBenchmarking: true })
+    // 📖 In ascending order, running > completed.
+    assert.ok(compareBenchmark(running, completed, 1, getLatency) > 0)
+    // 📖 In descending order, running is still after completed (positive result
+    // 📖 means a should come after b in the array — both directions agree).
+    assert.ok(compareBenchmark(running, completed, -1, getLatency) > 0)
+    assert.ok(compareBenchmark(completed, running, 1, getLatency) < 0)
+    assert.ok(compareBenchmark(completed, running, -1, getLatency) < 0)
+  })
+
+  it('places never-tested rows AFTER running rows, regardless of direction', () => {
+    const running = bmModel({ isBenchmarking: true })
+    const never = bmModel({})
+    assert.ok(compareBenchmark(never, running, 1, getLatency) > 0)
+    assert.ok(compareBenchmark(never, running, -1, getLatency) > 0)
+    assert.ok(compareBenchmark(running, never, 1, getLatency) < 0)
+    assert.ok(compareBenchmark(running, never, -1, getLatency) < 0)
+  })
+
+  it('keeps the order of running-vs-never-tested groups internally stable (returns 0)', () => {
+    // 📖 Within bucket 1 or 2, rows are not sorted by their numeric value
+    // 📖 (they don't have one), so the comparator must return 0 to let the
+    // 📖 tie-breaker (rank order) take over.
+    const a = bmModel({ isBenchmarking: true })
+    const b = bmModel({ isBenchmarking: true })
+    assert.equal(compareBenchmark(a, b, 1, getLatency), 0)
+    const c = bmModel({})
+    const d = bmModel({})
+    assert.equal(compareBenchmark(c, d, 1, getLatency), 0)
+  })
+
+  it('orders completed TPS rows by tokensPerSecond when used with the TPS getter', () => {
+    const high = bmModel({ ok: true, tokensPerSecond: 120 })
+    const low  = bmModel({ ok: true, tokensPerSecond: 30 })
+    // 📖 Ascending: low first, high second.
+    assert.ok(compareBenchmark(low, high, 1, getTps) < 0)
+    assert.ok(compareBenchmark(high, low, 1, getTps) > 0)
+    // 📖 Descending: high first.
+    assert.ok(compareBenchmark(high, low, -1, getTps) < 0)
+  })
+
+  it('full 5-row scenario: completed (fastest→slowest) | running | never-tested', () => {
+    // 📖 Realistic spread: 2 completed (one fast, one slow), 1 running, 2 never.
+    const fast   = bmModel({ ok: true, totalMs: 150 })
+    const slow   = bmModel({ ok: true, totalMs: 900 })
+    const runA   = bmModel({ isBenchmarking: true })
+    const noneA  = bmModel({})
+    const noneB  = bmModel({})
+
+    const models = [noneA, runA, slow, fast, noneB]
+    // 📖 Ascending: completed first (fast→slow), then running, then never-tested.
+    models.sort((a, b) => compareBenchmark(a, b, 1, getLatency))
+    const order = models.map(m => {
+      if (m.benchmark?.ok) return `done-${m.benchmark.totalMs}`
+      if (m.isBenchmarking) return 'running'
+      return 'never'
+    })
+    assert.deepEqual(order, ['done-150', 'done-900', 'running', 'never', 'never'])
+  })
+})
+
+// ─── useFilter cycle helpers (M1 parity: TUI T / D / V / H / E key behavior) ───
+// 📖 Each cycle starts from `all` (the TUI's "no filter" state) and returns
+// 📖 to `all` after the last real value. Order is the same as the TUI.
+import { TIER_CYCLE, STATUS_CYCLE, VERDICT_CYCLE, HEALTH_CYCLE, VISIBILITY_CYCLE } from '../web/src/hooks/useFilter.js'
+
+describe('useFilter: filter cycles match TUI ordering', () => {
+  it('tier cycle goes All → S+ → S → A+ → … → C → All', () => {
+    assert.deepEqual(TIER_CYCLE, ['all', 'S+', 'S', 'A+', 'A', 'A-', 'B+', 'B', 'C'])
+  })
+
+  it('status cycle exposes the 3 user-facing states (up / down / pending)', () => {
+    assert.deepEqual(STATUS_CYCLE, ['all', 'up', 'down', 'pending'])
+  })
+
+  it('verdict cycle covers the TUI VERDICT_CYCLE (minus null)', () => {
+    // 📖 Web parity exposes every verdict state the TUI can filter on, plus
+    // 📖 `all` at the front so the chip matches the rest of the bar.
+    assert.deepEqual(VERDICT_CYCLE, [
+      'all', 'Perfect', 'Normal', 'Spiky', 'Slow', 'Overloaded', 'Down', 'Unstable', 'Pending',
+    ])
+  })
+
+  it('health cycle covers the TUI HEALTH_CYCLE (minus null)', () => {
+    assert.deepEqual(HEALTH_CYCLE, [
+      'all', 'up', 'timeout', 'down', 'pending', 'noauth', 'auth_error',
+    ])
+  })
+
+  it('visibility cycle is the TUI E-key cycle (Normal / Configured / Usable)', () => {
+    assert.deepEqual(VISIBILITY_CYCLE, ['normal', 'configured', 'usable'])
+  })
+
+  it('every cycle is a closed loop — the first entry is the reset state', () => {
+    for (const cycle of [TIER_CYCLE, STATUS_CYCLE, VERDICT_CYCLE, HEALTH_CYCLE]) {
+      // 📖 Cycles must be non-empty + first entry must be the reset state.
+      // 📖 (The "last entry wraps to first" is tested by the cycling logic
+      // 📖 itself in the useFilter hook — this just checks the array shape.)
+      assert.ok(cycle.length >= 3, `cycle ${cycle} too short`)
+      assert.equal(cycle[0], 'all', `first entry of ${cycle} must be the "all" reset state`)
+    }
+  })
+})

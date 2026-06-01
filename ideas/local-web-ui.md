@@ -1,5 +1,11 @@
 # Local Web UI Ideas
 
+> **Status: M1 shipped in v0.5.3 (2026-06-01).** Layout refactor (no sidebar,
+> full-width table, header menu, sticky FilterBar) + favorites + per-row
+> benchmark + theme tri-state + reset view + URL deep-linking + ⌘K palette
+> placeholder are all live. The detailed M2–M5 roadmap below is still
+> tracked in `tui-web-feature-parity.md` §6.
+
 ## Goal
 
 The local Web UI should evolve from a live model table into a full **Router Control Center**.
