@@ -12,6 +12,7 @@ RUN corepack enable && corepack prepare pnpm@10.33.2 --activate && \
 COPY web/dist ./web/dist
 COPY bin ./bin
 COPY src ./src
+COPY scripts /app/scripts
 COPY sources.js ./
 
 RUN mkdir -p /home/fcm && chown -R fcm:fcm /app /home/fcm

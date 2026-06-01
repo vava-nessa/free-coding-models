@@ -107,6 +107,7 @@ import { syncShellEnv } from './shell-env.js'
 
 // 📖 New JSON config path — stores all providers' API keys + enabled state
 export const CONFIG_PATH = join(homedir(), '.free-coding-models.json')
+export { ENV_VARS }
 
 // 📖 Runtime data directory — backups and local snapshots live here.
 export const DAEMON_DATA_DIR = join(homedir(), '.free-coding-models')
