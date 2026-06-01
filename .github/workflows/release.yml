@@ -95,7 +95,7 @@ jobs:
             echo "🚀 New version $VERSION detected — will publish"
           fi
 
-      - uses: pnpm/action-setup@v6.0.7
+      - uses: pnpm/action-setup@v6
         if: steps.check.outputs.skip == 'false'
 
       - uses: actions/setup-node@v4
