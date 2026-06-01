@@ -1,0 +1,103 @@
+/**
+ * @file web/src/components/atoms/ProviderLogo.module.css
+ * @description Styles for the inline [icon + wordmark] provider cell.
+ *
+ *   - Single horizontal row, max-height pinned so the cell never exceeds the
+ *     table's row height (matches the 7px vertical padding on .td).
+ *   - `color: var(--color-text)` propagates the active theme's text color into
+ *     inlined SVGs that use `fill="currentColor"` (mono icons + all wordmarks).
+ *   - Sized to fit within a ~150px column at default row height. Cloudflare
+ *     is the widest wordmark (~145px at 12px high) — it fits but is tight.
+ */
+
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  max-height: var(--pl-max-h, 22px);
+  overflow: hidden;
+  /* 📖 Inherited by the inlined SVGs that use `fill="currentColor"`. Set on
+     📖 the row so both the mono icon and the wordmark pick up the theme. */
+  color: var(--color-text);
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--pl-icon-h, 16px);
+  width: auto;
+  flex-shrink: 0;
+}
+/* 📖 The inlined <svg> from lobe-icons ships with `width="1em" height="1em"`.
+   📖 We override both so the wrapper's height controls the rendered size, and
+   📖 let the viewBox dictate the width (preserves each icon's aspect ratio). */
+.icon svg {
+  height: 100%;
+  width: auto;
+  display: block;
+}
+
+.textLogo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--pl-text-h, 12px);
+  width: auto;
+  flex-shrink: 0;
+}
+.textLogo svg {
+  height: 100%;
+  width: auto;
+  display: block;
+}
+
+/* 📖 Wordmark-only variant used by OVH (and any future provider whose "icon"
+   📖 asset is itself a full horizontal wordmark). Sized to a slightly tighter
+   📖 max height than the square icons so the wordmark doesn't visually crowd
+   📖 the row. The viewBox aspect ratio of the OVH wordmark is ~6.3:1, so at
+   📖 14px high it renders ~88px wide — fits comfortably in 150px. */
+.iconLegacyWordmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--pl-icon-h, 14px);
+  width: auto;
+  flex-shrink: 0;
+  /* 📖 Default text color is inherited from the row. Wordmarks that use
+     📖 `fill="currentColor"` (OVH) follow the theme automatically. Wordmarks
+     📖 with hardcoded fills (Scaleway) need a per-theme override — see
+     📖 `.scalewayLogo` below. */
+  color: var(--color-text);
+}
+.iconLegacyWordmark svg {
+  height: 100%;
+  width: auto;
+  display: block;
+}
+
+/* 📖 Scaleway: brand purple #521094 is the official color. It looks great on
+   📖 white but is barely visible on the dark background — the contrast is
+   📖 too low (dark purple on near-black). Bump to a lighter, more saturated
+   📖 shade in dark mode so the wordmark reads cleanly without losing brand
+   📖 identity. Paths were rewritten to use `fill="currentColor"` so this
+   📖 single CSS color property controls the whole wordmark. */
+:global(.scalewayLogo) {
+  color: #521094;
+  transition: color 200ms var(--ease-out, ease);
+}
+:global([data-theme="dark"]) :global(.scalewayLogo) {
+  color: #a78bfa;
+}
+
+.fallback {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  /* 📖 Slight tracking so the origin name reads cleanly next to the icon. */
+  letter-spacing: 0.2px;
+}

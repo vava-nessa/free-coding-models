@@ -1,0 +1,30 @@
+/**
+ * @file web/src/components/atoms/NoKeyIcon.module.css
+ * @description Styles for the NoKeyIcon atom — yellow key with a red diagonal slash.
+ * 📖 The wrapper is a fixed-size box so the absolutely-positioned slash SVG can
+ * 📖 center itself over the icon regardless of the parent's flex alignment.
+ */
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  line-height: 0;
+  vertical-align: middle;
+}
+
+.key {
+  color: #ffaa00;            /* 📖 warning yellow — same family as the rest of the dashboard */
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 1px rgba(255, 170, 0, 0.35));
+}
+
+.slash {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  pointer-events: none;
+  z-index: 2;
+}

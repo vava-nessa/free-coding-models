@@ -26,3 +26,15 @@
 .unstable   { background: rgba(204,0,0,0.12); color: #cc0000; }
 .notactive  { background: rgba(85,85,112,0.12); color: #555570; }
 .pending    { background: rgba(68,68,96,0.1); color: #444460; }
+
+/* 📖 Light theme: deeper, more saturated text colors. Backgrounds stay
+   📖 the same since they are translucent and adapt to the white card. */
+:global([data-theme="light"]) .perfect    { color: #008f4d; background: rgba(0,143,77,0.10); }
+:global([data-theme="light"]) .normal     { color: #4a7a00; background: rgba(74,122,0,0.10); }
+:global([data-theme="light"]) .slow       { color: #b86b00; background: rgba(184,107,0,0.10); }
+:global([data-theme="light"]) .spiky      { color: #c45000; background: rgba(196,80,0,0.10); }
+:global([data-theme="light"]) .veryslow   { color: #c8143a; background: rgba(200,20,58,0.10); }
+:global([data-theme="light"]) .overloaded { color: #b8101f; background: rgba(184,16,31,0.10); }
+:global([data-theme="light"]) .unstable   { color: #990000; background: rgba(153,0,0,0.10); }
+:global([data-theme="light"]) .notactive  { color: #5a5a72; }
+:global([data-theme="light"]) .pending    { color: #5a5a8a; }

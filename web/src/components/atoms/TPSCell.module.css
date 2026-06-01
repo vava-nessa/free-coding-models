@@ -36,3 +36,9 @@
   animation: miniSpin 0.6s linear infinite;
   flex-shrink: 0;
 }
+
+/* 📖 Light theme overrides — match AILatencyCell. */
+:global([data-theme="light"]) .fast   { color: #008f4d; }
+:global([data-theme="light"]) .slow   { color: #c8143a; }
+:global([data-theme="light"]) .badge  { color: #0e7490; }
+:global([data-theme="light"]) .runningCell { background: rgba(125, 0, 180, 0.08); }

@@ -9,9 +9,37 @@ import { IconActivity, IconTrophy } from '@tabler/icons-react'
 import TierBadge from '../atoms/TierBadge.jsx'
 import styles from './AnalyticsView.module.css'
 
-const TIER_COLORS = {
+// 📖 TIER_COLORS is now derived from CSS custom properties so the chart fills
+// 📖 swap to AA-contrast shades in light mode automatically. The keys stay
+// 📖 the same; the values come from --tier-splus / --tier-s / etc.
+function readTierColor(name, fallback) {
+  if (typeof window === 'undefined' || !window.document?.documentElement) return fallback
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return v || fallback
+}
+
+const TIER_COLOR_KEYS = {
+  'S+': '--tier-splus',
+  'S':  '--tier-s',
+  'A+': '--tier-aplus',
+  'A':  '--tier-a',
+  'A-': '--tier-aminus',
+  'B+': '--tier-bplus',
+  'B':  '--tier-b',
+  'C':  '--tier-c',
+}
+
+const TIER_COLOR_FALLBACKS = {
   'S+': '#ffd700', S: '#ff8c00', 'A+': '#00c8ff', A: '#3ddc84',
   'A-': '#7ecf7e', 'B+': '#a8a8c8', B: '#808098', C: '#606078',
+}
+
+// 📖 Resolve the tier color at render time. Memoizing the map per theme switch
+// 📖 would be more efficient, but the cost is one getComputedStyle per tier and
+// 📖 the chart only re-renders when `models` changes, so the extra work is
+// 📖 imperceptible.
+function tierColor(key) {
+  return readTierColor(TIER_COLOR_KEYS[key], TIER_COLOR_FALLBACKS[key])
 }
 const TIERS = ['S+', 'S', 'A+', 'A', 'A-', 'B+', 'B', 'C']
 
@@ -102,7 +130,7 @@ export default function AnalyticsView({ models }) {
               <div key={tier} className={styles.tierItem}>
                 <div className={styles.tierBadge}><TierBadge tier={tier} /></div>
                 <div className={styles.tierBar}>
-                  <div className={styles.tierFill} style={{ width: `${pct}%`, background: TIER_COLORS[tier] }} />
+                  <div className={styles.tierFill} style={{ width: `${pct}%`, background: tierColor(tier) }} />
                 </div>
                 <span className={styles.tierCount}>{count}</span>
               </div>

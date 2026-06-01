@@ -1,8 +1,16 @@
+/**
+ * @file web/src/components/atoms/HealthCell.module.css
+ * @description Styles for the HealthCell atom — matches CLI Health column typography.
+ * 📖 "NO KEY" is rendered as a louder, bold, warning-yellow chip with the NoKeyIcon
+ * 📖 sitting inline next to the label, so a missing credential jumps out at the user.
+ */
 .cell {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   letter-spacing: 0.2px;
   white-space: nowrap;
   overflow: hidden;
@@ -13,3 +21,36 @@
 .error      { color: #ff4444; }
 .errorBold  { color: #ff4444; font-weight: 800; }
 .dim        { color: var(--color-text-dim); }
+
+/* 📖 The "NO KEY" treatment is intentionally louder than the other states:
+   📖   - yellow chip background instead of plain text
+   📖   - 13px font (vs 11px elsewhere in the column)
+   📖   - bold weight, slightly more letter-spacing
+   📖   - dark text on yellow for AA contrast in dark + light themes */
+.noKey {
+  background: rgba(255, 170, 0, 0.18);
+  color: #ffaa00;
+  border: 1px solid rgba(255, 170, 0, 0.45);
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+.noKeyText {
+  /* 📖 Inherits the surrounding font, just bumps the weight and tracking for the
+   📖 label so the chip reads as a single badge even at narrow column widths. */
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+:global([data-theme="light"]) .noKey {
+  background: rgba(255, 170, 0, 0.25);
+  border-color: rgba(255, 170, 0, 0.55);
+  color: #b86b00;
+}
+:global([data-theme="light"]) .up         { color: #008f4d; }
+:global([data-theme="light"]) .warning    { color: #b86b00; }
+:global([data-theme="light"]) .error,
+:global([data-theme="light"]) .errorBold  { color: #c02323; }
+:global([data-theme="light"]) .dim        { color: #888; }

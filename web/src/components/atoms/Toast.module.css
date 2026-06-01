@@ -18,6 +18,12 @@
 .error   { border-left: 4px solid #ff4444; }
 .warning { border-left: 4px solid #ffaa00; }
 .info    { border-left: 4px solid #06b6d4; }
+
+/* 📖 Light theme: deeper accent bars so they pop on the white toast card. */
+:global([data-theme="light"]) .success { border-left-color: #008f4d; }
+:global([data-theme="light"]) .error   { border-left-color: #c8143a; }
+:global([data-theme="light"]) .warning { border-left-color: #b86b00; }
+:global([data-theme="light"]) .info    { border-left-color: #0e7490; }
 .icon    { font-size: 18px; flex-shrink: 0; }
 .message { flex: 1; }
 .close {

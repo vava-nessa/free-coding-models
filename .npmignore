@@ -1,0 +1,7 @@
+# 📖 Keep local Vite/dependency caches out of the npm tarball even when `files` includes web/.
+web/node_modules/
+web/node_modules/**
+
+# 📖 Local macOS metadata must never ship.
+.DS_Store
+**/.DS_Store

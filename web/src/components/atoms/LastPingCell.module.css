@@ -33,3 +33,13 @@
   animation: pingRing 0.8s linear infinite;
   flex-shrink: 0;
 }
+
+/* 📖 Light theme: the neon green ring is unreadable on white, swap to a deep
+   📖 green ring on a soft neutral track so the spinner stays visible. */
+:global([data-theme="light"]) .fast   { color: #008f4d; }
+:global([data-theme="light"]) .medium { color: #b86b00; }
+:global([data-theme="light"]) .slow   { color: #c8143a; }
+:global([data-theme="light"]) .spinner {
+  border-color: rgba(0, 0, 0, 0.12);
+  border-top-color: #008f4d;
+}

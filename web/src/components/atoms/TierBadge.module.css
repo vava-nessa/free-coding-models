@@ -16,3 +16,14 @@
 .tier_bplus { background: rgba(168,168,200,0.1); color: #a8a8c8; border: 1px solid rgba(168,168,200,0.15); }
 .tier_b     { background: rgba(128,128,152,0.1); color: #808098; border: 1px solid rgba(128,128,152,0.15); }
 .tier_c     { background: rgba(96,96,120,0.1); color: #606078; border: 1px solid rgba(96,96,120,0.15); }
+
+/* 📖 Light theme: darker, AA-contrast tier text colors. Borders stay the same
+   📖 hue so the badge still feels "tier-colored", just more legible. */
+:global([data-theme="light"]) .tier_splus  { color: #7a5e00; border-color: rgba(176,136,0,0.4); }
+:global([data-theme="light"]) .tier_s      { color: #a14a00; border-color: rgba(196,90,0,0.4); }
+:global([data-theme="light"]) .tier_aplus  { color: #005d8a; border-color: rgba(0,115,168,0.4); }
+:global([data-theme="light"]) .tier_a      { color: #1f7a3e; border-color: rgba(31,122,62,0.4); }
+:global([data-theme="light"]) .tier_aminus { color: #2f7a2f; border-color: rgba(47,122,47,0.4); }
+:global([data-theme="light"]) .tier_bplus  { color: #4a4a72; border-color: rgba(90,90,138,0.4); }
+:global([data-theme="light"]) .tier_b      { color: #555566; border-color: rgba(85,85,102,0.4); }
+:global([data-theme="light"]) .tier_c      { color: #5a5a6a; border-color: rgba(106,106,122,0.4); }

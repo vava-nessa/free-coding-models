@@ -8,29 +8,61 @@ jobs:
   discord:
     runs-on: ubuntu-latest
     steps:
-      - name: Extract commit info
-        id: info
-        run: |
-          echo "sha_short=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
-          echo "msg_first=$(echo '${{ github.event.head_commit.message }}' | head -n1 | sed 's/"/\\"/g')" >> $GITHUB_OUTPUT
-          echo "repo=${{ github.event.repository.name }}" >> $GITHUB_OUTPUT
-          echo "ref=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
-
       - name: Send embed to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_GITHUB }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          JSON=$(cat <<EOF
-          {
-            "embeds": [{
-              "title": "[${{ steps.info.outputs.repo }}] ${{ steps.info.outputs.msg_first }}",
-              "url": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}",
-              "description": "Commit \`${{ steps.info.outputs.sha_short }}\` on \`${{ steps.info.outputs.ref }}\`",
-              "color": 5814783,
-              "footer": {
-                "text": "${{ steps.info.outputs.repo }}"
-              }
-            }]
+          node - <<'EOF'
+          const https = require('https')
+
+          const webhook = process.env.DISCORD_WEBHOOK_URL
+          if (!webhook) {
+            console.log('⚠️ DISCORD_WEBHOOK_GITHUB not set — skipping Discord commit notification')
+            process.exit(0)
           }
-          EOF)
-          curl -s -H "Content-Type: application/json" \
-            -d "$JSON" \
-            ${{ secrets.DISCORD_WEBHOOK_GITHUB }}
+
+          // 📖 Commit messages can contain quotes, apostrophes, backticks, and
+          // 📖 multi-line bodies. Build JSON in Node instead of interpolating
+          // 📖 directly into shell heredocs so any commit text is safe.
+          const repo = process.env.REPO_NAME || 'repository'
+          const repository = process.env.REPOSITORY || ''
+          const sha = process.env.COMMIT_SHA || ''
+          const shaShort = sha.slice(0, 7)
+          const ref = process.env.REF_NAME || 'main'
+          const firstLine = String(process.env.COMMIT_MESSAGE || 'No commit message')
+            .split(/\r?\n/)[0]
+            .slice(0, 240)
+
+          const body = JSON.stringify({
+            embeds: [{
+              title: `[${repo}] ${firstLine}`,
+              url: `https://github.com/${repository}/commit/${sha}`,
+              description: `Commit \`${shaShort}\` on \`${ref}\``,
+              color: 5814783,
+              footer: { text: repo },
+            }],
+          })
+
+          const url = new URL(webhook)
+          const req = https.request({
+            hostname: url.hostname,
+            path: url.pathname + url.search,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(body),
+            },
+          }, (res) => {
+            console.log('Discord response status:', res.statusCode)
+            res.resume()
+            process.exit(res.statusCode >= 200 && res.statusCode < 300 ? 0 : 1)
+          })
+          req.on('error', (err) => { console.error(err); process.exit(1) })
+          req.write(body)
+          req.end()
+          EOF

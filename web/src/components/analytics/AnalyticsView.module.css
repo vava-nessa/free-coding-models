@@ -98,6 +98,10 @@
 .pctMedium { color: #ffaa00; }
 .pctSlow { color: #ff4444; }
 
+:global([data-theme="light"]) .pctFast   { color: #008f4d; }
+:global([data-theme="light"]) .pctMedium { color: #b86b00; }
+:global([data-theme="light"]) .pctSlow   { color: #c8143a; }
+
 .leaderItem {
   display: flex;
   align-items: center;

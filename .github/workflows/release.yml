@@ -39,8 +39,10 @@ jobs:
           FAIL=0
 
           # ── Check 1: GitHub Actions status ──
-          ACTIONS_STATUS=$(curl -sf https://www.githubstatus.com/api/v2/summary.json \
-            | node -p "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const c=d.components.find(x=>x.name.includes('Actions')); c ? c.status : 'unknown'")
+          # 📖 The status endpoint can occasionally return an empty/truncated body.
+          # 📖 Treat that as "unknown" instead of crashing the workflow before checkout.
+          ACTIONS_STATUS=$(curl -sS --retry 2 --retry-delay 2 https://www.githubstatus.com/api/v2/summary.json \
+            | node -e "let s=''; process.stdin.on('data', c => s += c); process.stdin.on('end', () => { try { const d=JSON.parse(s); const c=(d.components||[]).find(x=>String(x.name||'').includes('Actions')); console.log(c ? c.status : 'unknown') } catch { console.log('unknown') } })" || echo "unknown")
           echo "  GitHub Actions: $ACTIONS_STATUS"
           if [ "$ACTIONS_STATUS" = "major_outage" ] || [ "$ACTIONS_STATUS" = "degraded_performance" ]; then
             echo "⚠️  GitHub Actions is $ACTIONS_STATUS — aborting to avoid wasted runs"
@@ -95,7 +97,7 @@ jobs:
             echo "🚀 New version $VERSION detected — will publish"
           fi
 
-      - uses: pnpm/action-setup@v6.0.7
+      - uses: pnpm/action-setup@v6
         if: steps.check.outputs.skip == 'false'
 
       - uses: actions/setup-node@v4
@@ -107,6 +109,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
         if: steps.check.outputs.skip == 'false'
+
+      # 📖 Install ImageMagick (`magick` binary) — required by scripts/build-favicons.mjs,
+      # 📖 which rasterizes /icon.png into the favicon asset set during `npm run build:web`.
+      # 📖 Not pre-installed on ubuntu-latest runners as of 2026.
+      - name: Install ImageMagick
+        if: steps.check.outputs.skip == 'false'
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
 
       # 📖 Publish to npm registry with retry logic (3 attempts with exponential backoff).
       # 📖 npm publish can fail with 403/503 errors during registry instability.

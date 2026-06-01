@@ -360,6 +360,7 @@ export const opencodeZen = [
   ['deepseek-v4-flash-free',           'DeepSeek V4 Flash Free',  'S+', '79.0%', '200k'],
   ['mimo-v2.5-free',                   'MiMo-V2.5 Free',          'S+', '-',     '200k'],
   ['nemotron-3-super-free',            'Nemotron 3 Super Free',   'A+', '52.0%', '200k'],
+  ['minimax-m3-free',                  'MiniMax M3 Free',         'S+', '59.0%', '1M'],
   // Removed (2026-05-28): qwen3.6-plus-free (free promotion ended — now requires OpenCode Go)
   // Removed (2026-05-28): minimax-m2.5-free (7-day launch promo expired — now paid)
   // Removed (2026-05-28): gpt-5-nano (was never free — incorrectly cataloged as free, requires Zen PAYG)
@@ -368,6 +369,7 @@ export const opencodeZen = [
   // Removed (2026-05-26): trinity-mini-free (deleted from Zen)
   // Removed (2026-05-26): trinity-large-preview-free (deleted from Zen)
   // Fix (2026-05-26): nematron-3-super-free ctx 1M → 200k (Zen limits it)
+  // Added (2026-06-01): minimax-m3-free — MiniMax M3, 1M context, MSA attention (SWE-Bench Pro 59.0%)
 ]
 
 // 📖 All sources combined - used by the main script

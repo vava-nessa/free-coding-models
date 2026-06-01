@@ -6,3 +6,8 @@
 .low  { background: linear-gradient(90deg, #ff4444, #cc0000); }
 .value { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
 .none  { color: var(--color-text-dim); }
+
+/* 📖 Light theme: drop the neon gradients to deep, saturated versions. */
+:global([data-theme="light"]) .high { background: linear-gradient(90deg, #008f4d, #4a7a00); }
+:global([data-theme="light"]) .mid  { background: linear-gradient(90deg, #b86b00, #c45a00); }
+:global([data-theme="light"]) .low  { background: linear-gradient(90deg, #c8143a, #990000); }
