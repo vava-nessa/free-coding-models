@@ -353,6 +353,16 @@ function getWebModelsPayload(runtime) {
   return payload
 }
 
+function getWebUpdateStatusPayload() {
+  if (process.env.FCM_UPDATE_ALLOWED_OUTDATED !== '1') return null
+  return {
+    latestVersion: process.env.FCM_UPDATE_LATEST_VERSION || null,
+    allowedOutdated: true,
+    warningMessage: process.env.FCM_UPDATE_WARNING_MESSAGE || null,
+    failures: Number.parseInt(process.env.FCM_UPDATE_FAILURES || '0', 10) || 0,
+  }
+}
+
 function getWebStatePayload(runtime) {
   const router = runtime.routerConfig()
   const probeInterval = router.probeIntervals?.[router.probeMode] || DEFAULT_ROUTER_SETTINGS.probeIntervals.balanced
@@ -366,6 +376,7 @@ function getWebStatePayload(runtime) {
     globalBenchmarkRunning: runtime.webGlobalBenchmarkRunning || false,
     globalBenchmarkTotal: runtime.webGlobalBenchmarkTotal || 0,
     globalBenchmarkCompleted: runtime.webGlobalBenchmarkCompleted || 0,
+    updateStatus: getWebUpdateStatusPayload(),
     models: getWebModelsPayload(runtime),
   }
 }

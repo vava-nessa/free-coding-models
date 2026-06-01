@@ -511,7 +511,7 @@ When a tool mode is active (via `Z`), models incompatible with that tool are hig
 - **Readable everywhere** — semantic theme palette keeps table rows, overlays, badges, and help screens legible in dark and light terminals
 - **Global theme switch** — `G` cycles `auto`, `dark`, + `light` live without restarting
 - **Auto-retry** — timeout models keep getting retried
-- **Aggressive update nudging** — fluorescent green banner when an update is available, impossible to miss, Shift+U hotkey, command palette entry, background re-check every 5 min, mid-session updates the banner live without restarting
+- **Mandatory self-update policy** — startup checks npm for a newer FCM and installs it automatically without a prompt. If the install fails twice in a row (offline, proxy, or permissions), FCM still starts but shows a red outdated-version warning until the user retries with `Shift+U` or runs the displayed install command.
 - **Last release timestamp** — light pink footer shows `Last release: Mar 27, 2026, 09:42 PM` from npm so users know how fresh the data is
 
 ---

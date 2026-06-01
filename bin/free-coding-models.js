@@ -72,6 +72,12 @@ async function main() {
 
   if (startupUpdate.updated) return;
   if (startupUpdate.blocked) process.exit(1);
+  if (startupUpdate.allowedOutdated) {
+    process.env.FCM_UPDATE_ALLOWED_OUTDATED = '1';
+    process.env.FCM_UPDATE_LATEST_VERSION = startupUpdate.latestVersion || '';
+    process.env.FCM_UPDATE_WARNING_MESSAGE = startupUpdate.warningMessage || '';
+    process.env.FCM_UPDATE_FAILURES = String(startupUpdate.failures || 0);
+  }
 
   // 📖 Standalone web dashboard: same full-catalog ping UI as the TUI, served
   // 📖 locally with Socket.IO/SSE/REST realtime updates.

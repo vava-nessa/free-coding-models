@@ -25,7 +25,7 @@ importers:
         version: 4.8.3
     devDependencies:
       '@vitejs/plugin-react':
-        specifier: ^6.0.1
+        specifier: ^6.0.2
         version: 6.0.2(vite@8.0.16(@types/node@25.9.1))
       react:
         specifier: ^19.2.6
@@ -34,10 +34,10 @@ importers:
         specifier: ^19.2.6
         version: 19.2.6(react@19.2.6)
       vite:
-        specifier: ^8.0.13
+        specifier: ^8.0.16
         version: 8.0.16(@types/node@25.9.1)
       vite-plus:
-        specifier: ^0.1.16
+        specifier: ^0.1.23
         version: 0.1.23(@types/node@25.9.1)(vite@8.0.16(@types/node@25.9.1))
 
 packages:
