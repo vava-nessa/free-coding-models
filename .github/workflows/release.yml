@@ -108,6 +108,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
         if: steps.check.outputs.skip == 'false'
 
+      # 📖 Install ImageMagick (`magick` binary) — required by scripts/build-favicons.mjs,
+      # 📖 which rasterizes /icon.png into the favicon asset set during `npm run build:web`.
+      # 📖 Not pre-installed on ubuntu-latest runners as of 2026.
+      - name: Install ImageMagick
+        if: steps.check.outputs.skip == 'false'
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
       # 📖 Publish to npm registry with retry logic (3 attempts with exponential backoff).
       # 📖 npm publish can fail with 403/503 errors during registry instability.
       # 📖 Sigstore provenance links the npm package to its exact source commit,
