@@ -258,23 +258,77 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 40px 0;
+  padding: 50px 0;
   color: var(--text-secondary, #aaa);
 }
 
+.installingLabel {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #e0e0e0);
+}
+
+.installingSub {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+}
+
 .spinner {
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 .doneState {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 30px 0;
+  gap: 10px;
+  padding: 40px 0;
   text-align: center;
-  h3 { margin: 0; color: #00c864; font-size: 18px; }
-  p { margin: 0; color: var(--text-secondary, #aaa); font-size: 13px; }
+  animation: doneFadeIn 0.3s ease;
+}
+
+.doneTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.doneSub {
+  margin: 0;
+  color: var(--text-secondary, #aaa);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.doneSub strong {
+  color: var(--text-primary, #e0e0e0);
+}
+
+/* 📖 Animated check circle — scales up with a satisfying bounce */
+.checkCircle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(0, 200, 100, 0.12);
+  color: #00c864;
+  animation: checkPop 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.errorDot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(220, 53, 69, 0.12);
+  color: #dc3545;
+  font-size: 28px;
+  font-weight: 700;
+  animation: checkPop 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .installPath {
@@ -286,6 +340,23 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@keyframes doneFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes donePop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes checkPop {
+  0%   { transform: scale(0); opacity: 0; }
+  50%  { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* Footer */
@@ -328,16 +399,21 @@
 }
 
 .doneBtn {
-  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 28px;
   background: #00c864;
   color: #000;
   border: none;
   border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
   margin-left: auto;
-  &:hover { background: #00d874; }
+  transition: transform 0.15s ease, background 0.15s ease;
+  &:hover { background: #00d874; transform: scale(1.02); }
+  &:active { transform: scale(0.98); }
 }
 
 @keyframes fadeIn {

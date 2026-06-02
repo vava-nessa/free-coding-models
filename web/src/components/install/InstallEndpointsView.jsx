@@ -88,7 +88,10 @@ export default function InstallEndpointsView({ onClose, onToast }) {
   }
 
   const handleInstall = async () => {
+    // 📖 Avance au step 3 d'abord (animation "installing"), puis lance l'install
+    setStep(3)
     setInstalling(true)
+    setInstallResult(null)
     try {
       const resp = await fetch('/api/install-endpoints/wizard', {
         method: 'POST',
@@ -105,10 +108,15 @@ export default function InstallEndpointsView({ onClose, onToast }) {
         setInstallResult(data)
         onToast?.(`Installed ${data.modelCount} models for ${selectedProvider.label} into ${TOOLS.find(t => t.id === selectedTool)?.label || selectedTool}.`, 'success')
       } else {
+        setInstallResult(null)
         onToast?.(`Install failed: ${data.error || 'unknown'}`, 'error')
+        // 📖 Retour au step 2 si l'install échoue pour laisser réessayer
+        setStep(2)
       }
     } catch (err) {
+      setInstallResult(null)
       onToast?.(`Install error: ${err.message}`, 'error')
+      setStep(2)
     } finally {
       setInstalling(false)
     }
@@ -224,21 +232,33 @@ export default function InstallEndpointsView({ onClose, onToast }) {
             </div>
           )}
 
-          {/* Step 3: Installing / Done */}
+          {/* Step 3: Installing → Done */}
           {step === 3 && (
             <div className={styles.stepContent}>
               {installing && (
                 <div className={styles.installingState}>
-                  <IconLoader size={24} className={styles.spinner} />
-                  <span>Installing {scope === 'all' ? 'all' : selectedModels.length} models…</span>
+                  <IconLoader size={32} className={styles.spinner} />
+                  <span className={styles.installingLabel}>Installing {scope === 'all' ? 'all' : selectedModels.length} model{scope === 'all' && catalogModels.length !== 1 ? 's' : selectedModels.length !== 1 ? 's' : ''}…</span>
+                  <span className={styles.installingSub}>Writing config for {TOOLS.find(t => t.id === selectedTool)?.label}</span>
                 </div>
               )}
-              {installResult && (
+              {!installing && installResult && (
                 <div className={styles.doneState}>
-                  <IconCheck size={32} color="#00c864" />
-                  <h3>Installation Complete</h3>
-                  <p>{installResult.modelCount} models installed into {installResult.toolLabel}</p>
+                  <div className={styles.checkCircle}>
+                    <IconCheck size={36} />
+                  </div>
+                  <h3 className={styles.doneTitle}>Installed!</h3>
+                  <p className={styles.doneSub}>
+                    {installResult.modelCount} model{installResult.modelCount !== 1 ? 's' : ''} from <strong>{selectedProvider?.label}</strong> → <strong>{installResult.toolLabel}</strong>
+                  </p>
                   <code className={styles.installPath}>{installResult.path}</code>
+                </div>
+              )}
+              {!installing && !installResult && (
+                <div className={styles.doneState}>
+                  <span className={styles.errorDot}>✕</span>
+                  <h3 className={styles.doneTitle}>Install failed</h3>
+                  <p className={styles.doneSub}>Check the toast for details. You can go back and retry.</p>
                 </div>
               )}
             </div>
@@ -249,6 +269,13 @@ export default function InstallEndpointsView({ onClose, onToast }) {
         <div className={styles.footer}>
           {step > 0 && step < 3 && (
             <button className={styles.backBtn} onClick={handleBack}>
+              <IconChevronLeft size={14} />
+              Back
+            </button>
+          )}
+          {/* Step 3 error: show Back to retry */}
+          {step === 3 && !installing && !installResult && (
+            <button className={styles.backBtn} onClick={() => setStep(2)}>
               <IconChevronLeft size={14} />
               Back
             </button>
@@ -268,8 +295,11 @@ export default function InstallEndpointsView({ onClose, onToast }) {
               )}
             </button>
           )}
-          {step === 3 && installResult && (
-            <button className={styles.doneBtn} onClick={onClose}>Done</button>
+          {step === 3 && !installing && installResult && (
+            <button className={styles.doneBtn} onClick={onClose}>
+              <IconCheck size={14} />
+              Done
+            </button>
           )}
         </div>
       </div>
