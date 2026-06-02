@@ -516,6 +516,15 @@ export default function ModelTable({
                 rowClasses.push(styles.incompatible)
               }
             }
+            // 📖 "Unusable" rows (no API key / bad API key) get the same 80% opacity
+            // 📖 fade the TUI uses, so the user can see at a glance which models
+            // 📖 they cannot actually use. The fade is applied as opacity on the
+            // 📖 whole <tr> so it composes cleanly with rank/bench/incompatible
+            // 📖 styles. Cursor hover is not implemented in the web, so the
+            // 📖 fade is never overridden by an active-selection highlight.
+            if (m.status === 'noauth' || m.status === 'auth_error') {
+              rowClasses.push(styles.unusable)
+            }
             return (
               <tr
                 key={row.id}

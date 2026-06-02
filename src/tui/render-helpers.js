@@ -31,6 +31,8 @@
  *   - `calculateViewport`: Compute visible slice of model rows
  *   - `sortResultsWithPinnedFavorites`: Sort with pinned items at top
  *   - `adjustScrollOffset`: Clamp scrollOffset so cursor stays visible
+ *   - `fadedRow`: Multiply every 24-bit RGB channel by a factor to fade an
+ *     entire ANSI-colored line uniformly — used for "unusable" rows.
  *
  *   📦 Dependencies:
  *   - chalk: Terminal colors and formatting
@@ -54,6 +56,39 @@ import { sortResults } from '../core/utils.js'
 // 📖 Strips CSI sequences (SGR colors) and OSC sequences (hyperlinks).
 export function stripAnsi(input) {
   return String(input).replace(/\x1b\[[0-9;]*m/g, '').replace(/\x1b\][^\x1b]*\x1b\\/g, '')
+}
+
+// 📖 fadedRow: Multiply every 24-bit RGB channel inside an ANSI-colored string by `factor`
+// 📖 (default 0.8 = 80% opacity, i.e. 20% less opaque) so the whole line reads as
+// 📖 uniformly faded. Only foreground/background 24-bit SGR codes (38;2;R;G;B and
+// 📖 48;2;R;G;B) are touched — bold, dim, reset codes, hyperlinks, and cursor SGRs
+// 📖 pass through unchanged so the structural styling stays intact.
+// 📖 Used to make "unusable" rows (NO KEY / AUTH FAIL) visually de-emphasized at
+// 📖 the row level rather than dimming a single cell, which is easier to miss at
+// 📖 a glance when scanning the table.
+// 📖 Channels are clamped to 0–255 and rounded to integers so terminal parsers
+// 📖 never receive an out-of-range byte. When `factor >= 1` the input is returned
+// 📖 untouched (identity fast path) so callers can wire this in without paying
+// 📖 the cost on every row.
+export function fadedRow(input, factor = 0.8) {
+  const text = String(input)
+  if (factor >= 1) return text
+  // 📖 Pre-clamp factor to [0, 1] to avoid negative channel values that would
+  // 📖 confuse downstream regex replacements; we still respect very small values
+  // 📖 so a caller can pass e.g. 0.1 to almost black-out a row.
+  const safeFactor = Math.max(0, Math.min(1, factor))
+  return text.replace(
+    /\x1b\[(38|48);2;(\d+);(\d+);(\d+)m/g,
+    (_match, kind, rStr, gStr, bStr) => {
+      const r = parseInt(rStr, 10)
+      const g = parseInt(gStr, 10)
+      const b = parseInt(bStr, 10)
+      const nr = Math.max(0, Math.min(255, Math.round(r * safeFactor)))
+      const ng = Math.max(0, Math.min(255, Math.round(g * safeFactor)))
+      const nb = Math.max(0, Math.min(255, Math.round(b * safeFactor)))
+      return `\x1b[${kind};2;${nr};${ng};${nb}m`
+    }
+  )
 }
 
 // 📖 maskApiKey: Mask all but first 4 and last 3 characters of an API key.

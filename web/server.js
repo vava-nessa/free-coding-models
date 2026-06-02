@@ -530,9 +530,14 @@ const DAEMON_PROXY_TIMEOUT_MS = 5000
 async function proxyToDaemon(path, options = {}) {
   const port = await readDaemonPort()
   if (!port) return null
+  // 📖 Some operations (notably /sets/:name/sync, which probes ~24
+  // 📖 candidate models with 1.5s timeouts each) can take 30s+ to finish.
+  // 📖 Callers can pass `{ timeoutMs: 60000 }` to override the default
+  // 📖 5s proxy timeout; everything else stays snappy.
+  const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : DAEMON_PROXY_TIMEOUT_MS
   try {
     const url = `http://127.0.0.1:${port}${path}`
-    const resp = await fetch(url, { ...options, signal: AbortSignal.timeout(DAEMON_PROXY_TIMEOUT_MS) })
+    const resp = await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs) })
     return { ok: resp.ok, status: resp.status, data: await resp.json().catch(() => null) }
   } catch { return null }
 }
@@ -677,6 +682,80 @@ async function handleRequest(req, res) {
   }
 
   try {
+    // 📖 /api/router/sets/:name/models — append / remove a single model.
+    // 📖 M5: granular set-management endpoints used by the Web Router
+    // 📖 Dashboard's drag-and-drop set manager. Matched here (above the
+    // 📖 switch) because JavaScript switch only matches literal cases; the
+    // 📖 `:name` syntax from the daemon-side routes is not a real wildcard.
+    const setModelsMatch = url.pathname.match(/^\/api\/router\/sets\/([^/]+)\/models$/)
+    if (setModelsMatch) {
+      const setName = decodeURIComponent(setModelsMatch[1])
+      const path = `/sets/${encodeURIComponent(setName)}/models`
+      if (req.method === 'POST') {
+        const body = await readJsonBody(req)
+        const proxy = await proxyToDaemon(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        if (proxy?.ok || proxy?.status === 201) {
+          sendJson(res, proxy.status || 200, proxy.data)
+          return
+        }
+        sendJson(res, proxy?.status || 502, proxy?.data || { error: 'Daemon not reachable' })
+        return
+      }
+      if (req.method === 'DELETE') {
+        const body = await readJsonBody(req)
+        const proxy = await proxyToDaemon(path, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        if (proxy?.ok) { sendJson(res, 200, proxy.data); return }
+        sendJson(res, proxy?.status || 502, proxy?.data || { error: 'Daemon not reachable' })
+        return
+      }
+      res.writeHead(405); res.end('Method Not Allowed')
+      return
+    }
+
+    // 📖 /api/router/sets/:name/reorder — accept a new priority order.
+    const setReorderMatch = url.pathname.match(/^\/api\/router\/sets\/([^/]+)\/reorder$/)
+    if (setReorderMatch) {
+      if (req.method !== 'POST') { res.writeHead(405); res.end('Method Not Allowed'); return }
+      const setName = decodeURIComponent(setReorderMatch[1])
+      const body = await readJsonBody(req)
+      const proxy = await proxyToDaemon(`/sets/${encodeURIComponent(setName)}/reorder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (proxy?.ok) { sendJson(res, 200, proxy.data); return }
+      sendJson(res, proxy?.status || 502, proxy?.data || { error: 'Daemon not reachable' })
+      return
+    }
+
+    // 📖 /api/router/sets/:name/activate — switch the active set.
+    const setActivateMatch = url.pathname.match(/^\/api\/router\/sets\/([^/]+)\/activate$/)
+    if (setActivateMatch) {
+      if (req.method !== 'POST') { res.writeHead(405); res.end('Method Not Allowed'); return }
+      const setName = decodeURIComponent(setActivateMatch[1])
+      const proxy = await proxyToDaemon(`/sets/${encodeURIComponent(setName)}/activate`, { method: 'POST' })
+      if (proxy?.ok) { sendJson(res, 200, proxy.data); return }
+      sendJson(res, proxy?.status || 502, proxy?.data || { error: 'Daemon not reachable' })
+      return
+    }
+
+    // 📖 /api/router/sets/:name/sync — re-run the probe-based sync pipeline
+    // 📖 against the named set. Used by the Web Router Dashboard's "Sync
+    // 📖 best models" button so the user can rebuild a set with models
+    // 📖 that actually work with their keys, without leaving the UI.
+    const setSyncMatch = url.pathname.match(/^\/api\/router\/sets\/([^/]+)\/sync$/)
+    if (setSyncMatch) {
+      if (req.method !== 'POST') { res.writeHead(405); res.end('Method Not Allowed'); return }
+      const setName = decodeURIComponent(setSyncMatch[1])
+      // 📖 The daemon bounds the Web sync to 16 probes / ~60s. Give the
+      // 📖 proxy 180s of headroom so a slow network doesn't truncate the
+      // 📖 response — the daemon still returns when it's done.
+      const proxy = await proxyToDaemon(`/sets/${encodeURIComponent(setName)}/sync`, { method: 'POST', timeoutMs: 180000 })
+      if (proxy?.ok) { sendJson(res, 200, proxy.data); return }
+      sendJson(res, proxy?.status || 502, proxy?.data || { error: 'Daemon not reachable' })
+      return
+    }
+
     switch (url.pathname) {
       case '/':
         serveDistFile(res, '/')
@@ -1189,12 +1268,48 @@ async function handleRequest(req, res) {
         return
       }
 
+      // 📖 /api/router/sets/:name/models — append / remove a model.
+      // 📖 Backed by the daemon's POST/DELETE /sets/:name/models endpoints
+      // 📖 and used by the Web Router Dashboard's set manager UI.
+      // 📖 Granular set-management routes (with `:name` parameters) are
+      // 📖 matched above the switch — see the `setModelsMatch`,
+      // 📖 `setReorderMatch`, and `setActivateMatch` blocks. Putting them
+      // 📖 inside the switch would silently never match because JS switch
+      // 📖 cases are exact-string equality, not patterns.
+
       case '/api/router/probe-mode': {
         if (req.method !== 'POST') { res.writeHead(405); res.end('Method Not Allowed'); return }
         const body = await readJsonBody(req)
         const proxy = await proxyToDaemon('/daemon/probe-mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         if (proxy?.ok) { sendJson(res, 200, proxy.data); return }
         sendJson(res, proxy?.status || 502, proxy?.data || { error: 'Daemon not reachable' })
+        return
+      }
+
+      case '/api/router/catalog': {
+        // 📖 Catalog of routeable models for the Web Router Dashboard's
+        // 📖 "Add model" picker. Proxies the daemon when running, falls
+        // 📖 back to a synthesized list from the local config + sources.
+        if (req.method !== 'GET') { res.writeHead(405); res.end('Method Not Allowed'); return }
+        const proxy = await proxyToDaemon('/api/router/catalog')
+        if (proxy?.ok) { sendJson(res, 200, proxy.data); return }
+        // 📖 Fallback: build a minimal catalog from the local sources.
+        const { sources } = await import('../sources.js')
+        const rows = []
+        for (const [providerKey, source] of Object.entries(sources || {})) {
+          if (!source?.url || source?.cliOnly) continue
+          if (!source.url.includes('/chat/completions')) continue
+          for (const [modelId, label] of source.models || []) {
+            rows.push({
+              key: `${providerKey}/${modelId}`,
+              provider: providerKey,
+              model: modelId,
+              label: label || modelId,
+              hasKey: !!getApiKey(config, providerKey),
+            })
+          }
+        }
+        sendJson(res, 200, { models: rows, count: rows.length })
         return
       }
 

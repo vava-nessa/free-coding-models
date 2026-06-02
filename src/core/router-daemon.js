@@ -936,7 +936,11 @@ class RouterRuntime {
   routerConfig() {
     const normalized = normalizeRouterConfig(this.config.router)
     if (normalized) return normalized
-    const defaultSet = buildDefaultRouterSet(this.config)
+    // 📖 Fallback for the very first read before ensureRouterConfigForDaemon
+    // 📖 has had a chance to probe candidates. We use a tiny sync helper
+    // 📖 here so the routerConfig() getter stays sync. The async probed
+    // 📖 version is wired up by runRouterDaemon() on first start.
+    const defaultSet = buildDefaultRouterSetSync(this.config)
     return normalizeRouterConfig({
       ...DEFAULT_ROUTER_SETTINGS,
       enabled: true,
@@ -951,6 +955,22 @@ class RouterRuntime {
     this.refreshRouteState()
   }
 
+  /**
+   * 📖 markSetCustomized — flip `router.userCustomized = true` and
+   * 📖 `router.autoHeal = false` so the user's manual edits are
+   * 📖 preserved on the next daemon start. Called from the HTTP
+   * 📖 endpoints that mutate the active set (add / remove / reorder /
+   * 📖 sync / activate / rename). Auto-heal itself does NOT call this.
+   */
+  markSetCustomized() {
+    if (!this.config.router) return
+    this.config.router = normalizeRouterConfig({
+      ...this.config.router,
+      userCustomized: true,
+      autoHeal: false,
+    })
+  }
+
   saveRouterConfig() {
     if (this.persistConfig === false) return { success: true, backupCreated: false }
     const result = saveConfig(this.config)
@@ -962,7 +982,7 @@ class RouterRuntime {
     try {
       const nextConfig = loadConfig()
       // 📖 Always rebuild the router set from favorites so UI toggles apply dynamically
-      ensureRouterConfigForDaemon(nextConfig, true)
+      void ensureRouterConfigForDaemon(nextConfig, true)
       this.config = nextConfig
       this.refreshRouteState()
       this.scheduleProbeLoop()
@@ -1332,6 +1352,20 @@ class RouterRuntime {
       setCount: Object.keys(router.sets || {}).length,
       uptimeSeconds: Math.floor((Date.now() - this.startedAt) / 1000),
       requestsRouted: this.totalRequestsRouted,
+      // 📖 M6: surface the auto-heal flags so the UI can show "auto-heal
+      // 📖 is on" / "user has customized this set" and the broken-model
+      // 📖 count so the dashboard can prompt for a fix.
+      autoHeal: router.autoHeal !== false,
+      userCustomized: router.userCustomized === true,
+      brokenModelCount: (activeSet?.models || []).filter((m) => {
+        const key = `${m.provider}/${m.model}`
+        // 📖 this.circuit stores the raw flags (authError / stale / unsupported)
+        // 📖 alongside the translated `state`. We read the raw flags so a
+        // 📖 model that just auth-errored (state: CLOSED + authError: true)
+        // 📖 is still flagged as broken, not just one whose state is OPEN.
+        const cb = this.circuit?.get?.(key)
+        return Boolean(cb?.authError || cb?.stale)
+      }).length,
       inFlight: this.inFlight,
       shuttingDown: this.shuttingDown,
       probeMode: router.probeMode,
@@ -1424,6 +1458,233 @@ class RouterRuntime {
     await Promise.allSettled(candidates.map((candidate) => this.probeCandidate(candidate, {
       eco: this.routerConfig().probeMode === 'eco',
     })))
+  }
+
+  /**
+   * 📖 autoHealActiveSet — replaces broken models in the active set with
+   * 📖 working alternatives, so the Playground and Router Dashboard both
+   * 📖 start with a usable set by default. The user's manual edits are
+   * 📖 always respected: once `router.userCustomized` is true (set by
+   * 📖 reorder/add/remove/sync), auto-heal is a no-op.
+   *
+   * 📖 Healing strategy:
+   * 📖 1. Identify broken models in the active set
+   * 📖    (state === AUTH_ERROR or persistent TIMEOUT).
+   * 📖 2. For each broken model, pick a working alternative:
+   * 📖    a. Prefer a same-provider model that's currently CLOSED.
+   * 📖    b. Fall back to any keyed-provider model that's CLOSED.
+   * 📖 3. Replace in place, preserving priority order.
+   * 📖 4. Broadcast a `set_change` so the UI refreshes.
+   *
+   * 📖 Should be called once at startup, AFTER the first `runProbeBurst`
+   * 📖 so the circuit-breaker data is fresh.
+   */
+  async autoHealActiveSet() {
+    const router = this.routerConfig()
+    if (router.autoHeal === false) return { ok: false, reason: 'autoHeal_disabled' }
+    if (router.userCustomized === true) return { ok: false, reason: 'user_customized' }
+    const set = this.getSet(router.activeSet)
+    if (!set || !Array.isArray(set.models) || set.models.length === 0) {
+      return { ok: false, reason: 'empty_set' }
+    }
+
+    // 📖 Build a candidate pool from EVERY routeable model in the
+    // 📖 catalog, not just the ones in the active set — we need healthy
+    // 📖 alternatives to swap in, and the active set's only models are
+    // 📖 the broken ones we're trying to replace.
+    const healthByKey = new Map()
+    const aliveByProvider = new Map()
+    // 📖 Per-provider probe stats — we use these to detect "the user's
+    // 📖 whole <provider> is dead" (every probe has auth-errored) and
+    // 📖 skip that provider as a candidate for replacements.
+    const providerProbeStats = new Map() // provider -> { probed: n, authError: n, stale: n, alive: n }
+    for (const [providerKey, source] of Object.entries(sources)) {
+      if (!isRouteableProvider(providerKey)) continue
+      if (!providerProbeStats.has(providerKey)) providerProbeStats.set(providerKey, { probed: 0, authError: 0, stale: 0, alive: 0 })
+      for (const [modelId, , tier, sweScore, ctx] of source.models || []) {
+        const key = `${providerKey}/${modelId}`
+        const cb = this.circuit?.get?.(key) || {}
+        const state = cb.state || 'UNKNOWN'
+        const authError = !!cb.authError
+        const stale = !!cb.stale
+        const isAlive = !cb.lastErrorAt ? true : (state === 'CLOSED' && !authError && !stale)
+        const tierRank = ['S+', 'S', 'A+', 'A', 'A-', 'B+', 'B', 'C'].indexOf(tier)
+        const score = Number.isFinite(tierRank) && tierRank >= 0
+          ? (10 - tierRank) * 100 + (Number.parseFloat(sweScore) || 0)
+          : 0
+        healthByKey.set(key, { state, authError, stale, isAlive, score, existsInCatalog: true })
+        // 📖 Only count "alive" picks if we have actual evidence (i.e.
+        // 📖 at least one probe has CLOSED). Otherwise the provider is
+        // 📖 unproven and we treat it as a fallback, not a preferred pick.
+        if (cb.lastErrorAt) {
+          const stats = providerProbeStats.get(providerKey)
+          stats.probed += 1
+          if (authError) stats.authError += 1
+          else if (stale) stats.stale += 1
+          else if (state === 'CLOSED') stats.alive += 1
+        }
+        if (isAlive) {
+          if (!aliveByProvider.has(providerKey)) aliveByProvider.set(providerKey, [])
+          aliveByProvider.get(providerKey).push({ key, score })
+        }
+      }
+    }
+
+    // 📖 Build the "proven-alive" provider set: providers where at
+    // 📖 least one probe has come back CLOSED (not auth-errored or
+    // 📖 stale). Providers with zero proven-alive models are filtered
+    // 📖 out of `aliveByProvider` so the auto-heal doesn't pick unproven
+    // 📖 candidates and end up with another broken replacement.
+    for (const [providerKey, stats] of providerProbeStats.entries()) {
+      if (stats.probed > 0 && stats.alive === 0) {
+        // 📖 Probed but no model ever returned CLOSED → the user's key
+        // 📖 for this provider is dead. Drop all candidates from this
+        // 📖 provider so the picker falls through to a working one.
+        aliveByProvider.delete(providerKey)
+        // 📖 Also flip every model in this provider to "broken" so the
+        // 📖 cross-provider fallback also skips them.
+        for (const entry of healthByKey.entries()) {
+          if (entry[0].startsWith(`${providerKey}/`)) {
+            entry[1].authError = true
+            entry[1].stale = false
+            entry[1].isAlive = false
+          }
+        }
+      }
+    }
+
+    // 📖 Also pick up models that are in the active set but NOT in the
+    // 📖 current catalog (e.g. removed from sources.js, deprecated by the
+    // 📖 provider). They should be marked as broken and replaced too —
+    // 📖 otherwise they'd stay in the set forever as silent dead weight.
+    for (const entry of set.models) {
+      const key = `${entry.provider}/${entry.model}`
+      if (!healthByKey.has(key)) {
+        const cb = this.circuit?.get?.(key) || {}
+        healthByKey.set(key, {
+          state: cb.state || 'UNKNOWN',
+          authError: !!cb.authError,
+          stale: true,  // 📖 if it's in the set but not in the catalog, it's stale by definition
+          isAlive: false,
+          score: 0,
+          existsInCatalog: false,
+        })
+      }
+    }
+
+    // 📖 Decide what's broken. We heal AUTH_ERROR (key is wrong for that
+    // 📖 model) and STALE/TIMEOUT (upstream isn't responding). We do
+    // 📖 NOT heal HALF_OPEN (recovering) or OPEN (circuit breaker tripped
+    // 📖 on a transient blip) — those should resolve on their own.
+    const isBroken = (key) => {
+      const health = healthByKey.get(key)
+      if (!health) return false
+      return health.authError === true || health.stale === true || health.state === 'STALE' || health.state === 'UNSUPPORTED'
+    }
+
+    const broken = set.models.filter((m) => isBroken(`${m.provider}/${m.model}`))
+    if (broken.length === 0) return { ok: true, replaced: 0, reason: 'no_broken_models' }
+
+    // 📖 Build the replacement list. Same provider first, then any.
+    // 📖 We skip candidates that the circuit breaker already knows are
+    // 📖 broken (authError / stale) so we don't swap a broken model for
+    // 📖 another broken model of the same provider.
+    const usedKeys = new Set(set.models.map((m) => `${m.provider}/${m.model}`))
+    // 📖 Aggregate PROVEN-alive counts per provider so we can detect
+    // 📖 "the user's whole <provider> is dead" and fall through to
+    // 📖 cross-provider candidates instead of stacking broken picks.
+    // 📖 We deliberately ignore unprobed models here so a provider with
+    // 📖 23 unprobed models doesn't look "alive" just because none of
+    // 📖 them have been probed yet. The real signal is the set of models
+    // 📖 we have actual evidence for (i.e. stats.alive > 0).
+    const aliveByProviderKey = (provider) => {
+      const stats = providerProbeStats.get(provider)
+      if (!stats || stats.alive === 0) return 0
+      return stats.alive
+    }
+    const replacements = []
+    for (const dead of broken) {
+      const isPickedBroken = (key) => {
+        const h = healthByKey.get(key)
+        return !h || h.authError === true || h.stale === true
+      }
+      // 📖 If the user's whole <provider> is dead, skip same-provider
+      // 📖 entirely and let anyProvider find a working alternative.
+      const providerIsDead = aliveByProviderKey(dead.provider) === 0
+      const sameProvider = providerIsDead ? null : (aliveByProvider.get(dead.provider) || []).find((c) =>
+        !usedKeys.has(c.key)
+        && !broken.some((b) => `${b.provider}/${b.model}` === c.key)
+        && !isPickedBroken(c.key)
+      )
+      const anyProvider = []
+      for (const [, list] of aliveByProvider) {
+        for (const entry of list) anyProvider.push(entry)
+      }
+      anyProvider.sort((a, b) => b.score - a.score)
+      const pick = sameProvider || anyProvider.find((c) => !usedKeys.has(c.key) && !isPickedBroken(c.key))
+      if (pick) {
+        usedKeys.add(pick.key)
+        const slashIdx = pick.key.indexOf('/')
+        const provider = slashIdx >= 0 ? pick.key.slice(0, slashIdx) : pick.key
+        const model = slashIdx >= 0 ? pick.key.slice(slashIdx + 1) : ''
+        replacements.push({ from: `${dead.provider}/${dead.model}`, to: pick.key, provider, model, score: pick.score })
+        this.logger.info('autoHeal: picked replacement', {
+          from: `${dead.provider}/${dead.model}`,
+          to: pick.key,
+          score: pick.score,
+          sameProvider: pick === sameProvider,
+          crossProvider: !providerIsDead && pick !== sameProvider,
+          providerWasDead: providerIsDead,
+        })
+      } else {
+        const aliveList = Array.from(aliveByProvider.entries()).map(([p, list]) => `${p}:${list.length}`).slice(0, 5)
+        this.logger.warn('autoHeal: no working alternative found', {
+          broken: `${dead.provider}/${dead.model}`,
+          set: set.name,
+          usedKeys: Array.from(usedKeys).slice(0, 10),
+          aliveSample: aliveList,
+        })
+      }
+    }
+
+    if (replacements.length === 0) {
+      return { ok: true, replaced: 0, reason: 'no_working_alternatives' }
+    }
+
+    // 📖 Apply replacements in place, preserving priority order. We
+    // 📖 rewrite the entire `models` array (rather than mutating each
+    // 📖 entry) so priorities stay 1..N and contiguous.
+    const nextModels = []
+    for (const m of set.models) {
+      const key = `${m.provider}/${m.model}`
+      const replacement = replacements.find((r) => r.from === key)
+      if (replacement) {
+        nextModels.push({ provider: replacement.provider, model: replacement.model, priority: nextModels.length + 1 })
+      } else {
+        nextModels.push({ ...m, priority: nextModels.length + 1 })
+      }
+    }
+    const nextRouter = normalizeRouterConfig({
+      ...router,
+      sets: { ...router.sets, [set.name]: { ...set, models: nextModels } },
+    })
+    this.setRouterConfig(nextRouter)
+    this.saveRouterConfig()
+    for (const r of replacements) {
+      this.logger.info('autoHeal: replaced broken model', {
+        from: r.from,
+        to: r.to,
+        score: r.score,
+        set: set.name,
+      })
+    }
+    this.broadcast('set_change', {
+      activeSet: this.routerConfig().activeSet,
+      set: set.name,
+      action: 'auto_heal',
+      replaced: replacements,
+    })
+    return { ok: true, replaced: replacements.length, replacements }
   }
 
   scheduleProbeLoop() {
@@ -1904,6 +2165,9 @@ class RouterRuntime {
     const router = this.routerConfig()
     const setNameMatch = url.pathname.match(/^\/sets\/([^/]+)$/)
     const activateMatch = url.pathname.match(/^\/sets\/([^/]+)\/activate$/)
+    const setModelsMatch = url.pathname.match(/^\/sets\/([^/]+)\/models$/)
+    const setReorderMatch = url.pathname.match(/^\/sets\/([^/]+)\/reorder$/)
+    const setSyncMatch = url.pathname.match(/^\/sets\/([^/]+)\/sync$/)
 
     if (req.method === 'GET' && url.pathname === '/sets') {
       sendJson(res, 200, { activeSet: router.activeSet, sets: router.sets })
@@ -1930,6 +2194,7 @@ class RouterRuntime {
       })
       this.setRouterConfig(normalized)
       this.saveRouterConfig()
+      this.markSetCustomized()
       this.broadcast('set_change', { old_set: router.activeSet, new_set: normalized.activeSet })
       sendJson(res, 201, { set: normalized.sets[normalized.activeSet] || normalized.sets[name], router: normalized })
       return
@@ -1943,6 +2208,7 @@ class RouterRuntime {
       }
       this.setRouterConfig({ ...router, activeSet: name })
       this.saveRouterConfig()
+      this.markSetCustomized()
       this.broadcast('set_change', { old_set: router.activeSet, new_set: name })
       void this.runProbeBurst()
       sendJson(res, 200, { activeSet: name })
@@ -1969,6 +2235,7 @@ class RouterRuntime {
       const normalized = normalizeRouterConfig({ ...router, activeSet: nextActiveSet, sets: nextSets })
       this.setRouterConfig(normalized)
       this.saveRouterConfig()
+      this.markSetCustomized()
       sendJson(res, 200, { set: normalized.sets[nextName], router: normalized })
       return
     }
@@ -1984,11 +2251,187 @@ class RouterRuntime {
       const nextActiveSet = router.activeSet === name ? (Object.keys(nextSets)[0] || DEFAULT_ROUTER_SETTINGS.activeSet) : router.activeSet
       this.setRouterConfig({ ...router, activeSet: nextActiveSet, sets: nextSets })
       this.saveRouterConfig()
+      this.markSetCustomized()
       sendJson(res, 200, { deleted: name, activeSet: this.routerConfig().activeSet })
       return
     }
 
+    // 📖 POST /sets/:name/models — append a single model to a set. The model
+    // 📖 is auto-prioritized to the end of the list (priority = count+1).
+    // 📖 This is the granular alternative to PUT /sets/:name for clients
+    // 📖 that just want to add one entry without resending the full array.
+    if (setModelsMatch && req.method === 'POST') {
+      const name = decodeURIComponent(setModelsMatch[1])
+      const set = router.sets[name]
+      if (!set) {
+        sendError(res, 404, `Router set not found: ${name}`, 'invalid_request_error', 'set_not_found', requestId)
+        return
+      }
+      const body = await readJsonBody(req)
+      const provider = typeof body.provider === 'string' ? body.provider.trim() : ''
+      const model = typeof body.model === 'string' ? body.model.trim() : ''
+      if (!provider || !model) {
+        sendError(res, 400, 'Both `provider` and `model` are required', 'invalid_request_error', 'missing_model_fields', requestId)
+        return
+      }
+      // 📖 Reject duplicate entries by provider+model so the set never
+      // 📖 contains the same key twice (would just waste a priority slot).
+      const currentModels = Array.isArray(set.models) ? set.models : []
+      const duplicate = currentModels.find((m) => m.provider === provider && m.model === model)
+      if (duplicate) {
+        sendError(res, 409, `Model already in set: ${provider}/${model}`, 'invalid_request_error', 'duplicate_model', requestId)
+        return
+      }
+      const newEntry = {
+        provider,
+        model,
+        priority: typeof body.priority === 'number' && Number.isFinite(body.priority)
+          ? body.priority
+          : currentModels.length + 1,
+      }
+      const nextModels = [...currentModels, newEntry]
+      // 📖 Re-number priorities so they're always 1..N and contiguous.
+      for (let i = 0; i < nextModels.length; i += 1) {
+        nextModels[i] = { ...nextModels[i], priority: i + 1 }
+      }
+      const nextSets = { ...router.sets, [name]: { ...set, models: nextModels } }
+      const normalized = normalizeRouterConfig({ ...router, sets: nextSets })
+      this.setRouterConfig(normalized)
+      this.saveRouterConfig()
+      this.markSetCustomized()
+      this.broadcast('set_change', { activeSet: this.routerConfig().activeSet, set: name, action: 'add', model: newEntry })
+      sendJson(res, 201, { set: normalized.sets[name], router: normalized }, { 'x-request-id': requestId })
+      return
+    }
+
+    // 📖 DELETE /sets/:name/models — remove a single model from a set.
+    // 📖 The body is `{ provider, model }` (using the body keeps the URL
+    // 📖 short and matches the POST shape).
+    if (setModelsMatch && req.method === 'DELETE') {
+      const name = decodeURIComponent(setModelsMatch[1])
+      const set = router.sets[name]
+      if (!set) {
+        sendError(res, 404, `Router set not found: ${name}`, 'invalid_request_error', 'set_not_found', requestId)
+        return
+      }
+      const body = await readJsonBody(req)
+      const provider = typeof body.provider === 'string' ? body.provider.trim() : ''
+      const model = typeof body.model === 'string' ? body.model.trim() : ''
+      if (!provider || !model) {
+        sendError(res, 400, 'Both `provider` and `model` are required', 'invalid_request_error', 'missing_model_fields', requestId)
+        return
+      }
+      const currentModels = Array.isArray(set.models) ? set.models : []
+      const nextModels = currentModels.filter((m) => !(m.provider === provider && m.model === model))
+      if (nextModels.length === currentModels.length) {
+        sendError(res, 404, `Model not in set: ${provider}/${model}`, 'invalid_request_error', 'model_not_in_set', requestId)
+        return
+      }
+      // 📖 Re-number priorities so they stay 1..N and contiguous.
+      for (let i = 0; i < nextModels.length; i += 1) {
+        nextModels[i] = { ...nextModels[i], priority: i + 1 }
+      }
+      const nextSets = { ...router.sets, [name]: { ...set, models: nextModels } }
+      const normalized = normalizeRouterConfig({ ...router, sets: nextSets })
+      this.setRouterConfig(normalized)
+      this.saveRouterConfig()
+      this.markSetCustomized()
+      this.broadcast('set_change', { activeSet: this.routerConfig().activeSet, set: name, action: 'remove', key: `${provider}/${model}` })
+      sendJson(res, 200, { set: normalized.sets[name], router: normalized }, { 'x-request-id': requestId })
+      return
+    }
+
+    // 📖 POST /sets/:name/reorder — accept a full priority order from the
+    // 📖 client. Body shape: `{ order: ["provider/model", "provider/model"] }`.
+    // 📖 The daemon re-derives the canonical `{ provider, model, priority }`
+    // 📖 objects from the order, so the client never has to know the
+    // 📖 internal `priority` numbering.
+    if (setReorderMatch && req.method === 'POST') {
+      const name = decodeURIComponent(setReorderMatch[1])
+      const set = router.sets[name]
+      if (!set) {
+        sendError(res, 404, `Router set not found: ${name}`, 'invalid_request_error', 'set_not_found', requestId)
+        return
+      }
+      const body = await readJsonBody(req)
+      const order = Array.isArray(body.order) ? body.order : null
+      if (!order) {
+        sendError(res, 400, 'Body must include `order` array', 'invalid_request_error', 'missing_order', requestId)
+        return
+      }
+      const currentModels = Array.isArray(set.models) ? set.models : []
+      const modelByKey = new Map(currentModels.map((m) => [`${m.provider}/${m.model}`, m]))
+      // 📖 Validate that every key in the new order is already in the set.
+      // 📖 Reject unknown keys (would be a silent bug if we just appended).
+      for (const key of order) {
+        if (typeof key !== 'string' || !modelByKey.has(key)) {
+          sendError(res, 400, `Unknown model in order: ${key}`, 'invalid_request_error', 'unknown_model_in_order', requestId)
+          return
+        }
+      }
+      // 📖 Reject the request if the client omitted some keys — reordering
+      // 📖 must be a permutation of the current set, not a partial edit.
+      if (order.length !== currentModels.length) {
+        sendError(res, 400, 'Order must include every model in the set', 'invalid_request_error', 'order_size_mismatch', requestId)
+        return
+      }
+      const nextModels = order.map((key, idx) => ({ ...modelByKey.get(key), priority: idx + 1 }))
+      const nextSets = { ...router.sets, [name]: { ...set, models: nextModels } }
+      const normalized = normalizeRouterConfig({ ...router, sets: nextSets })
+      this.setRouterConfig(normalized)
+      this.saveRouterConfig()
+      this.markSetCustomized()
+      this.broadcast('set_change', { activeSet: this.routerConfig().activeSet, set: name, action: 'reorder', order: order.slice() })
+      sendJson(res, 200, { set: normalized.sets[name], router: normalized }, { 'x-request-id': requestId })
+      return
+    }
+
     sendError(res, 404, 'Not found', 'invalid_request_error', 'not_found', requestId)
+  }
+
+  /**
+   * 📖 POST /sets/:name/sync — re-run the probe-based sync-set pipeline
+   * 📖 against the named set. The pipeline probes up to `maxProbes` model
+   * 📖 candidates with the user's actual API keys and rebuilds the set
+   * 📖 with only the ones that come back 2xx. Returns the new set + a
+   * 📖 sample of probe results so the UI can show "what changed".
+   */
+  async handleSyncSetRequest(req, res, requestId) {
+    const url = req.url ? new URL(req.url, 'http://localhost') : null
+    const pathname = url ? url.pathname : ''
+    const setSyncMatch = pathname.match(/^\/sets\/([^/]+)\/sync$/)
+    if (!setSyncMatch) {
+      sendError(res, 404, 'Not found', 'invalid_request_error', 'not_found', requestId)
+      return
+    }
+    const setName = decodeURIComponent(setSyncMatch[1])
+    try {
+      const { syncSet } = await import('./sync-set.js')
+      // 📖 Bound the probe budget to 16 so a sync from the Web UI never
+      // 📖 takes more than ~60s. The CLI's `free-coding-models --sync-set`
+      // 📖 still uses the larger default for the headless sync pipeline.
+      const result = await syncSet({ name: setName, activate: true, maxProbes: 16, targetCount: 5 })
+      // 📖 sync-set writes to the config file; reload so the daemon's
+      // 📖 in-memory router state picks up the new models immediately
+      // 📖 instead of waiting for the 10s config-reload tick.
+      this.reloadConfigFromDisk()
+      this.markSetCustomized()
+      this.broadcast('set_change', { activeSet: this.routerConfig().activeSet, set: setName, action: 'sync', count: result.selected?.length || 0 })
+      // 📖 Kick a probe burst so the freshly-added models are pinged and
+      // 📖 their circuit-breaker state is up to date by the time the UI
+      // 📖 re-fetches /api/router/stats.
+      void this.runProbeBurst()
+      sendJson(res, 200, {
+        ok: result.ok !== false,
+        name: setName,
+        selected: result.selected || [],
+        reusedExisting: result.reusedExisting || false,
+        probeCount: result.probeResults?.length || 0,
+        probeResults: (result.probeResults || []).slice(0, 24),
+      }, { 'x-request-id': requestId })
+    } catch (err) {
+      sendError(res, 500, `Sync failed: ${err?.message || String(err)}`, 'server_error', 'sync_failed', requestId)
+    }
   }
 
   async handleProbeModeRequest(req, res, requestId) {
@@ -2079,6 +2522,12 @@ class RouterRuntime {
         return
       }
       if (url.pathname === '/sets' || url.pathname.startsWith('/sets/')) {
+        // 📖 /sets/:name/sync has a different return type (rebuilds the
+        // 📖 set from probes) so it gets its own handler.
+        if (/^\/sets\/[^/]+\/sync$/.test(url.pathname) && req.method === 'POST') {
+          await this.handleSyncSetRequest(req, res, requestId)
+          return
+        }
         await this.handleSetsRequest(req, res, url, requestId)
         return
       }
@@ -2086,6 +2535,32 @@ class RouterRuntime {
       // ─── Web Dashboard API endpoints ───────────────────────────────────────
       if (req.method === 'GET' && url.pathname === '/api/models') {
         sendJson(res, 200, getWebModelsPayload(this), { 'x-request-id': requestId })
+        return
+      }
+      // 📖 /api/router/catalog — lightweight catalog of routeable models for
+      // 📖 the Web Router Dashboard's "Add model" picker. Returns one row
+      // 📖 per (provider, model) with `key`, label, tier, ctx. We filter to
+      // 📖 routeable providers only so the picker never offers a model the
+      // 📖 daemon cannot actually proxy.
+      if (req.method === 'GET' && url.pathname === '/api/router/catalog') {
+        const rows = []
+        for (const [providerKey, source] of Object.entries(sources)) {
+          if (!isRouteableProvider(providerKey)) continue
+          if (!Array.isArray(source.models)) continue
+          for (const [modelId, label, tier, sweScore, ctx] of source.models) {
+            rows.push({
+              key: `${providerKey}/${modelId}`,
+              provider: providerKey,
+              model: modelId,
+              label: label || modelId,
+              tier: tier || null,
+              sweScore: typeof sweScore === 'number' ? sweScore : null,
+              ctx: ctx || null,
+              hasKey: !!this.getApiKeyForProvider(providerKey),
+            })
+          }
+        }
+        sendJson(res, 200, { models: rows, count: rows.length }, { 'x-request-id': requestId })
         return
       }
       if (req.method === 'GET' && url.pathname === '/api/state') {
@@ -2373,17 +2848,48 @@ class RouterRuntime {
   }
 }
 
+// 📖 Pinned picks: only used as a *tie-breaker* when multiple models have
+// 📖 identical (tier, sweScore, latency) — never a hard requirement, so
+// 📖 a user whose NVIDIA key is dead still gets a working set.
 const PREFERRED_DEFAULT_MODELS = [
-  { provider: 'nvidia', model: 'minimaxai/minimax-m2.7' },
-  { provider: 'nvidia', model: 'z-ai/glm-5.1' },
-  { provider: 'nvidia', model: 'deepseek-ai/deepseek-v4-flash' },
-  { provider: 'nvidia', model: 'openai/gpt-oss-120b' },
+  { provider: 'groq',     model: 'llama-3.3-70b-versatile' },
+  { provider: 'groq',     model: 'openai/gpt-oss-120b' },
+  { provider: 'cerebras', model: 'llama3.1-70b' },
+  { provider: 'nvidia',   model: 'deepseek-ai/deepseek-v4-flash' },
+  { provider: 'cerebras', model: 'qwen-3-235b-a7b' },
+  { provider: 'nvidia',   model: 'openai/gpt-oss-120b' },
+  { provider: 'groq',     model: 'llama-3.1-8b-instant' },
+  { provider: 'nvidia',   model: 'minimaxai/minimax-m2.7' },
 ]
 
-export function buildDefaultRouterSet(config = {}, maxModels = 5) {
+/**
+ * 📖 buildDefaultRouterSet picks the first-time set the daemon creates when
+ * 📖 the user has no router config yet. The new behavior is *probe-driven*:
+ * 📖 every candidate model is sent a real chat-completion ping (1 token)
+ * 📖 against the user's actual API key. Models that come back 2xx with a
+ * 📖 reasonable latency go to the top of the list. Models that auth-fail,
+ * 📖 timeout, or 5xx are de-prioritized so a new user with a half-broken
+ * 📖 key set still gets a working default.
+ *
+ * 📖 The probe runs sequentially with a short timeout (1.5s per model) and
+ * 📖 is bounded to ~24 candidates so first-time start stays snappy. If no
+ * 📖 probe fn is provided (e.g. in unit tests) we fall back to the static
+ * 📖 tier-based ordering from the old logic.
+ *
+ * @param {object} config
+ * @param {number} maxModels
+ * @param {object} [options] { probeFn: async (entry) => ({ ok, latencyMs, code }) }
+ * @returns {{ name: string, models: Array, created: string }}
+ */
+export async function buildDefaultRouterSet(config = {}, maxModels = 5, options = {}) {
+  const probeFn = typeof options.probeFn === 'function' ? options.probeFn : null
+  const probeTimeoutMs = typeof options.probeTimeoutMs === 'number' ? options.probeTimeoutMs : 1500
+  const probeBudget = typeof options.probeBudget === 'number' ? options.probeBudget : 24
+
   const keyedProviders = new Set(Object.entries(config.apiKeys || {})
     .filter(([, value]) => (Array.isArray(value) ? value.length > 0 : typeof value === 'string' && value.trim()))
     .map(([provider]) => provider))
+
   const entries = []
   for (const [providerKey, source] of Object.entries(sources)) {
     if (!isRouteableProvider(providerKey)) continue
@@ -2399,29 +2905,101 @@ export function buildDefaultRouterSet(config = {}, maxModels = 5) {
       })
     }
   }
-  const preferred = entries.some((entry) => entry.hasKey)
-    ? entries.filter((entry) => entry.hasKey)
-    : entries
-  const pinned = []
-  const allRemaining = [...entries]
-  for (const pref of PREFERRED_DEFAULT_MODELS) {
-    const idx = allRemaining.findIndex((e) => e.provider === pref.provider && e.model === pref.model)
-    if (idx >= 0) {
-      pinned.push(allRemaining.splice(idx, 1)[0])
-    }
+
+  // 📖 Tier rank for sorting (lower index = better).
+  const tierRank = (tier) => {
+    const idx = TIER_ORDER.indexOf(tier)
+    return idx === -1 ? TIER_ORDER.length : idx
   }
-  const remaining = preferred.filter((e) => !pinned.some((p) => p.provider === e.provider && p.model === e.model))
-  remaining.sort((a, b) => {
-    const tierCmp = TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier)
+
+  // 📖 Static fallback ordering (the pre-probe behavior). Used when no probe
+  // 📖 fn is supplied OR when the probe returns no successful candidates.
+  const staticOrder = (a, b) => {
+    if (a.hasKey !== b.hasKey) return a.hasKey ? -1 : 1
+    const tierCmp = tierRank(a.tier) - tierRank(b.tier)
     if (tierCmp !== 0) return tierCmp
     const sweA = Number.parseFloat(a.sweScore) || 0
     const sweB = Number.parseFloat(b.sweScore) || 0
     return sweB - sweA
-  })
-  const ordered = [...pinned, ...remaining]
+  }
+
+  // 📖 Probe each candidate when a probe fn is available. Successful +
+  // 📖 fast probes are pinned to the top; failed probes fall back to the
+  // 📖 static ordering so the user is never left with an empty set.
+  let probeResults = new Map()
+  if (probeFn) {
+    const candidates = entries
+      .filter((e) => e.hasKey)
+      .sort(staticOrder)
+      .slice(0, probeBudget)
+    const results = await Promise.all(candidates.map(async (entry) => {
+      try {
+        const result = await Promise.race([
+          probeFn(entry),
+          new Promise((resolve) => setTimeout(() => resolve({ ok: false, code: 'TIMEOUT', latencyMs: probeTimeoutMs }), probeTimeoutMs)),
+        ])
+        return { entry, result: result || { ok: false, code: 'NO_RESULT' } }
+      } catch (err) {
+        return { entry, result: { ok: false, code: 'ERR', error: err?.message || String(err) } }
+      }
+    }))
+    for (const { entry, result } of results) {
+      probeResults.set(`${entry.provider}/${entry.model}`, result)
+    }
+  }
+
+  const probeScore = (entry) => {
+    const result = probeResults.get(`${entry.provider}/${entry.model}`)
+    if (!result) return null
+    if (result.ok !== true) return null
+    const latency = Number.isFinite(result.latencyMs) ? result.latencyMs : 9999
+    // 📖 Higher is better: tier weight + speed bonus. We use tier rank to
+    // 📖 make sure S+ and S still outrank A even when A is faster.
+    const tierWeight = (TIER_ORDER.length - tierRank(entry.tier)) * 1000
+    const speedBonus = Math.max(0, 5000 - latency)
+    return tierWeight + speedBonus
+  }
+
+  const working = entries
+    .map((entry) => ({ entry, score: probeScore(entry) }))
+    .filter((x) => x.score != null)
+    .sort((a, b) => b.score - a.score)
+
+  const failing = entries
+    .filter((e) => !probeResults.has(`${e.provider}/${e.model}`) || probeScore(e) == null)
+    .sort(staticOrder)
+
+  // 📖 Build the final order: proven-working models first, then the static
+  // 📖 fallback, then pinned popular models as a safety net so the user
+  // 📖 always sees a populated set on first start.
+  const used = new Set()
+  const ordered = []
+  for (const { entry } of working) {
+    const key = `${entry.provider}/${entry.model}`
+    if (used.has(key)) continue
+    used.add(key)
+    ordered.push(entry)
+  }
+  for (const entry of failing) {
+    const key = `${entry.provider}/${entry.model}`
+    if (used.has(key)) continue
+    used.add(key)
+    ordered.push(entry)
+  }
+  for (const pref of PREFERRED_DEFAULT_MODELS) {
+    const key = `${pref.provider}/${pref.model}`
+    if (used.has(key)) continue
+    const idx = ordered.findIndex((e) => e.provider === pref.provider && e.model === pref.model)
+    if (idx >= 0) {
+      const [picked] = ordered.splice(idx, 1)
+      used.add(key)
+      ordered.push(picked)
+    }
+  }
+
   return {
     name: DEFAULT_ROUTER_SETTINGS.activeSet,
-    models: ordered.slice(0, maxModels).map((entry, index) => ({
+    models: ordered.slice(0, Math.max(1, maxModels)).map((entry, index) => ({
       provider: entry.provider,
       model: entry.model,
       priority: index + 1,
@@ -2451,7 +3029,113 @@ export function createRouterRuntimeForTest({ config, port = 0, logger = null, to
   })
 }
 
-function ensureRouterConfigForDaemon(config, skipSave = false) {
+/**
+ * 📖 createDefaultProbeFn — used by buildDefaultRouterSet to find models
+ * 📖 that actually work with the user's API keys. Returns an async probe
+ * 📖 `(entry) => { ok, latencyMs, code }` that posts a 1-token chat-
+ * 📖 completion to the provider's URL and treats 2xx as "working".
+ *
+ * 📖 This is what powers the M5 "default to working models" promise: a new
+ * 📖 user with a half-broken key set still gets a default router set made
+ * 📖 of models that come back 200, instead of a list of pinned NVIDIA
+ * 📖 models that all 401.
+ *
+ * 📖 The probe is best-effort: it never throws, it just times out after
+ * 📖 `probeTimeoutMs` and the caller treats timeouts as a failed probe.
+ *
+ * @returns {(entry: { provider: string, model: string }) => Promise<{ ok: boolean, code: string|number, latencyMs: number }>}
+ */
+function createDefaultProbeFn(apiKeys) {
+  return async (entry) => {
+    const { provider, model } = entry
+    if (!isRouteableProvider(provider)) return { ok: false, code: 'NOT_ROUTEABLE', latencyMs: 0 }
+    const url = resolveProviderUrl(provider)
+    if (!url) return { ok: false, code: 'NO_URL', latencyMs: 0 }
+    const apiKey = getApiKey({ apiKeys: apiKeys || {} }, provider) || ''
+    if (!apiKey) return { ok: false, code: 'NO_KEY', latencyMs: 0 }
+    const apiModelId = provider === 'zai' ? model.replace(/^zai\//, '') : model
+    const probeBody = buildChatCompletionPingBody(apiModelId, {}, {
+      disableThinking: !disabledThinkingUnsupportedProviders.has(provider),
+    })
+    const headers = { 'Content-Type': 'application/json' }
+    if (provider === 'cloudflare') {
+      // 📖 Cloudflare uses account_id in the URL — resolveCloudflareUrl is
+      // 📖 already imported. We just need the standard Bearer header.
+      headers.Authorization = `Bearer ${apiKey}`
+    } else if (provider === 'replicate') {
+      headers.Authorization = `Token ${apiKey}`
+      headers.Prefer = 'wait=4'
+    } else {
+      headers.Authorization = `Bearer ${apiKey}`
+      if (provider === 'openrouter') {
+        headers['HTTP-Referer'] = 'https://github.com/vava-nessa/free-coding-models'
+        headers['X-Title'] = 'free-coding-models'
+      }
+    }
+    const started = Date.now()
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 1500)
+      const resp = await fetch(resolveProviderUrl(provider) || url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(probeBody),
+        signal: controller.signal,
+      })
+      clearTimeout(timer)
+      const latencyMs = Date.now() - started
+      const code = resp.status
+      return { ok: resp.ok, code, latencyMs }
+    } catch (err) {
+      return { ok: false, code: err?.name === 'AbortError' ? 'TIMEOUT' : 'ERR', latencyMs: Date.now() - started, error: err?.message }
+    }
+  }
+}
+
+function buildDefaultRouterSetSync(config = {}, maxModels = 5) {
+  // 📖 Synchronous fallback used when async probing isn't available (e.g.
+  // 📖 routerConfig() getter, which is on the hot path). Falls back to the
+  // 📖 static tier-based ordering. The async probed version is the one
+  // 📖 used at first daemon start; this sync version exists so the router
+  // 📖 still works even before the probe completes.
+  const keyedProviders = new Set(Object.entries(config.apiKeys || {})
+    .filter(([, value]) => (Array.isArray(value) ? value.length > 0 : typeof value === 'string' && value.trim()))
+    .map(([provider]) => provider))
+  const entries = []
+  for (const [providerKey, source] of Object.entries(sources)) {
+    if (!isRouteableProvider(providerKey)) continue
+    for (const [model, label, tier, sweScore, ctx] of source.models || []) {
+      entries.push({ provider: providerKey, model, label, tier, sweScore, ctx, hasKey: keyedProviders.has(providerKey) })
+    }
+  }
+  const preferred = entries.some((e) => e.hasKey) ? entries.filter((e) => e.hasKey) : entries
+  const pinned = []
+  const allRemaining = [...entries]
+  for (const pref of PREFERRED_DEFAULT_MODELS) {
+    const idx = allRemaining.findIndex((e) => e.provider === pref.provider && e.model === pref.model)
+    if (idx >= 0) pinned.push(allRemaining.splice(idx, 1)[0])
+  }
+  const remaining = preferred.filter((e) => !pinned.some((p) => p.provider === e.provider && p.model === e.model))
+  remaining.sort((a, b) => {
+    const tierCmp = TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier)
+    if (tierCmp !== 0) return tierCmp
+    const sweA = Number.parseFloat(a.sweScore) || 0
+    const sweB = Number.parseFloat(b.sweScore) || 0
+    return sweB - sweA
+  })
+  const ordered = [...pinned, ...remaining]
+  return {
+    name: DEFAULT_ROUTER_SETTINGS.activeSet,
+    models: ordered.slice(0, maxModels).map((entry, index) => ({
+      provider: entry.provider,
+      model: entry.model,
+      priority: index + 1,
+    })),
+    created: nowIso(),
+  }
+}
+
+async function ensureRouterConfigForDaemon(config, skipSave = false) {
   // 📖 Preserve existing named sets (e.g., created by sync-set) to avoid overwriting
   // 📖 user-created configurations. Only rebuild from favorites/defaults when no
   // 📖 sets exist at all (fresh install).
@@ -2465,7 +3149,17 @@ function ensureRouterConfigForDaemon(config, skipSave = false) {
     activeSet = { name: existingActiveSet, models: existingSetData.models, created: existingSetData.created }
   } else {
     const favSet = buildRouterSetFromFavorites(config)
-    activeSet = favSet || buildDefaultRouterSet(config)
+    // 📖 The async probed version of buildDefaultRouterSet is preferred;
+    // 📖 on failure it falls back to the sync static ordering.
+    try {
+      activeSet = favSet || await buildDefaultRouterSet(config, 5, {
+        probeFn: createDefaultProbeFn(config.apiKeys || {}),
+        probeTimeoutMs: 1500,
+        probeBudget: 24,
+      })
+    } catch {
+      activeSet = favSet || buildDefaultRouterSetSync(config)
+    }
   }
   config.router = normalizeRouterConfig({
     ...DEFAULT_ROUTER_SETTINGS,
@@ -2550,7 +3244,7 @@ async function listenWithFallback(server, preferredPort, logger, host = '127.0.0
 
 export async function runRouterDaemon() {
   const config = loadConfig()
-  const router = ensureRouterConfigForDaemon(config)
+  const router = await ensureRouterConfigForDaemon(config)
   const logger = new RouterLogger(ROUTER_LOG_PATH, router.logLevel)
   const runtime = new RouterRuntime({ config, port: router.port, logger })
   runtime.installProcessSafety()
@@ -2579,6 +3273,34 @@ export async function runRouterDaemon() {
   runtime.tokenFlushTimer = setInterval(() => runtime.tokenTracker.flush(), TOKEN_FLUSH_INTERVAL_MS)
   void runtime.runProbeBurst()
   runtime.scheduleProbeLoop()
+  // 📖 Auto-heal: wait for the first probe burst to populate health data,
+  // 📖 then swap any broken models (AUTH_ERROR / STALE) for working
+  // 📖 alternatives. This is the M6 promise: the Playground and Router
+  // 📖 Dashboard both start with a usable set by default. The user can
+  // 📖 disable auto-heal by editing the active set (the first manual edit
+  // 📖 sets `router.userCustomized = true` and auto-heal becomes a no-op).
+  // 📖 We run two passes: one after the initial probe (8s) and another
+  // 📖 after the replacement models have been probed too (24s). This
+  // 📖 handles the case where the first replacement is itself broken
+  // 📖 (e.g. a different model of a provider whose key is dead).
+  void (async () => {
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 8000))
+      const first = await runtime.autoHealActiveSet()
+      if (first?.ok && first.replaced > 0) {
+        // 📖 Re-probe the new set, wait for the probes to land, then
+        // 📖 check again in case the first replacement was also broken.
+        void runtime.runProbeBurst()
+        await new Promise((resolve) => setTimeout(resolve, 16000))
+        const second = await runtime.autoHealActiveSet()
+        if (second?.ok && second.replaced > 0) {
+          void runtime.runProbeBurst()
+        }
+      }
+    } catch (err) {
+      runtime.logger.warn('autoHeal failed', { error: err?.message || String(err) })
+    }
+  })()
   return runtime
 }
 

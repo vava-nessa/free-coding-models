@@ -167,6 +167,12 @@ export const DEFAULT_ROUTER_SETTINGS = Object.freeze({
     priorityWeight: 0.2,
   }),
   logLevel: 'info',
+  // 📖 autoHeal — when true (default), the daemon replaces broken models
+  // 📖 in the active set on startup (AUTH_ERROR / TIMEOUT / 5xx) with
+  // 📖 working alternatives from the same provider. Disabled the moment
+  // 📖 the user manually edits the set (reorder/add/remove), so the
+  // 📖 user always has the final say.
+  autoHeal: true,
   // 📖 Default pre-prompt injected as the first system message on every
   // 📖 /v1/chat/completions request the router proxies. Frames the assistant
   // 📖 as the FCM routing agent. Users can disable it or replace it from the
@@ -395,6 +401,15 @@ export function normalizeRouterConfig(router) {
     scoring: normalizeRouterScoring(router.scoring),
     logLevel,
     prePrompt: normalizeRouterPrePrompt(router.prePrompt),
+    // 📖 autoHeal defaults to true. Once the user explicitly edits a set
+    // 📖 (reorder/add/remove/sync) the daemon flips this to false so the
+    // 📖 user's manual choices are not undone on the next start.
+    autoHeal: router.autoHeal !== false,
+    // 📖 userCustomized marks the active set as "edited by the user".
+    // 📖 It is set the first time any write to the active set goes
+    // 📖 through and disables auto-heal for that set. Cleared if the
+    // 📖 user explicitly resets the set.
+    userCustomized: router.userCustomized === true,
   }
 }
 

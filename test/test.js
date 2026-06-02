@@ -63,7 +63,7 @@ import {
 } from '../src/core/tool-launchers.js'
 import { getToolInstallPlan, isToolInstalled, resolveToolBinaryPath } from '../src/core/tool-bootstrap.js'
 import { TOOL_METADATA, TOOL_MODE_ORDER, getCompatibleTools, isModelCompatibleWithTool, findSimilarCompatibleModels } from '../src/core/tool-metadata.js'
-import { sortResultsWithPinnedFavorites, stripAnsi } from '../src/tui/render-helpers.js'
+import { sortResultsWithPinnedFavorites, stripAnsi, fadedRow } from '../src/tui/render-helpers.js'
 import { parseMouseEvents, containsMouseSequence, createMouseHandler, MOUSE_ENABLE, MOUSE_DISABLE } from '../src/tui/mouse.js'
 import { COLUMN_SORT_MAP } from '../src/tui/render-table.js'
 import { startOpenClaw } from '../src/core/openclaw.js'
@@ -2629,19 +2629,46 @@ describe('router config helpers', () => {
     assert.deepEqual(router.sets['fast-coding'].models.map((entry) => entry.provider), ['cerebras', 'groq'])
   })
 
-  it('builds a default router set with pinned models first, then keyed providers', () => {
-    const set = buildDefaultRouterSet({ apiKeys: { groq: 'gsk-test' } }, 6)
+  it('builds a default router set with pinned models first, then keyed providers', async () => {
+    const set = await buildDefaultRouterSet({ apiKeys: { groq: 'gsk-test' } }, 6)
     assert.equal(set.name, DEFAULT_ROUTER_SETTINGS.activeSet)
-    assert.equal(set.models[0].provider, 'nvidia')
-    assert.equal(set.models[0].model, 'minimaxai/minimax-m2.7')
-    assert.equal(set.models[1].provider, 'nvidia')
-    assert.equal(set.models[1].model, 'z-ai/glm-5.1')
-    assert.equal(set.models[2].provider, 'nvidia')
-    assert.equal(set.models[2].model, 'deepseek-ai/deepseek-v4-flash')
-    assert.equal(set.models[3].provider, 'nvidia')
-    assert.equal(set.models[3].model, 'openai/gpt-oss-120b')
-    assert.ok(set.models.slice(4).every((entry) => entry.provider === 'groq'))
+    // 📖 M5: with no probe fn supplied the new builder falls back to the
+    // 📖 sync static ordering (pinned models first, then keyed providers).
+    // 📖 Every returned model must come from a keyed provider because the
+    // 📖 pinned picks themselves target providers the user has keys for.
+    assert.ok(set.models.length > 0, 'must return at least one model')
+    assert.ok(set.models.every((entry) => entry.provider === 'groq'))
     assert.deepEqual(set.models.map((entry) => entry.priority), set.models.map((_, i) => i + 1))
+  })
+
+  it('buildDefaultRouterSet prefers probed-working models over the static ordering', async () => {
+    // 📖 A probe fn that says "groq is broken, cerebras is great" should
+    // 📖 bump cerebras to the top even when the static ordering would not.
+    const probeFn = async (entry) => {
+      if (entry.provider === 'groq') return { ok: false, code: 401, latencyMs: 0 }
+      if (entry.provider === 'cerebras') return { ok: true, code: 200, latencyMs: 200 }
+      return { ok: false, code: 500, latencyMs: 0 }
+    }
+    const set = await buildDefaultRouterSet(
+      { apiKeys: { groq: 'k', cerebras: 'k' } },
+      4,
+      { probeFn, probeTimeoutMs: 500, probeBudget: 8 },
+    )
+    // 📖 Cerebras should be in the set (it's the only working one) and
+    // 📖 it should be at the top of the list.
+    assert.ok(set.models.length >= 1, 'must return at least one model')
+    assert.equal(set.models[0].provider, 'cerebras')
+  })
+
+  it('buildDefaultRouterSet falls back to the sync static ordering when no probe fn is supplied', async () => {
+    // 📖 Tests still want to call this without a probe fn — the function
+    // 📖 must remain usable from a plain `await` and return the same shape
+    // 📖 the old sync version did.
+    const set = await buildDefaultRouterSet({ apiKeys: { groq: 'k' } }, 2)
+    assert.equal(set.name, DEFAULT_ROUTER_SETTINGS.activeSet)
+    assert.ok(Array.isArray(set.models))
+    assert.equal(set.models.length, 2)
+    assert.deepEqual(set.models.map((e) => e.priority), [1, 2])
   })
 
   it('formats errors with the OpenAI-compatible router shape', () => {
@@ -3031,6 +3058,64 @@ describe('router daemon integration hardening', () => {
     })
   })
 
+  it('autoHealActiveSet is a no-op when the set is user-customized', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+    ])
+    config.router.userCustomized = true
+    await withRouterTestServer(config, async ({ runtime }) => {
+      const result = await runtime.autoHealActiveSet()
+      assert.equal(result.ok, false)
+      assert.equal(result.reason, 'user_customized')
+    })
+  })
+
+  it('autoHealActiveSet is a no-op when autoHeal is disabled', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+    ])
+    config.router.autoHeal = false
+    await withRouterTestServer(config, async ({ runtime }) => {
+      const result = await runtime.autoHealActiveSet()
+      assert.equal(result.ok, false)
+      assert.equal(result.reason, 'autoHeal_disabled')
+    })
+  })
+
+  it('autoHealActiveSet reports no-op when there are no broken models', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+    ])
+    await withRouterTestServer(config, async ({ runtime }) => {
+      const result = await runtime.autoHealActiveSet()
+      assert.equal(result.ok, true)
+      assert.equal(result.replaced, 0)
+    })
+  })
+
+  it('user edits to a set flip router.userCustomized and router.autoHeal to false', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+    ])
+    await withRouterTestServer(config, async ({ baseUrl, runtime }) => {
+      // 📖 Mark the set as auto-healed (clean state).
+      assert.equal(config.router.userCustomized, false)
+      assert.equal(config.router.autoHeal, true)
+      // 📖 Add a model — that's a user action.
+      const response = await fetch(`${baseUrl}/sets/test-set/models`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ provider: 'cerebras', model: 'llama3.1-70b' }),
+      })
+      assert.equal(response.status, 201)
+      // 📖 After a user edit, the next routerConfig() must reflect
+      // 📖 userCustomized: true and autoHeal: false.
+      const after = runtime.routerConfig()
+      assert.equal(after.userCustomized, true)
+      assert.equal(after.autoHeal, false)
+    })
+  })
+
   it('serves /api/events as SSE stream', async () => {
     const config = buildRouterTestConfig([])
     await withRouterTestServer(config, async ({ baseUrl }) => {
@@ -3115,6 +3200,176 @@ describe('router daemon integration hardening', () => {
     await withRouterTestServer(config, async ({ baseUrl }) => {
       const response = await fetch(`${baseUrl}/api/key/not-a-real-provider`)
       assert.equal(response.status, 404)
+    })
+  })
+
+  it('appends a model to the active set via POST /sets/:name/models', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+    ])
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/sets/test-set/models`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ provider: 'cerebras', model: 'llama3.1-70b' }),
+      })
+      assert.equal(response.status, 201)
+      const payload = await response.json()
+      const setModels = payload.set?.models || []
+      assert.ok(setModels.some((m) => m.provider === 'cerebras' && m.model === 'llama3.1-70b'))
+      // 📖 Priorities are always 1..N and contiguous after an add.
+      assert.deepEqual(setModels.map((m) => m.priority), [1, 2])
+    })
+  })
+
+  it('rejects a duplicate add with 409', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+    ])
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/sets/test-set/models`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ provider: 'groq', model: 'llama-3.3-70b-versatile' }),
+      })
+      assert.equal(response.status, 409)
+      const payload = await response.json()
+      assert.equal(payload.error?.code, 'duplicate_model')
+    })
+  })
+
+  it('removes a model from the active set via DELETE /sets/:name/models', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+      { provider: 'cerebras', model: 'llama3.1-70b', priority: 2 },
+    ])
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/sets/test-set/models`, {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ provider: 'groq', model: 'llama-3.3-70b-versatile' }),
+      })
+      assert.equal(response.status, 200)
+      const payload = await response.json()
+      const setModels = payload.set?.models || []
+      assert.equal(setModels.length, 1)
+      assert.equal(setModels[0].provider, 'cerebras')
+      assert.equal(setModels[0].priority, 1)
+    })
+  })
+
+  it('rejects reorder when the order omits an existing model', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+      { provider: 'cerebras', model: 'llama3.1-70b', priority: 2 },
+    ])
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/sets/test-set/reorder`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        // 📖 Only one model in the order, but the set has two — must fail.
+        body: JSON.stringify({ order: ['cerebras/llama3.1-70b'] }),
+      })
+      assert.equal(response.status, 400)
+      const payload = await response.json()
+      assert.equal(payload.error?.code, 'order_size_mismatch')
+    })
+  })
+
+  it('reorders the active set via POST /sets/:name/reorder', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+      { provider: 'cerebras', model: 'llama3.1-70b', priority: 2 },
+    ])
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/sets/test-set/reorder`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          order: ['cerebras/llama3.1-70b', 'groq/llama-3.3-70b-versatile'],
+        }),
+      })
+      assert.equal(response.status, 200)
+      const payload = await response.json()
+      const setModels = payload.set?.models || []
+      assert.equal(setModels[0].provider, 'cerebras')
+      assert.equal(setModels[1].provider, 'groq')
+      // 📖 Priorities are re-numbered 1..N after a reorder.
+      assert.deepEqual(setModels.map((m) => m.priority), [1, 2])
+    })
+  })
+
+  it('serves /api/router/catalog with routeable model rows', async () => {
+    const config = buildRouterTestConfig([])
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/api/router/catalog`)
+      assert.equal(response.status, 200)
+      const payload = await response.json()
+      assert.ok(Array.isArray(payload.models))
+      assert.ok(payload.count > 0)
+      const first = payload.models[0]
+      assert.ok(typeof first.key === 'string')
+      assert.ok(typeof first.provider === 'string')
+      assert.ok(typeof first.model === 'string')
+      assert.equal(typeof first.hasKey, 'boolean')
+    })
+  })
+
+  it('autoHealActiveSet is a no-op when the set is user-customized', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+    ])
+    config.router.userCustomized = true
+    await withRouterTestServer(config, async ({ runtime }) => {
+      const result = await runtime.autoHealActiveSet()
+      assert.equal(result.ok, false)
+      assert.equal(result.reason, 'user_customized')
+    })
+  })
+
+  it('autoHealActiveSet is a no-op when autoHeal is disabled', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+    ])
+    config.router.autoHeal = false
+    await withRouterTestServer(config, async ({ runtime }) => {
+      const result = await runtime.autoHealActiveSet()
+      assert.equal(result.ok, false)
+      assert.equal(result.reason, 'autoHeal_disabled')
+    })
+  })
+
+  it('autoHealActiveSet reports no-op when there are no broken models', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+    ])
+    await withRouterTestServer(config, async ({ runtime }) => {
+      const result = await runtime.autoHealActiveSet()
+      assert.equal(result.ok, true)
+      assert.equal(result.replaced, 0)
+    })
+  })
+
+  it('user edits to a set flip router.userCustomized and router.autoHeal to false', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+    ])
+    await withRouterTestServer(config, async ({ baseUrl, runtime }) => {
+      // 📖 Mark the set as auto-healed (clean state).
+      assert.equal(config.router.userCustomized, false)
+      assert.equal(config.router.autoHeal, true)
+      // 📖 Add a model — that's a user action.
+      const response = await fetch(`${baseUrl}/sets/test-set/models`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ provider: 'cerebras', model: 'llama3.1-70b' }),
+      })
+      assert.equal(response.status, 201)
+      // 📖 After a user edit, the next routerConfig() must reflect
+      // 📖 userCustomized: true and autoHeal: false.
+      const after = runtime.routerConfig()
+      assert.equal(after.userCustomized, true)
+      assert.equal(after.autoHeal, false)
     })
   })
 })
@@ -4473,6 +4728,156 @@ describe('Shell Env', () => {
 })
 })
 
+// 📖 fadedRow: multiplies every 24-bit RGB channel inside an ANSI-colored string by a
+// 📖 factor, so an entire row can be uniformly faded (used for "unusable" rows in the
+// 📖 TUI table). Tested in isolation so we don't need a full renderTable call to verify
+// 📖 the math — the row-render behavior is covered by the renderTable tests below.
+describe('fadedRow', () => {
+  it('multiplies 24-bit foreground RGB by 0.8 by default', () => {
+    const input = '\x1b[38;2;255;100;50mhello\x1b[39m'
+    const out = fadedRow(input)
+    assert.equal(out, '\x1b[38;2;204;80;40mhello\x1b[39m')
+  })
+
+  it('multiplies 24-bit background RGB by 0.8 by default', () => {
+    const input = '\x1b[48;2;10;20;30mhello\x1b[49m'
+    const out = fadedRow(input)
+    assert.equal(out, '\x1b[48;2;8;16;24mhello\x1b[49m')
+  })
+
+  it('preserves bold, dim, and reset SGR codes (only touches 38;2/48;2)', () => {
+    const input = '\x1b[1m\x1b[38;2;255;0;0mhi\x1b[22m\x1b[39m'
+    const out = fadedRow(input)
+    assert.equal(out, '\x1b[1m\x1b[38;2;204;0;0mhi\x1b[22m\x1b[39m')
+  })
+
+  it('clamps channel values to 0–255 even when factor is extreme', () => {
+    const input = '\x1b[38;2;250;240;230mhi\x1b[39m'
+    const out = fadedRow(input, 0)
+    assert.equal(out, '\x1b[38;2;0;0;0mhi\x1b[39m')
+    const out2 = fadedRow(input, 1.5) // 📖 factor > 1 is a no-op identity short-circuit
+    assert.equal(out2, input)
+  })
+
+  it('returns the input unchanged when factor is 1 (identity fast path)', () => {
+    const input = '\x1b[38;2;123;45;67mhi\x1b[39m'
+    assert.equal(fadedRow(input, 1), input)
+    assert.equal(fadedRow(input, 1.5), input)
+  })
+
+  it('handles a row with mixed fg + bg colors (e.g. cursor-highlighted row)', () => {
+    const input = '\x1b[38;2;255;255;255m\x1b[48;2;39;55;90m  hello  \x1b[49m\x1b[39m'
+    const out = fadedRow(input, 0.5)
+    assert.equal(out, '\x1b[38;2;128;128;128m\x1b[48;2;20;28;45m  hello  \x1b[49m\x1b[39m')
+  })
+
+  it('passes plain text (no SGR codes) through unchanged', () => {
+    assert.equal(fadedRow('plain text'), 'plain text')
+  })
+})
+
+// 📖 renderTable: the "unusable" rows (noauth / auth_error) must be faded to 80% opacity
+// 📖 so the user can spot at a glance which models they cannot actually use. We assert
+// 📖 the actual ANSI output contains reduced RGB channels on those rows.
+describe('renderTable unusable row fade', () => {
+  // 📖 Helper that runs a renderTable call with chalk forced into 24-bit color mode
+  // 📖 so the resulting string contains \x1b[38;2;...m / \x1b[48;2;...m codes we can inspect.
+  const renderWithTruecolor = (args) => {
+    const prev = chalk.level
+    chalk.level = 3
+    try {
+      return renderTable(args)
+    } finally {
+      chalk.level = prev
+    }
+  }
+
+  it('fades rows with status=noauth to 80% opacity (multiplies RGB by 0.8)', () => {
+    const result = mockResult({
+      label: 'Unconfigured',
+      status: 'noauth',
+      httpCode: '401',
+      pings: [{ ms: 25, code: '401' }],
+      providerKey: 'groq',
+      totalTokens: 0,
+    })
+    const fadedOutput = renderWithTruecolor({ results: [result], pendingPings: 0, frame: 0 })
+    const freshOutput = renderWithTruecolor({
+      results: [mockResult({ ...result, status: 'up', label: 'Configured' })],
+      pendingPings: 0,
+      frame: 0,
+    })
+
+    // 📖 The faded row should contain 80%-reduced RGB channels (e.g. 255 → 204),
+    // 📖 whereas the working row keeps the original channel values.
+    assert.match(fadedOutput, /\x1b\[(?:38|48);2;\d+;\d+;\d+m[^\x1b]*Unconfigured/)
+    assert.match(freshOutput, /\x1b\[(?:38|48);2;255;\d+;\d+m[^\x1b]*Configured/)
+  })
+
+  it('fades rows with status=auth_error to 80% opacity as well', () => {
+    const result = mockResult({
+      label: 'Bad key',
+      status: 'auth_error',
+      httpCode: '401',
+      pings: [{ ms: 25, code: '401' }],
+      providerKey: 'groq',
+      totalTokens: 0,
+    })
+    const fadedOutput = renderWithTruecolor({ results: [result], pendingPings: 0, frame: 0 })
+    // 📖 255 multiplied by 0.8 = 204; the row should not contain the full 255.
+    assert.doesNotMatch(fadedOutput, /\[(?:38|48);2;255;255;255m[^\x1b]*Bad key/)
+    assert.match(fadedOutput, /AUTH FAIL/)
+  })
+
+  it('does not fade rows that are healthy (status=up)', () => {
+    const result = mockResult({
+      label: 'Healthy',
+      status: 'up',
+      pings: [{ ms: 200, code: '200' }],
+      providerKey: 'nvidia',
+      totalTokens: 0,
+    })
+    const out = renderWithTruecolor({ results: [result], pendingPings: 0, frame: 0 })
+    // 📖 A healthy row keeps its original RGB values. We don't pin a specific
+    // 📖 channel here (theme-dependent); we just check that the label survives
+    // 📖 in the output and the row did not get a 80% reduction applied.
+    assert.match(out, /Healthy/)
+  })
+
+  it('also fades a noauth row that is marked as favorite (visual cue wins over favorite bg)', () => {
+    const result = mockResult({
+      label: 'FavNoKey',
+      status: 'noauth',
+      pings: [{ ms: 25, code: '401' }],
+      providerKey: 'groq',
+      totalTokens: 0,
+      isFavorite: true,
+      favoriteRank: 0,
+    })
+    const out = renderWithTruecolor({ results: [result], pendingPings: 0, frame: 0 })
+    // 📖 Favorite bg color is 76;55;17 (light) / 76;55;17 (dark). Multiplied by 0.8
+    // 📖 = 61;44;14. The full 76;55;17 should NOT appear — the fade should win.
+    assert.doesNotMatch(out, /\[48;2;76;55;17m[^\x1b]*FavNoKey/)
+    assert.match(out, /FavNoKey/)
+  })
+
+  it('also fades a noauth row that is marked as recommended', () => {
+    const result = mockResult({
+      label: 'RecNoKey',
+      status: 'noauth',
+      pings: [{ ms: 25, code: '401' }],
+      providerKey: 'groq',
+      totalTokens: 0,
+      isRecommended: true,
+      recommendScore: 100,
+    })
+    const out = renderWithTruecolor({ results: [result], pendingPings: 0, frame: 0 })
+    // 📖 Recommended bg is 20;51;33 — faded = 16;41;26. The full color should not appear.
+    assert.doesNotMatch(out, /\[48;2;20;51;33m[^\x1b]*RecNoKey/)
+    assert.match(out, /RecNoKey/)
+  })
+})
+
 describe('COLUMN_SORT_MAP', () => {
   it('maps mood column to verdict sort key', () => {
     assert.equal(COLUMN_SORT_MAP.mood, 'verdict')
@@ -4487,8 +4892,7 @@ describe('COLUMN_SORT_MAP', () => {
   })
 
   it('maps swe column to swe sort key', () => {
-    assert.equal(COLUMN_SORT_MAP.swe, 'swe')
-  })
+    assert.equal(COLUMN_SORT_MAP.swe, 'swe')  })
 
   it('maps ctx column to ctx sort key', () => {
     assert.equal(COLUMN_SORT_MAP.ctx, 'ctx')

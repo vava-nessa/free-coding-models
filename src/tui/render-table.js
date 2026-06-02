@@ -17,6 +17,8 @@
  *   - High-visibility active text-filter banner with one-key clear action (`X`)
  *   - Full-width red outdated-version banner when a newer npm release is known
  *   - Distinct auth-failure vs missing-key health labels so configured providers stay honest
+ *   - 80%-opacity row fade for "unusable" models (NO KEY / AUTH FAIL) so the user can spot at a glance
+ *     which rows are not actually reachable, even when the cursor is parked elsewhere
  *
  *   → Functions:
  *   - `renderTable` — Render the full TUI table as a string (no side effects)
@@ -27,7 +29,7 @@
  *   - ../src/tier-colors.js: TIER_COLOR
  *   - ../src/utils.js: getAvg, getVerdict, getUptime, getStabilityScore
  *   - ../src/ping.js: usagePlaceholderForProvider
- *   - ../src/render-helpers.js: calculateViewport, sortResultsWithPinnedFavorites, padEndDisplay
+ *   - ../src/render-helpers.js: calculateViewport, sortResultsWithPinnedFavorites, padEndDisplay, fadedRow
  *
  *   @see bin/free-coding-models.js — main entry point that calls renderTable
  */
@@ -50,7 +52,7 @@ import { TIER_COLOR } from './tier-colors.js'
 import { getAvg, getVerdict, getUptime, getStabilityScore, getVersionStatusInfo } from '../core/utils.js'
 import { usagePlaceholderForProvider } from '../core/ping.js'
 import { formatBenchmarkLatency, formatBenchmarkTps } from '../core/benchmark.js'
-import { calculateViewport, sortResultsWithPinnedFavorites, padEndDisplay, displayWidth, stripAnsi } from './render-helpers.js'
+import { calculateViewport, sortResultsWithPinnedFavorites, padEndDisplay, displayWidth, stripAnsi, fadedRow } from './render-helpers.js'
 import { getToolMeta, TOOL_METADATA, TOOL_MODE_ORDER, isModelCompatibleWithTool } from '../core/tool-metadata.js'
 import { getColumnSpacing } from './ui-config.js'
 import { detectPackageManager, getManualInstallCmd } from '../core/updater.js'
@@ -946,20 +948,33 @@ export function renderTable({
     if (showBenchmarkColumns) rowParts.push(latencyCell, tpsCell)
     const row = '  ' + rowParts.join(COL_SEP)
 
+    // 📖 "Unusable" models (no key / bad key) are visually de-emphasized at the
+    // 📖 row level. The user cannot actually send a request to these models, so
+    // 📖 we drop the whole line to 80% opacity (20% less opaque) so it stands
+    // 📖 out from working rows at a glance, even if the cursor is parked on a
+    // 📖 different model. The cursor always wins so the user never loses track
+    // 📖 of their active selection. fadedRow multiplies every 24-bit RGB
+    // 📖 channel by 0.8 so the result works on every terminal that supports
+    // 📖 truecolor (no reliance on the SGR 2 "faint" code, which is ignored by
+    // 📖 some terminals).
+    const isUnusable = r.status === 'noauth' || r.status === 'auth_error'
+
+    let renderedRow
     if (isCursor) {
-      lines.push(themeColors.bgModelCursor(row))
+      renderedRow = themeColors.bgModelCursor(row)
     } else if (isIncompatible) {
       // 📖 Dark red background for models incompatible with the active tool mode.
       // 📖 This visually warns the user that selecting this model won't work with their current tool.
-      lines.push(chalk.bgRgb(60, 15, 15).rgb(180, 130, 130)(row))
+      renderedRow = chalk.bgRgb(60, 15, 15).rgb(180, 130, 130)(row)
     } else if (r.isRecommended) {
       // 📖 Medium green background for recommended models (distinguishable from favorites)
-      lines.push(themeColors.bgModelRecommended(row))
+      renderedRow = themeColors.bgModelRecommended(row)
     } else if (r.isFavorite) {
-      lines.push(themeColors.bgModelFavorite(row))
+      renderedRow = themeColors.bgModelFavorite(row)
     } else {
-      lines.push(row)
+      renderedRow = row
     }
+    lines.push(isUnusable ? fadedRow(renderedRow, 0.8) : renderedRow)
   }
 
   // 📖 Mouse support: record the 1-based terminal row range of model data rows.

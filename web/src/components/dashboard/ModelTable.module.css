@@ -332,6 +332,19 @@
   color: #888 !important;
 }
 
+/* ─── M4: 80% opacity for "unusable" rows (NO KEY / AUTH FAIL) ───
+   📖 Mirrors the TUI's fadedRow() behavior so the same scan-and-spot
+   📖 UX works on every surface. Applied to the whole <tr> via opacity
+   📖 so it composes cleanly with rank/bench/incompatible styles. The
+   📖 fade is held steady on hover so the "you cannot use this" signal
+   📖 never disappears while the user is checking what is on the row. */
+.unusable {
+  opacity: 0.8;
+}
+.unusable:hover {
+  opacity: 0.8;
+}
+
 /* ─── M3: per-row endpoint install plug ─── */
 .launchCell {
   display: flex;

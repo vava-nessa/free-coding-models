@@ -543,9 +543,12 @@ When a tool mode is active (via `Z`), models incompatible with that tool are hig
 - **Favorites** — star models with `F`, persisted across sessions, default to normal rows, and switch display mode with `Y` (pinned+sticky vs normal rows)
 - **Configured-only default** — only shows providers you have keys for
 - **Keyless latency** — models ping even without an API key (show 🔑 NO KEY)
+- **Unusable row fade** — rows in `NO KEY` or `AUTH FAIL` state are rendered at 80% opacity (20% less opaque) on every surface (TUI + Web + Desktop), so the user can scan the table and instantly see which models they cannot actually use. Composes cleanly with the favorite/recommended/incompatible background tints.
 - **Smart Recommend** — questionnaire picks the best model for your task type
 - **Smart Model Router** — local OpenAI-compatible daemon with model sets, failover, circuit breakers, health probes, and token stats
 - **Playground chat** — multi-turn chat with the router on every surface (TUI `;` / Web Playground nav / `free-coding-models --playground`). Streams responses and shows the routed-via provider/model on every reply.
+- **Auto-heal on startup** — the daemon replaces broken models in the active set (`AUTH_ERROR` / `STALE`) with working alternatives from the same provider first, then cross-provider. The first manual edit disables auto-heal so user choices are preserved. A new user with a half-broken key set lands on a usable default set by the time the dashboard renders.
+- **Web router set manager** — add, remove, drag-and-drop, and probe-sync the active router set from inside the Web Dashboard. The "Sync best models" button re-pings every candidate with the user's actual API keys and rebuilds the set with only models that return 2xx, so a new user lands on a working default set instead of a hardcoded one that 401s.
 - **Router pre-prompt** — a configurable first-class system message injected by the daemon on every `/v1/chat/completions` request it proxies. Default persona introduces the assistant as the FCM routing agent; editable from any surface.
 - **⚡️ Command Palette** — `Ctrl+P` opens a searchable action launcher for filters, sorting, overlays, and quick toggles
 - **Install Endpoints** — push a full provider catalog into any tool's config (from Settings `P` or ⚡️ Command Palette)
