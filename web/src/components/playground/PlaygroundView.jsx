@@ -23,6 +23,8 @@ import {
   IconAlertTriangle,
   IconCopy,
   IconCheck,
+  IconPlayerPlay,
+  IconLoader,
 } from '@tabler/icons-react'
 import styles from './PlaygroundView.module.css'
 
@@ -89,20 +91,29 @@ function MetaChip({ icon, label, tone }) {
   )
 }
 
-function StatusPill({ routerStatus }) {
-  if (!routerStatus) return null
-  if (!routerStatus.running) {
+function StatusPill({ routerStatus, daemonRunning }) {
+  // 📖 Prefer the live daemon state over the stale prop.
+  if (daemonRunning === true) {
     return (
-      <span className={`${styles.metaChip} ${styles.error}`}>
-        <IconAlertTriangle size={11} />
-        Router offline — start it to chat
+      <span className={styles.metaChip}>
+        <IconBolt size={11} />
+        Router online
       </span>
     )
   }
+  if (daemonRunning === false) {
+    return (
+      <span className={`${styles.metaChip} ${styles.error}`}>
+        <IconAlertTriangle size={11} />
+        Router offline
+      </span>
+    )
+  }
+  // null = checking...
   return (
     <span className={styles.metaChip}>
-      <IconBolt size={11} />
-      {routerStatus.activeSet || 'fcm'} · port {routerStatus.port || 19280}
+      <IconLoader size={11} className={styles.spin} />
+      Checking router…
     </span>
   )
 }
@@ -110,7 +121,7 @@ function StatusPill({ routerStatus }) {
 export default function PlaygroundView({ onClose, onToast, models, routerStatus }) {
   const [messages, setMessages] = useState([]) // { role, content, meta? }
   const [input, setInput] = useState('')
-  const [model, setModel] = useState('fcm')
+  const [model, setModel] = useState(null) // null = computing best model
   const [streamOn, setStreamOn] = useState(true)
   const [prePromptEnabled, setPrePromptEnabled] = useState(true)
   const [prePromptText, setPrePromptText] = useState('')
@@ -119,6 +130,16 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
   const [copiedIdx, setCopiedIdx] = useState(null)
   const abortRef = useRef(null)
   const transcriptRef = useRef(null)
+
+  // 📖 Daemon state: null = checking, true = running, false = down
+  const [daemonRunning, setDaemonRunning] = useState(
+    routerStatus?.running === true ? true : null
+  )
+  const [daemonStarting, setDaemonStarting] = useState(false)
+  const [autoStartSec, setAutoStartSec] = useState(5)
+  const cooldownRef = useRef(null)
+  const daemonCheckRef = useRef(null)
+  const autoStartTriggered = useRef(false)
 
   // 📖 Fetch the pre-prompt once on mount so the toggle shows the real
   // 📖 value and the indicator matches what the router will inject.
@@ -133,6 +154,131 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
       })
       .catch(() => {})
   }, [])
+
+  // 📖 Smart model selection on mount: pick the best "up" model with
+  // 📖 an API key, preferring lower latency and higher tier. Falls back
+  // 📖 to "fcm" (the auto-router) only if the daemon is already running
+  // 📖 or no working model is found. This ensures the playground works
+  // 📖 immediately on open, even without the router daemon.
+  useEffect(() => {
+    if (model !== null) return // already resolved
+    const upModels = (Array.isArray(models) ? models : [])
+      .filter((m) => m.status === 'up' && m.hasApiKey && !m.isPinging)
+
+    if (upModels.length > 0) {
+      // 📖 Sort: best tier first (S+ > S > A+ ...), then lowest avg latency
+      const tierOrder = { 'S+': 0, 'S': 1, 'A+': 2, 'A': 3, 'A-': 4, 'B+': 5, 'B': 6, 'C': 7 }
+      upModels.sort((a, b) => {
+        const ta = tierOrder[a.tier] ?? 99
+        const tb = tierOrder[b.tier] ?? 99
+        if (ta !== tb) return ta - tb
+        const avgA = typeof a.avg === 'number' ? a.avg : 99999
+        const avgB = typeof b.avg === 'number' ? b.avg : 99999
+        return avgA - avgB
+      })
+      const best = upModels[0]
+      setModel(`${best.providerKey}/${best.modelId}`)
+      return
+    }
+
+    // 📖 No working model found — if daemon is running, use fcm
+    if (routerStatus?.running || daemonRunning === true) {
+      setModel('fcm')
+      return
+    }
+
+    // 📖 Nothing works — default to fcm anyway (will show daemon start panel)
+    setModel('fcm')
+  }, [models, model, routerStatus, daemonRunning])
+
+  // 📖 Check daemon status on mount. If the daemon is down AND the user
+  // 📖 is on the "fcm" auto-router model, start a 5-second countdown to
+  // 📖 auto-start the daemon. The "Start Router" button is always
+  // 📖 clickable so the user can trigger it manually at any time.
+  useEffect(() => {
+    let mounted = true
+
+    async function checkDaemon() {
+      try {
+        const resp = await fetch('/api/router/status')
+        const data = await resp.json()
+        if (!mounted) return
+        if (data?.running) {
+          setDaemonRunning(true)
+          return
+        }
+        setDaemonRunning(false)
+      } catch {
+        if (mounted) setDaemonRunning(false)
+      }
+    }
+
+    checkDaemon()
+
+    return () => {
+      mounted = false
+      if (cooldownRef.current) clearInterval(cooldownRef.current)
+      if (daemonCheckRef.current) clearInterval(daemonCheckRef.current)
+    }
+  }, [])
+
+  // 📖 Auto-start the daemon after 5 seconds if: daemon is down, model
+  // 📖 is "fcm" (auto-router), and auto-start hasn't been triggered yet.
+  // 📖 Countdown ticks every second and shows remaining time on the button.
+  useEffect(() => {
+    if (daemonRunning !== false || model !== 'fcm' || autoStartTriggered.current) return
+
+    let remaining = 5
+    setAutoStartSec(5)
+    cooldownRef.current = setInterval(() => {
+      remaining -= 1
+      setAutoStartSec(remaining)
+      if (remaining <= 0) {
+        clearInterval(cooldownRef.current)
+        autoStartTriggered.current = true
+        void startDaemon()
+      }
+    }, 1000)
+
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current) }
+  }, [daemonRunning, model])
+
+  // 📖 Start the router daemon from the playground. After starting,
+  // 📖 polls every 1s to detect when the daemon is ready, then
+  // 📖 updates the UI so the user can chat immediately.
+  const startDaemon = useCallback(async () => {
+    if (daemonStarting) return
+    if (cooldownRef.current) { clearInterval(cooldownRef.current); cooldownRef.current = null }
+    autoStartTriggered.current = true
+    setDaemonStarting(true)
+    try {
+      await fetch('/api/router/start', { method: 'POST' })
+      // 📖 Poll until the daemon is confirmed running (max 30s)
+      let attempts = 0
+      await new Promise((resolve) => {
+        daemonCheckRef.current = setInterval(async () => {
+          attempts += 1
+          try {
+            const resp = await fetch('/api/router/status')
+            const data = await resp.json()
+            if (data?.running) {
+              clearInterval(daemonCheckRef.current)
+              setDaemonRunning(true)
+              setDaemonStarting(false)
+              resolve()
+            }
+          } catch {}
+          if (attempts >= 30) {
+            clearInterval(daemonCheckRef.current)
+            setDaemonStarting(false)
+            resolve()
+          }
+        }, 1000)
+      })
+    } catch {
+      setDaemonStarting(false)
+    }
+  }, [daemonStarting])
 
   // 📖 Auto-scroll the transcript on new content.
   useEffect(() => {
@@ -167,6 +313,11 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
   const sendMessage = useCallback(async () => {
     const text = input.trim()
     if (!text || isLoading) return
+    const isFcm = model === 'fcm'
+    if (isFcm && daemonRunning !== true) {
+      setError('Router daemon is not running. Start it first using the button above or run `free-coding-models --daemon-bg`.')
+      return
+    }
     setError(null)
     setInput('')
 
@@ -293,7 +444,7 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
       setIsLoading(false)
       abortRef.current = null
     }
-  }, [input, isLoading, messages, model, streamOn])
+  }, [input, isLoading, messages, model, streamOn, daemonRunning])
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -382,7 +533,7 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
             />
             Pre-prompt
           </label>
-          <StatusPill routerStatus={routerStatus} />
+          <StatusPill routerStatus={routerStatus} daemonRunning={daemonRunning} />
         </div>
 
         {prePromptEnabled && prePromptText && (
@@ -395,7 +546,37 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
         )}
 
         <div className={styles.transcript} ref={transcriptRef}>
-          {messages.length === 0 ? (
+          {daemonRunning === false && !daemonStarting && messages.length === 0 && model === 'fcm' ? (
+            <div className={styles.daemonStartPanel}>
+              <IconAlertTriangle size={32} style={{ color: '#fbbf24', opacity: 0.8 }} />
+              <div className={styles.daemonStartTitle}>Router daemon is not running</div>
+              <div className={styles.daemonStartHint}>
+                The playground routes your chats through the FCM router daemon. Start it to begin chatting with free coding models, or pick a specific model above.
+              </div>
+              <button
+                className={styles.daemonStartBtn}
+                onClick={startDaemon}
+                title="Start the router daemon"
+              >
+                {daemonStarting ? (
+                  <><IconLoader size={14} className={styles.spin} /> Starting…</>
+                ) : (
+                  <><IconPlayerPlay size={14} /> Start Router{autoStartSec > 0 && !autoStartTriggered.current ? ` (auto in ${autoStartSec}s)` : ''}</>
+                )}
+              </button>
+              <div className={styles.daemonStartAlt}>
+                Or run <code>free-coding-models --daemon-bg</code> in your terminal
+              </div>
+            </div>
+          ) : daemonStarting && messages.length === 0 && model === 'fcm' ? (
+            <div className={styles.daemonStartPanel}>
+              <IconLoader size={32} className={styles.spin} style={{ color: 'var(--accent, #22c55e)' }} />
+              <div className={styles.daemonStartTitle}>Starting router daemon…</div>
+              <div className={styles.daemonStartHint}>
+                The daemon is being launched. This usually takes a few seconds. You'll be able to chat as soon as it's ready.
+              </div>
+            </div>
+          ) : messages.length === 0 ? (
             <div className={styles.empty}>
               <IconMessageChatbot size={42} style={{ opacity: 0.5 }} />
               <div className={styles.emptyTitle}>Try the FCM router in 10 seconds</div>
@@ -508,14 +689,14 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={isLoading}
+            disabled={isLoading || (model === 'fcm' && daemonRunning !== true)}
             rows={1}
             data-testid="playground-input"
           />
           <button
             className={styles.sendBtn}
             onClick={sendMessage}
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || !input.trim() || (model === 'fcm' && daemonRunning !== true)}
             data-testid="playground-send"
           >
             <IconSend size={14} />

@@ -30,13 +30,22 @@ function formatNumber(n) {
   return String(n)
 }
 
+// 📖 Friendly labels for the circuit breaker states. The raw names
+// 📖 (CLOSED/OPEN/HALF_OPEN/AUTH_ERROR) are jargon — translate them
+// 📖 to words a normal developer can scan in <1 second.
+const CIRCUIT_STATE_LABELS = {
+  CLOSED:     { label: 'Healthy',    cls: 'circuitClosed' },
+  OPEN:       { label: 'Down',       cls: 'circuitOpen' },
+  HALF_OPEN:  { label: 'Recovering', cls: 'circuitHalfOpen' },
+  AUTH_ERROR: { label: 'Auth error', cls: 'circuitAuth' },
+  STALE:      { label: 'Deprecated', cls: 'circuitUnknown' },
+  UNSUPPORTED:{ label: 'Unsupported',cls: 'circuitUnknown' },
+  UNKNOWN:    { label: 'Unknown',    cls: 'circuitUnknown' },
+}
+
 function CircuitBadge({ state }) {
-  const cls = state === 'CLOSED' ? styles.circuitClosed
-    : state === 'OPEN' ? styles.circuitOpen
-    : state === 'HALF_OPEN' ? styles.circuitHalfOpen
-    : state === 'AUTH_ERROR' ? styles.circuitAuth
-    : styles.circuitUnknown
-  return <span className={`${styles.circuitBadge} ${cls}`}>{state?.replace('_', ' ') || '?'}</span>
+  const entry = CIRCUIT_STATE_LABELS[state] || CIRCUIT_STATE_LABELS.UNKNOWN
+  return <span className={`${styles.circuitBadge} ${styles[entry.cls]}`}>{entry.label}</span>
 }
 
 const SAVE_STATUS_IDLE = { kind: 'idle' }

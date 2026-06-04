@@ -36,7 +36,7 @@ To start the React frontend with Vite HMR (Hot Module Replacement):
 cd web
 pnpm dev
 ```
-By default, the dev server runs on `http://localhost:5173/`. Ensure a background daemon is running on port `19280` so the API requests proxy correctly.
+By default, the dev server runs on `http://localhost:5179/`. Ensure a background daemon is running on port `19280` so the API requests proxy correctly.
 
 ### 2. Production Build
 To compile the production-ready SPA:

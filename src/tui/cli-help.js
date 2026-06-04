@@ -60,6 +60,86 @@ const EXAMPLES = [
   "free-coding-models --json | jq '.[0]'",
 ]
 
+/**
+ * 📖 buildHowTheRouterWorks — a single-source explanation of the router
+ * 📖 internals (circuit breaker, probe mechanism, pre-prompt) that the
+ * 📖 Web Help modal and the TUI in-app help overlay both render. Keeping
+ * 📖 it here prevents the two surfaces from drifting apart.
+ */
+export function buildHowTheRouterWorksLines({ chalk = null, indent = '' } = {}) {
+  const lines = []
+  const header = (text) => `${indent}${paint(chalk, chalk?.bold, text)}`
+  const body = (text) => `${indent}${paint(chalk, chalk?.dim, text)}`
+  const bullet = (text) => `${indent}  • ${text}`
+
+  lines.push(header('How the FCM Router Works'))
+  lines.push('')
+
+  lines.push(header('1. The smart router daemon'))
+  lines.push(body('Point any OpenAI-compatible client at http://localhost:19280/v1'))
+  lines.push(body('with model: "fcm". The daemon picks the healthiest model in'))
+  lines.push(body('your active set and forwards the request — with automatic'))
+  lines.push(body('failover if the first model 429s or 5xxs.'))
+  lines.push('')
+
+  lines.push(header('2. The pre-prompt (system message)'))
+  lines.push(body('A first-class system message is injected on every proxied'))
+  lines.push(body('request. The default text introduces the assistant as the FCM'))
+  lines.push(body('routing agent and points the user to the dashboard URL.'))
+  lines.push(body('You can edit it from Settings (Settings → Pre-prompt).'))
+  lines.push('')
+
+  lines.push(header('3. The probe mechanism (every 10s/30s/120s)'))
+  lines.push(body('The daemon sends a 1-token chat-completion ping to every model'))
+  lines.push(body('in the active set. The probe measures latency + status code, not'))
+  lines.push(body('just URL reachability — so a wrong API key is caught and the'))
+  lines.push(body('circuit-breaker is opened.'))
+  lines.push(bullet('eco: probe every 120s (saves quota)'))
+  lines.push(bullet('balanced: probe every 30s (default)'))
+  lines.push(bullet('aggressive: probe every 10s (uses more quota)'))
+  lines.push('')
+
+  lines.push(header('4. The circuit breaker (per-model state)'))
+  lines.push(body('Each model has a tiny disjoncteur that flips between 3 states.'))
+  lines.push(body('The raw jargon is hidden in the UI — here is what the colors mean:'))
+  lines.push(bullet('Healthy (green)  — last probe returned 2xx, route here freely'))
+  lines.push(bullet('Down (red)      — last 3 probes failed, skip until cooldown'))
+  lines.push(bullet('Recovering (yellow) — cooldown expired, retrying with 1 request'))
+  lines.push(bullet('Auth error (orange) — 401/403, your API key is wrong for this model'))
+  lines.push(bullet('Deprecated (gray) — removed from the catalog, will be replaced'))
+  lines.push(body('When a model flips to Auth error, the auto-heal on next start'))
+  lines.push(body('replaces it with a working alternative from the same provider first,'))
+  lines.push(body('then falls through to any provider.'))
+  lines.push('')
+
+  lines.push(header('5. Failover order'))
+  lines.push(body('Models in the active set are tried in priority order. A model'))
+  lines.push(body('in Recovering/Down/Auth error is skipped — the request goes to'))
+  lines.push(body('the next healthy one. If ALL models fail, you get a 503 with the'))
+  lines.push(body('"models_tried" list in the error body — useful for debugging.'))
+  lines.push('')
+
+  lines.push(header('6. Auto-heal (default behavior)'))
+  lines.push(body('On daemon start, the active set is checked. Any model in Auth'))
+  lines.push(body('error or Deprecated is swapped for a working alternative. The'))
+  lines.push(body('first time you add/remove/reorder a model, auto-heal switches off'))
+  lines.push(body('and your manual choices are preserved.'))
+  lines.push('')
+
+  lines.push(header('7. Rate limits (RPD / RPM / TPM)'))
+  lines.push(body('Each provider has its own quota. Common free-tier limits:'))
+  lines.push(bullet('Groq on-demand: 14 400 RPD, 30 RPM per model'))
+  lines.push(bullet('Mistral La Plateforme: 1 RPS, 1B TPM (experiment plan)'))
+  lines.push(bullet('NVIDIA NIM: ~40 RPM (no credit card)'))
+  lines.push(bullet('OpenRouter free routes: 50 RPD'))
+  lines.push(body('When a provider returns 429, the router fails over. When the'))
+  lines.push(body('daily quota is fully exhausted, the model goes Auth error and'))
+  lines.push(body('auto-heal swaps it out next start.'))
+  lines.push('')
+
+  return lines
+}
+
 function paint(chalk, formatter, text) {
   if (!chalk || !formatter) return text
   return formatter(text)
@@ -102,6 +182,13 @@ export function buildCliHelpLines({ chalk = null, indent = '', title = 'CLI Help
   lines.push(`${indent}${paint(chalk, chalk?.bold, 'Examples')}`)
   for (const example of EXAMPLES) {
     lines.push(`${indent}${paint(chalk, chalk?.cyan, example)}`)
+  }
+  lines.push('')
+  lines.push('')
+  // 📖 Append the "How the router works" deep-dive so a single `--help`
+  // 📖 or in-app Help overlay covers everything the user needs.
+  for (const line of buildHowTheRouterWorksLines({ chalk, indent })) {
+    lines.push(line)
   }
 
   return lines

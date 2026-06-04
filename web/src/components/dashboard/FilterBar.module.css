@@ -24,19 +24,112 @@
   white-space: nowrap;
 }
 
-/* ── Chip rows (TUI cycle behavior) ── */
-.chipRow { display: flex; gap: 3px; }
-.chip {
-  font-size: 11px; font-weight: 600; font-family: var(--font-mono);
-  padding: 4px 8px; border-radius: 5px;
-  border: 1px solid var(--color-border); background: var(--color-surface);
-  color: var(--color-text-muted); cursor: pointer; transition: all 150ms;
-  white-space: nowrap;
+/* ── Collapsible filter groups (Tier, Status, Verdict, Health) ── */
+.filterGroup {
+  position: relative;
 }
-.chip:hover { background: var(--color-bg-hover); color: var(--color-text); }
-.chipActive {
-  background: var(--color-accent) !important; color: var(--color-bg) !important;
-  border-color: var(--color-accent) !important; font-weight: 700;
+
+.filterTrigger {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-family: var(--font-mono);
+  padding: 4px 8px; border-radius: 5px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer; transition: all 150ms;
+  white-space: nowrap;
+  user-select: none;
+}
+.filterTrigger:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+.filterTriggerActive {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+.filterTriggerExpanded {
+  border-color: var(--color-accent);
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  z-index: 101;
+}
+
+.filterTriggerLabel {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+.filterTriggerSep {
+  color: var(--color-border);
+  margin: 0 -2px;
+}
+.filterTriggerValue {
+  font-weight: 700;
+  color: var(--color-text);
+}
+.filterTriggerActive .filterTriggerValue {
+  color: var(--color-accent);
+}
+
+.filterTriggerChevron {
+  flex-shrink: 0;
+  transition: transform 200ms ease;
+  opacity: 0.6;
+}
+.chevronOpen {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+.filterDropdown {
+  position: absolute; top: 100%; left: 0;
+  z-index: 100;
+  padding: 6px 8px 7px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  min-width: max-content;
+}
+
+.filterChipRow {
+  display: flex;
+  gap: 0;
+}
+
+.filterChip {
+  font-size: 11px; font-weight: 600; font-family: var(--font-mono);
+  padding: 4px 9px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  color: var(--color-text-muted);
+  cursor: pointer; transition: all 120ms;
+  white-space: nowrap;
+  margin-left: -1px;
+}
+.filterChip:first-child {
+  border-radius: 4px 0 0 4px;
+  margin-left: 0;
+}
+.filterChip:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.filterChip:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+  z-index: 1;
+}
+.filterChipActive {
+  background: var(--chip-active-color, var(--color-accent)) !important;
+  color: #fff !important;
+  border-color: var(--chip-active-color, var(--color-accent)) !important;
+  z-index: 2;
+  font-weight: 700;
 }
 
 /* ── Select inputs (provider, visibility) ── */
@@ -121,23 +214,6 @@
 }
 .customFilterClear:hover { background: var(--color-accent); color: var(--color-bg); }
 
-/* ── Ping interval selector ── */
-.pingRow { display: flex; gap: 3px; }
-.pingBtn {
-  font-size: 11px; font-weight: 600; font-family: var(--font-mono);
-  padding: 4px 8px; border-radius: 5px;
-  border: 1px solid var(--color-border); background: var(--color-surface);
-  color: var(--color-text-muted); cursor: pointer; transition: all 150ms;
-  white-space: nowrap;
-}
-.pingBtn:hover { background: var(--color-bg-hover); color: var(--color-text); border-color: var(--color-text-muted); }
-.pingBtnActive {
-  background: var(--color-bg-hover) !important;
-  color: var(--ping-active-color, var(--color-accent)) !important;
-  border-color: var(--ping-active-color, var(--color-accent)) !important;
-  font-weight: 700;
-}
-
 /* ── Next ping countdown (TUI parity) ── */
 .nextPing {
   display: flex; align-items: center; gap: 6px;
@@ -157,12 +233,6 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.pingingDot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #ff4466; animation: pulseDot 0.6s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
 @keyframes pulseDot {
   0%, 100% { box-shadow: 0 0 0 0 var(--color-accent-glow); }
   50% { box-shadow: 0 0 0 6px transparent; }

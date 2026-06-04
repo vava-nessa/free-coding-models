@@ -1,0 +1,40 @@
+{
+  "ui": {
+    "language": "fr",
+    "theme": "dark",
+    "skin": "rose",
+    "font": "mono"
+  },
+  "agent": {
+    "suggestFollowUp": false,
+    "maxSuggestions": 3
+  },
+  "board": {
+    "columns": [
+      "Backlog",
+      "Todo",
+      "In Progress",
+      "Review",
+      "Done"
+    ],
+    "defaultPriority": "P3",
+    "defaultOwnerType": "human"
+  },
+  "fields": {
+    "priority": false,
+    "assignee": false,
+    "tags": false,
+    "dueDate": false,
+    "ownerType": false,
+    "tools": false
+  },
+  "notifications": {
+    "browser": false,
+    "sound": false,
+    "soundId": "soft",
+    "statusChanges": true,
+    "taskEdits": true,
+    "subtaskCompletions": true,
+    "editDebounceMs": 2000
+  }
+}

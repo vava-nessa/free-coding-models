@@ -207,7 +207,7 @@ export function renderTable({
   const timeSinceLastPing = Date.now() - lastPingTime
   const timeUntilNextPing = Math.max(0, pingInterval - timeSinceLastPing)
   const secondsUntilNext = timeUntilNextPing / 1000
-  const secondsUntilNextLabel = secondsUntilNext.toFixed(1)
+  const secondsUntilNextLabel = secondsUntilNext.toFixed(2)
 
   const intervalSec = Math.round(pingInterval / 1000)
   const pingModeMeta = {

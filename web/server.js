@@ -1360,32 +1360,101 @@ async function handleRequest(req, res) {
       }
 
       case '/api/playground/chat': {
-        // 📖 Playground proxy: forwards a chat-completions request to the
-        // 📖 local router daemon and returns the response. Streams SSE
-        // 📖 events when stream: true is set. The web playground UI is just
-        // 📖 a thin client over this endpoint so the browser never talks to
-        // 📖 an external domain (no CORS, no exposed provider keys).
+        // 📖 Playground proxy: routes chat-completions requests either to
+        // 📖 the local router daemon (for "fcm" auto-router) or directly
+        // 📖 to the provider (for specific models). This way the playground
+        // 📖 works immediately with any "up" model, even without the daemon.
         if (req.method !== 'POST') { res.writeHead(405); res.end('Method Not Allowed'); return }
-        const port = await readDaemonPort()
-        if (!port) {
+        const body = await readJsonBody(req)
+        const wantsStream = body?.stream === true
+        const requestedModel = body?.model || 'fcm'
+        const isFcm = requestedModel === 'fcm'
+
+        // 📖 Resolve direct provider routing for non-fcm models.
+        // 📖 Format: "providerKey/modelId" → look up source URL + API key.
+        let directUrl = null
+        let directApiKey = null
+        let directModelId = null
+        if (!isFcm) {
+          const slashIdx = requestedModel.indexOf('/')
+          if (slashIdx > 0) {
+            const providerKey = requestedModel.slice(0, slashIdx)
+            const modelId = requestedModel.slice(slashIdx + 1)
+            const source = sources[providerKey]
+            if (source?.url) {
+              directApiKey = getApiKey(config, providerKey)
+              // 📖 Always resolve the URL so we can differentiate "no key"
+              // 📖 from "unknown model" in the error handler below.
+              let baseUrl = source.url
+              if (!baseUrl.includes('/chat/completions')) {
+                baseUrl = baseUrl.replace(/\/+$/, '') + '/v1/chat/completions'
+              }
+              directUrl = baseUrl
+              directModelId = modelId
+            }
+          }
+        }
+
+        // 📖 Decide routing: direct to provider (non-fcm, has key) or via daemon.
+        const useDirectRoute = !isFcm && directUrl && directApiKey
+
+        // 📖 If user picked a specific model but has no API key for it,
+        // 📖 tell them instead of falling through to the daemon 503.
+        if (!isFcm && directUrl && !directApiKey) {
+          const providerKey = requestedModel.slice(0, requestedModel.indexOf('/'))
+          sendJson(res, 401, { ok: false, error: `No API key configured for ${sources[providerKey]?.name || providerKey}. Add one in Settings to chat directly with this model.` })
+          return
+        }
+
+        // 📖 If user picked a specific model but we couldn't resolve it,
+        // 📖 tell them instead of falling through to the daemon 503.
+        if (!isFcm && !directUrl) {
+          sendJson(res, 404, { ok: false, error: `Could not resolve provider for model "${requestedModel}". Try selecting a different model or use the auto-router (fcm).` })
+          return
+        }
+        const upstreamUrl = useDirectRoute
+          ? directUrl
+          : `http://127.0.0.1:${await readDaemonPort()}/v1/chat/completions`
+
+        if (!useDirectRoute && !await readDaemonPort()) {
           sendJson(res, 503, { ok: false, error: 'Router daemon is not running. Start it from the Router card or with `free-coding-models --daemon-bg`.' })
           return
         }
-        const body = await readJsonBody(req)
-        const wantsStream = body?.stream === true
-        const upstreamUrl = `http://127.0.0.1:${port}/v1/chat/completions`
+
+        // 📖 Build the upstream payload. For direct routing, extract the
+        // 📖 actual model ID from the providerKey/modelId format.
+        const upstreamPayload = {
+          ...body,
+          stream: wantsStream,
+          model: useDirectRoute ? directModelId : requestedModel,
+        }
+
+        // 📖 Build headers: direct routing needs auth + any provider-specific
+        // 📖 headers. Daemon routing is just JSON content-type.
+        const upstreamHeaders = { 'Content-Type': 'application/json' }
+        if (useDirectRoute) {
+          // 📖 Most providers use standard Bearer auth. A few need extra
+          // 📖 headers (OpenRouter wants Referer + X-Title for ex).
+          upstreamHeaders['Authorization'] = `Bearer ${directApiKey}`
+          const providerKey = requestedModel.slice(0, requestedModel.indexOf('/'))
+          if (providerKey === 'openrouter') {
+            upstreamHeaders['HTTP-Referer'] = 'https://github.com/vava-nessa/free-coding-models'
+            upstreamHeaders['X-Title'] = 'free-coding-models'
+          }
+        }
+
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), 120000)
         req.on('close', () => controller.abort())
         try {
           const upstreamResp = await fetch(upstreamUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...body, stream: wantsStream, model: body?.model || 'fcm' }),
+            headers: upstreamHeaders,
+            body: JSON.stringify(upstreamPayload),
             signal: controller.signal,
           })
           if (wantsStream) {
-            // 📖 Pipe SSE events straight from the daemon to the browser.
+            // 📖 Pipe SSE events straight from the upstream to the browser.
             res.writeHead(upstreamResp.status, {
               'Content-Type': 'text/event-stream',
               'Cache-Control': 'no-cache',
@@ -1407,7 +1476,7 @@ async function handleRequest(req, res) {
             return
           }
           const json = await upstreamResp.json().catch(() => null)
-          sendJson(res, upstreamResp.status, json || { ok: false, error: 'Empty response from router' })
+          sendJson(res, upstreamResp.status, json || { ok: false, error: 'Empty response from upstream' })
           return
         } catch (err) {
           sendJson(res, 502, { ok: false, error: `Playground proxy failed: ${err.message || String(err)}` })

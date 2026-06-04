@@ -53,7 +53,7 @@ import { buildProviderModelTokenKey, loadTokenUsageByProviderModel, formatTokenT
 import { renderTable, getLastLayout } from '../src/tui/render-table.js'
 import { createOverlayRenderers } from '../src/tui/overlays.js'
 import { buildProviderModelsUrl, parseProviderModelIds, listProviderTestModels, classifyProviderTestOutcome, buildProviderTestDetail } from '../src/tui/key-handler.js'
-import { buildCliHelpText } from '../src/tui/cli-help.js'
+import { buildCliHelpText, buildHowTheRouterWorksLines } from '../src/tui/cli-help.js'
 import { buildSyncCandidates } from '../src/core/sync-set.js'
 import { detectPackageManager, getInstallArgs, getManualInstallCmd, buildOutdatedWarningMessage } from '../src/core/updater.js'
 import {
@@ -550,6 +550,28 @@ describe('router pre-prompt injection', () => {
     assert.ok(text.length > 80, 'default pre-prompt must be substantive')
     assert.match(text, /free-coding-models/i)
     assert.equal(DEFAULT_ROUTER_SETTINGS.prePrompt.enabled, true)
+  })
+})
+
+describe('router friendly labels + how-the-router-works help', () => {
+  it('translates CLOSED/OPEN/HALF_OPEN/AUTH_ERROR/STALE to plain English', () => {
+    // 📖 The CircuitBadge in RouterView should never show the raw jargon
+    // 📖 to the user. The help text must mention the friendly label
+    // 📖 instead of (or in addition to) the raw state name.
+    const lines = buildHowTheRouterWorksLines()
+    const text = lines.join('\n')
+    assert.ok(text.includes('Healthy'), 'should mention Healthy (was CLOSED)')
+    assert.ok(text.includes('Down'), 'should mention Down (was OPEN)')
+    assert.ok(text.includes('Recovering'), 'should mention Recovering (was HALF_OPEN)')
+    assert.ok(text.includes('Auth error'), 'should mention Auth error (was AUTH_ERROR)')
+    assert.ok(text.includes('Deprecated'), 'should mention Deprecated (was STALE)')
+  })
+
+  it('explains the probe mechanism and rate limits in the help', () => {
+    const text = buildHowTheRouterWorksLines().join('\n')
+    assert.ok(text.includes('probe'), 'help must explain probes')
+    assert.ok(text.includes('429') || text.includes('rate limit'), 'help must mention rate limits')
+    assert.ok(text.includes('auto-heal') || text.includes('Auto-heal'), 'help must mention auto-heal')
   })
 })
 

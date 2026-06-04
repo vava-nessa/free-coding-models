@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @file scripts/dev-web.mjs
- * @description Dev: kill ports 3333+5173, spawn backend, spawn Vite. One command.
+ * @description Dev: kill ports 3333+5179, spawn backend, spawn Vite. One command.
  */
 import { createServer } from 'node:net'
 import { exec, spawn } from 'node:child_process'
@@ -33,8 +33,8 @@ function execp(cmd) {
 async function main() {
   console.log('\n  ⚡ free-coding-models dev:web\n')
 
-  // Kill whatever on 3333 and 5173
-  for (const port of [API_PORT, 5173]) {
+  // Kill whatever on 3333 and 5179
+  for (const port of [API_PORT, 5179]) {
     const used = await isPortUsed(port)
     if (used) {
       const { err } = await execp(`lsof -ti:${port} 2>/dev/null | xargs kill -9 2>/dev/null; echo ok`)
@@ -71,7 +71,7 @@ startWebServer(${API_PORT}, { open: false, startPingLoop: true }).then(() => {})
 
   // Spawn Vite directly (no pnpm exec overhead)
   const viteBin = join(ROOT, 'node_modules/vite/bin/vite.js')
-  console.log('  🚀 Vite on :5173...\n')
+  console.log('  🚀 Vite on :5179...\n')
   const vite = spawn('node', [viteBin, '--host'], { stdio: 'inherit', cwd: ROOT })
 
   api.on('error', e => console.error('  ❌ API err:', e.message))

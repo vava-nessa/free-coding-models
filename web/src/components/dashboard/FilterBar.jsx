@@ -5,10 +5,13 @@
  * 📖 + custom text filter chip with "X" clear + reset view button (N).
  * 📖 Each chip is a cycling button matching the TUI single-key behavior.
  * 📖 The "Next ping in Xs" countdown still shows the live status.
+ * 📖 Filter groups (Tier, Status, Verdict, Health) are collapsible by default
+ *     — click the trigger to expand the chip row, click again or outside to close.
  */
-import { useState, useEffect, useMemo } from 'react'
-import { IconRefresh, IconX, IconFilter, IconCircleCheck, IconAlertTriangle, IconActivity, IconEye, IconStar } from '@tabler/icons-react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { IconRefresh, IconX, IconFilter, IconChevronDown } from '@tabler/icons-react'
 import { getToolMeta } from '../../../../src/core/tool-metadata.js'
+import ProviderDropdown from './ProviderDropdown.jsx'
 import styles from './FilterBar.module.css'
 
 // 📖 Chip sets match the TUI cycles 1:1 (see useFilter.js). Keep these in sync.
@@ -65,30 +68,84 @@ const PING_MODES = [
 
 function formatCountdown(ms) {
   if (ms == null) return null
-  const s = Math.max(0, Math.ceil(ms / 1000))
-  if (s === 1) return '1s'
-  if (s < 60) return `${s}s`
-  const m = Math.floor(s / 60)
-  const rem = s % 60
-  return `${m}m${rem > 0 ? rem + 's' : ''}`
+  const totalSec = Math.max(0, ms / 1000)
+  if (totalSec < 60) return `${totalSec.toFixed(2)}s`
+  const m = Math.floor(totalSec / 60)
+  const s = totalSec % 60
+  return `${m}m ${s.toFixed(2)}s`
 }
 
-function ChipRow({ items, value, onChange, label }) {
+/**
+ * 📖 FilterGroup — collapsible chip selector. Shows label + active value as a compact
+ *     trigger. Click to expand a dropdown with all options grouped as a segmented control.
+ *     Click outside or pick a value to collapse. Designed to keep the filter bar minimal
+ *     by default while exposing the full chip set on demand.
+ */
+function FilterGroup({ label, items, value, onChange, colorMap }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  const close = useCallback(() => setOpen(false), [])
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) close()
+    }
+    const keyHandler = (e) => { if (e.key === 'Escape') close() }
+    document.addEventListener('mousedown', handler)
+    document.addEventListener('keydown', keyHandler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('keydown', keyHandler)
+    }
+  }, [open, close])
+
+  const activeItem = items.find(i => i.key === value)
+  const activeLabel = activeItem?.label ?? value ?? 'All'
+  const isFiltered = value !== 'all'
+
   return (
-    <div className={styles.group}>
-      {label && <label className={styles.filterLabel}>{label}</label>}
-      <div className={styles.chipRow}>
-        {items.map((item) => (
-          <button
-            key={item.key}
-            className={`${styles.chip} ${value === item.key ? styles.chipActive : ''}`}
-            onClick={() => onChange(item.key)}
-            title={item.hint || item.label}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+    <div className={styles.filterGroup} ref={ref}>
+      <button
+        className={`${styles.filterTrigger} ${isFiltered ? styles.filterTriggerActive : ''} ${open ? styles.filterTriggerExpanded : ''}`}
+        onClick={() => setOpen(!open)}
+        title={`${label}: ${activeLabel}`}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <span className={styles.filterTriggerLabel}>{label}</span>
+        <span className={styles.filterTriggerSep}>:</span>
+        <span className={styles.filterTriggerValue}>{activeLabel}</span>
+        <IconChevronDown
+          size={12}
+          stroke={2}
+          className={`${styles.filterTriggerChevron} ${open ? styles.chevronOpen : ''}`}
+        />
+      </button>
+      {open && (
+        <div className={styles.filterDropdown} role="listbox">
+          <div className={styles.filterChipRow}>
+            {items.map((item, i) => {
+              const active = value === item.key
+              const customColor = colorMap?.[item.key]
+              return (
+                <button
+                  key={item.key}
+                  role="option"
+                  aria-selected={active}
+                  className={`${styles.filterChip} ${active ? styles.filterChipActive : ''}`}
+                  style={active && customColor ? { '--chip-active-color': customColor } : {}}
+                  onClick={() => { onChange(item.key); close() }}
+                  title={item.hint || item.label}
+                >
+                  {item.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -121,7 +178,7 @@ export default function FilterBar({
       setCountdown(rem > 0 ? rem : 0)
     }
     tick()
-    const id = setInterval(tick, 1000)
+    const id = setInterval(tick, 100)
     return () => clearInterval(id)
   }, [nextPingAt])
 
@@ -167,10 +224,10 @@ export default function FilterBar({
         </div>
       )}
 
-      <ChipRow label="Tier" items={TIERS} value={filterTier} onChange={setFilterTier} />
-      <ChipRow label="Status" items={STATUSES} value={filterStatus} onChange={setFilterStatus} />
-      <ChipRow label="Verdict" items={VERDICTS} value={filterVerdict} onChange={setFilterVerdict} />
-      <ChipRow label="Health" items={HEALTHS} value={filterHealth} onChange={setFilterHealth} />
+      <FilterGroup label="Tier" items={TIERS} value={filterTier} onChange={setFilterTier} />
+      <FilterGroup label="Status" items={STATUSES} value={filterStatus} onChange={setFilterStatus} />
+      <FilterGroup label="Verdict" items={VERDICTS} value={filterVerdict} onChange={setFilterVerdict} />
+      <FilterGroup label="Health" items={HEALTHS} value={filterHealth} onChange={setFilterHealth} />
 
       <div className={styles.group}>
         <label className={styles.filterLabel} htmlFor="visibility-select">Visibility</label>
@@ -189,19 +246,12 @@ export default function FilterBar({
       </div>
 
       <div className={styles.group}>
-        <label className={styles.filterLabel} htmlFor="provider-select">Provider</label>
-        <select
-          id="provider-select"
-          className={styles.providerSelect}
+        <label className={styles.filterLabel}>Provider</label>
+        <ProviderDropdown
+          providers={providers}
           value={filterProvider}
-          onChange={(e) => setFilterProvider(e.target.value)}
-          aria-label="Filter by provider"
-        >
-          <option value="all">All Providers</option>
-          {providers.map((p) => (
-            <option key={p.key} value={p.key}>{p.name} ({p.count})</option>
-          ))}
-        </select>
+          onChange={setFilterProvider}
+        />
       </div>
 
       <div className={styles.group}>
@@ -246,23 +296,14 @@ export default function FilterBar({
         </button>
       )}
 
-      {/* ── Ping interval selector ── */}
-      <div className={styles.group}>
-        <label className={styles.filterLabel}>Ping</label>
-        <div className={styles.pingRow}>
-          {PING_MODES.map((m) => (
-            <button
-              key={m.key}
-              className={`${styles.pingBtn} ${pingMode === m.key ? styles.pingBtnActive : ''}`}
-              style={pingMode === m.key ? { '--ping-active-color': m.color } : {}}
-              onClick={() => setPingMode(m.key)}
-              title={`${m.interval} interval`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* ── Ping interval selector (collapsible group) ── */}
+      <FilterGroup
+        label="Ping"
+        items={PING_MODES}
+        value={pingMode}
+        onChange={setPingMode}
+        colorMap={Object.fromEntries(PING_MODES.map(m => [m.key, m.color]))}
+      />
 
       {/* ── Next ping countdown (TUI parity: always show the delay) ──
           📖 The TUI footer always renders `next : Xs` regardless of whether
@@ -275,7 +316,6 @@ export default function FilterBar({
         <div className={styles.nextPing} title="Next ping countdown">
           <span className={styles.nextPingLabel}>next ping in</span>
           <span className={styles.nextPingTime}>{countdownDisplay ?? '—'}</span>
-          {isPinging && <span className={styles.pingingDot} aria-hidden="true" />}
         </div>
       </div>
     </section>

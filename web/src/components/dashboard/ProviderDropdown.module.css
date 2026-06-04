@@ -1,0 +1,248 @@
+/**
+ * @file web/src/components/dashboard/ProviderDropdown.module.css
+ * @description Styles for the custom provider dropdown — SVG logos + health dots.
+ *
+ * 📖 Theme-aware: uses CSS variables for all colors. Dark + light mode both
+ * 📖 fully supported. Health dot colors are defined per-theme with explicit
+ * 📖 overrides for light mode to maintain contrast.
+ */
+
+.dropdown {
+  position: relative;
+}
+
+/* ── Trigger button ── */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all 150ms;
+  min-width: 130px;
+  max-width: 240px;
+  user-select: none;
+  outline: none;
+}
+.trigger:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-text-muted);
+}
+.trigger:focus {
+  border-color: var(--color-accent);
+}
+.triggerActive {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+.triggerOpen {
+  border-color: var(--color-accent);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  z-index: 101;
+  background: var(--color-bg-hover);
+}
+
+.triggerContent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.triggerLogo {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  /* 📖 Inherit max-height from ProviderLogo's row. */
+  --pl-max-h: 20px;
+  --pl-icon-h: 14px;
+  --pl-text-h: 10px;
+}
+/* 📖 Clamp ProviderLogo width inside trigger so long wordmarks don't overflow. */
+.triggerLogo > span {
+  max-width: 160px;
+}
+
+.triggerLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.triggerCount {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.chevron {
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: transform 200ms ease;
+}
+.chevronOpen {
+  transform: rotate(180deg);
+  opacity: 0.8;
+}
+
+/* ── Dropdown menu ── */
+.menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  min-width: 100%;
+  max-width: 300px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  padding: 4px 0;
+}
+
+/* 📖 Custom scrollbar for the dropdown. */
+.menu::-webkit-scrollbar {
+  width: 5px;
+}
+.menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+.menu::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+/* ── Menu options ── */
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all 100ms;
+  text-align: left;
+  outline: none;
+}
+.option:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+}
+.option:focus-visible {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+.optionActive {
+  background: var(--color-accent-dim);
+  color: var(--color-text);
+  font-weight: 600;
+}
+.optionActive:hover {
+  background: var(--color-bg-hover);
+}
+
+.optionLabel {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.optionLogo {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  /* 📖 Slightly larger than trigger for readability in the expanded menu. */
+  --pl-max-h: 20px;
+  --pl-icon-h: 15px;
+  --pl-text-h: 11px;
+}
+.optionLogo > span {
+  max-width: 180px;
+}
+
+.optionCount {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--color-text-dim, #666);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ── Separator between "All" and per-provider options ── */
+.separator {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 8px;
+}
+
+/* ── Health indicator dots ── */
+.healthDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+
+/* 📖 Active: green glow — key works and models are UP. */
+.dot_active {
+  background: #00ff88;
+  box-shadow: 0 0 5px rgba(0, 255, 136, 0.5);
+}
+
+/* 📖 Pending: yellow — key set, health data not yet available. */
+.dot_pending {
+  background: #ffaa00;
+}
+
+/* 📖 Down: red — key set but models are down / auth errors. */
+.dot_down {
+  background: #ff4444;
+}
+
+/* 📖 No key: gray — no API key configured for this provider. */
+.dot_nokey {
+  background: #555570;
+}
+
+/* ── Light theme overrides — deeper colors for white background contrast ── */
+:global([data-theme="light"]) .dot_active {
+  background: #008f4d;
+  box-shadow: 0 0 4px rgba(0, 143, 77, 0.35);
+}
+:global([data-theme="light"]) .dot_pending {
+  background: #b38600;
+}
+:global([data-theme="light"]) .dot_down {
+  background: #c8143a;
+}
+:global([data-theme="light"]) .dot_nokey {
+  background: #aaa;
+}

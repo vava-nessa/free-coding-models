@@ -171,11 +171,25 @@ export default function App() {
   } = useUpdateChecker({ onToast: addToast })
 
   // 📖 Build the provider list for the FilterBar dropdown.
+  // 📖 Build the provider list for the FilterBar dropdown with aggregated health.
+  // 📖 `hasKey` = at least one model has an API key configured.
+  // 📖 `anyUp` = at least one model with status 'up' (key works).
+  // 📖 These drive the colored indicator dot in the custom provider dropdown.
   const providers = useMemo(() => {
     const map = {}
     models.forEach((m) => {
-      if (!map[m.providerKey]) map[m.providerKey] = { key: m.providerKey, name: m.origin, count: 0 }
+      if (!map[m.providerKey]) {
+        map[m.providerKey] = {
+          key: m.providerKey,
+          name: m.origin,
+          count: 0,
+          hasKey: false,
+          anyUp: false,
+        }
+      }
       map[m.providerKey].count++
+      if (m.hasApiKey) map[m.providerKey].hasKey = true
+      if (m.status === 'up') map[m.providerKey].anyUp = true
     })
     return Object.values(map).sort((a, b) => a.name.localeCompare(b.name))
   }, [models])

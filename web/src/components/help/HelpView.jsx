@@ -118,6 +118,19 @@ const SECTIONS = [
       { key: 'Same engine', desc: 'All model parsing, ping, and benchmark code is shared with the TUI' },
     ],
   },
+  {
+    id: 'how-router-works',
+    title: '🌐 How the FCM Router works',
+    items: [
+      { key: 'Smart router', desc: 'Point any OpenAI client at http://localhost:19280/v1 with model: "fcm". The daemon picks the healthiest model in the active set and forwards the request with automatic failover.' },
+      { key: 'Pre-prompt', desc: 'A first-class system message is injected on every proxied request. The default introduces the assistant as the FCM routing agent. Edit from Settings.' },
+      { key: 'Probes', desc: 'Every 10s/30s/120s (eco/balanced/aggressive) the daemon sends a 1-token chat-completion ping to every model in the active set. The probe measures latency + status code, not just URL reachability — so a wrong API key is caught and the circuit opens.' },
+      { key: 'Circuit breaker', desc: 'Per-model state. Healthy (green) = last probe 2xx, route here. Down (red) = last 3 probes failed, skip until cooldown. Recovering (yellow) = cooldown expired, retrying. Auth error (orange) = 401/403, your key is wrong. Deprecated (gray) = removed from catalog, will be replaced by auto-heal.' },
+      { key: 'Failover order', desc: 'Models are tried in priority order. A model in Recovering/Down/Auth error is skipped — the request goes to the next healthy one. If ALL fail, you get 503 with the "models_tried" list in the error body.' },
+      { key: 'Auto-heal', desc: 'On daemon start, every Auth-error / Deprecated model in the active set is swapped for a working alternative (same provider first, then cross-provider). The first time you add/remove/reorder a model, auto-heal switches off.' },
+      { key: 'Rate limits', desc: 'Each provider has its own quota. Common free-tier limits: Groq 14 400 RPD, Mistral 1 RPS, NVIDIA ~40 RPM, OpenRouter 50 RPD. When a provider returns 429, the router fails over. When daily quota is exhausted, the model goes Auth error and auto-heal swaps it out next start.' },
+    ],
+  },
 ]
 
 export default function HelpView({ onClose }) {
