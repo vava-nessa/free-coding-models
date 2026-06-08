@@ -47,7 +47,7 @@ import {
   normalizeRouterConfig,
   saveConfig,
 } from './config.js'
-import { buildChatCompletionPingBody, resolveCloudflareUrl, shouldUseDisabledThinkingForProvider } from './ping.js'
+import { buildChatCompletionPingBody, ping, resolveCloudflareUrl, shouldUseDisabledThinkingForProvider } from './ping.js'
 import { benchmarkModel, BENCHMARK_TIMEOUT_MS } from './benchmark.js'
 import { sendUsageTelemetry } from './telemetry.js'
 
@@ -73,6 +73,7 @@ export function getRouterPortRange() {
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const CLI_ENTRY_PATH = join(__dirname, '..', '..', 'bin', 'free-coding-models.js')
+const LOCAL_VERSION = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8')).version
 const MAX_BODY_BYTES = 10 * 1024 * 1024
 const MAX_REQUEST_LOG = 200
 const MAX_SSE_CLIENTS = 10
@@ -2537,6 +2538,22 @@ class RouterRuntime {
         sendJson(res, 200, getWebModelsPayload(this), { 'x-request-id': requestId })
         return
       }
+      // 📖 Stub endpoints for the web dashboard's hooks (useToolMode, useFavorites,
+      // 📖 useUpdateChecker). These were 404 before — minimal shapes that match
+      // 📖 what the dashboard hooks expect. See PR #108 for context.
+      if (req.method === 'GET' && (url.pathname === '/api/tool-mode')) {
+        sendJson(res, 200, { mode: 'opencode', tools: ['opencode', 'openclaw', 'opencode-desktop', 'opencode-web'] }, { 'x-request-id': requestId })
+        return
+      }
+      if (req.method === 'GET' && (url.pathname === '/api/favorites')) {
+        const cfg = this.config || {}
+        sendJson(res, 200, { favorites: cfg.favorites || [], pinnedAndSticky: Boolean(cfg.settings?.favoritesPinnedAndSticky) }, { 'x-request-id': requestId })
+        return
+      }
+      if (req.method === 'GET' && (url.pathname === '/api/version')) {
+        sendJson(res, 200, { local: LOCAL_VERSION, latest: null, lastReleaseDate: null, error: null }, { 'x-request-id': requestId })
+        return
+      }
       // 📖 /api/router/catalog — lightweight catalog of routeable models for
       // 📖 the Web Router Dashboard's "Add model" picker. Returns one row
       // 📖 per (provider, model) with `key`, label, tier, ctx. We filter to
@@ -2673,21 +2690,50 @@ class RouterRuntime {
         sendJson(res, result.started ? 202 : 409, result, { 'x-request-id': requestId })
         return
       }
-      if (req.method === 'GET' && url.pathname.startsWith('/api/key/')) {
-        // 📖 Reveals raw API keys — same-origin only to prevent malicious sites
-        // 📖 from exfiltrating provider credentials via XHR/fetch.
+      if (url.pathname.startsWith('/api/key/')) {
         if (!isSameOriginOrLocal(req)) {
           sendError(res, 403, 'Forbidden cross-origin request', 'invalid_request_error', 'forbidden_origin', requestId)
           return
         }
-        const providerKey = decodeURIComponent(url.pathname.slice('/api/key/'.length))
-        if (!providerKey || !sources[providerKey]) {
-          sendError(res, 404, 'Unknown provider', 'invalid_request_error', 'unknown_provider', requestId)
+        const testMatch = url.pathname.match(/^\/api\/key\/([^/]+)\/test$/)
+        if (testMatch && req.method === 'POST') {
+          const providerKey = decodeURIComponent(testMatch[1])
+          if (!sources[providerKey]) {
+            sendError(res, 404, 'Unknown provider', 'invalid_request_error', 'unknown_provider', requestId)
+            return
+          }
+          const apiKey = this.getApiKeyForProvider(providerKey)
+          if (!apiKey) {
+            sendJson(res, 200, { outcome: 'missing_key', detail: `${providerKey} has no saved API key.` }, { 'x-request-id': requestId })
+            return
+          }
+          const providerModels = sources[providerKey]?.models || []
+          const modelId = providerModels[0]?.[0] || ''
+          try {
+            const result = await ping(apiKey, modelId, providerKey, sources[providerKey].url)
+            const code = result?.code
+            if (code === '200') {
+              sendJson(res, 200, { outcome: 'ok', code: 200 }, { 'x-request-id': requestId })
+            } else if (code === '401' || code === '403') {
+              sendJson(res, 200, { outcome: 'auth_error', code: Number(code) || code }, { 'x-request-id': requestId })
+            } else {
+              sendJson(res, 200, { outcome: 'fail', code: code ?? 'ERR', detail: 'Probe did not return a 2xx' }, { 'x-request-id': requestId })
+            }
+          } catch (err) {
+            sendJson(res, 200, { outcome: 'fail', detail: err.message || 'Probe failed' }, { 'x-request-id': requestId })
+          }
           return
         }
-        const rawKey = this.getApiKeyForProvider(providerKey)
-        sendJson(res, 200, { key: rawKey || null }, { 'x-request-id': requestId })
-        return
+        if (req.method === 'GET') {
+          const providerKey = decodeURIComponent(url.pathname.slice('/api/key/'.length))
+          if (!providerKey || !sources[providerKey]) {
+            sendError(res, 404, 'Unknown provider', 'invalid_request_error', 'unknown_provider', requestId)
+            return
+          }
+          const rawKey = this.getApiKeyForProvider(providerKey)
+          sendJson(res, 200, { key: rawKey || null }, { 'x-request-id': requestId })
+          return
+        }
       }
       if (req.method === 'POST' && url.pathname === '/api/settings') {
         // 📖 Writes API keys + provider toggles — same-origin only to block
@@ -2881,7 +2927,7 @@ const PREFERRED_DEFAULT_MODELS = [
  * @param {object} [options] { probeFn: async (entry) => ({ ok, latencyMs, code }) }
  * @returns {{ name: string, models: Array, created: string }}
  */
-export async function buildDefaultRouterSet(config = {}, maxModels = 5, options = {}) {
+export async function buildDefaultRouterSet(config = {}, maxModels, options = {}) {
   const probeFn = typeof options.probeFn === 'function' ? options.probeFn : null
   const probeTimeoutMs = typeof options.probeTimeoutMs === 'number' ? options.probeTimeoutMs : 1500
   const probeBudget = typeof options.probeBudget === 'number' ? options.probeBudget : 24
@@ -2890,6 +2936,10 @@ export async function buildDefaultRouterSet(config = {}, maxModels = 5, options 
     .filter(([, value]) => (Array.isArray(value) ? value.length > 0 : typeof value === 'string' && value.trim()))
     .map(([provider]) => provider))
 
+  // 📖 Scale default set size with configured providers so users with many
+  // 📖 keys get a richer default router set (PR #108 idea, kept from the
+  // 📖 previous sync version).
+  if (maxModels === undefined) maxModels = Math.max(5, keyedProviders.size * 2)
   const entries = []
   for (const [providerKey, source] of Object.entries(sources)) {
     if (!isRouteableProvider(providerKey)) continue
