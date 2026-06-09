@@ -28,6 +28,7 @@
  *
  * @functions
  *   → detectPackageManager()             — Detect which PM owns the current installation
+ *   → resolveCurrentNpmInstallTarget()   — Detect the npm prefix that owns the active package
  *   → getInstallArgs(pm, version)        — Build correct { bin, args } per package manager
  *   → getManualInstallCmd(pm, version)   — Human-readable install command string for error messages
  *   → checkForUpdateDetailed()           — Fetch npm latest with explicit error info
@@ -36,7 +37,7 @@
  *   → enforceMandatoryStartupUpdate()    — Mandatory startup self-update with two-failure fallback
  *   → runUpdate(latestVersion)           — Install new version via detected PM + relaunch
  * @exports
- *   detectPackageManager, getInstallArgs, getManualInstallCmd,
+ *   detectPackageManager, resolveCurrentNpmInstallTarget, getInstallArgs, getManualInstallCmd,
  *   checkForUpdateDetailed, checkForUpdate, isPackageDevMode,
  *   enforceMandatoryStartupUpdate, runUpdate, fetchLastReleaseDate
  *
@@ -47,14 +48,41 @@ import chalk from 'chalk'
 import { createRequire } from 'module'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
-import { accessSync, constants, existsSync } from 'fs'
+import { accessSync, constants, existsSync, readFileSync } from 'fs'
 
 const require = createRequire(import.meta.url)
 const readline = require('readline')
 const pkg = require('../../package.json')
 const LOCAL_VERSION = pkg.version
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
+const PACKAGE_NAME = 'free-coding-models'
 export const UPDATE_FAILURE_THRESHOLD = 2
+
+/**
+ * 📖 resolveCurrentNpmInstallTarget: detect the npm prefix that owns this exact
+ * 📖 running package, not just the first `npm` found in PATH. Users can run FCM
+ * 📖 from one global install while another Node manager shadows `npm`; updating
+ * 📖 the shadow prefix leaves the active binary stale and creates an update loop.
+ * @param {string} [packageRoot]
+ * @returns {{ packageRoot: string, prefix: string, bin: string } | null}
+ */
+export function resolveCurrentNpmInstallTarget(packageRoot = PACKAGE_ROOT) {
+  const normalizedRoot = String(packageRoot || '').replace(/\\/g, '/')
+  const suffix = `/lib/node_modules/${PACKAGE_NAME}`
+  if (!normalizedRoot.endsWith(suffix)) return null
+
+  const prefix = packageRoot.slice(0, packageRoot.length - suffix.length)
+  if (!prefix) return null
+
+  const npmBinName = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+  const npmBin = join(prefix, 'bin', npmBinName)
+
+  return {
+    packageRoot,
+    prefix,
+    bin: existsSync(npmBin) ? npmBin : 'npm',
+  }
+}
 
 /**
  * 📖 detectPackageManager: figure out which package manager owns the current installation.
@@ -141,27 +169,48 @@ export function buildOutdatedWarningMessage(latestVersion, failures = UPDATE_FAI
  * 📖 Each PM has different syntax for global install — this normalises them.
  * @param {'npm' | 'bun' | 'pnpm' | 'yarn'} pm
  * @param {string} version
+ * @param {{ prefix?: string, bin?: string }} [options]
  * @returns {{ bin: string, args: string[] }}
  */
-export function getInstallArgs(pm, version) {
-  const pkg = `free-coding-models@${version}`
+export function getInstallArgs(pm, version, options = {}) {
+  const pkg = `${PACKAGE_NAME}@${version}`
   switch (pm) {
     case 'bun':   return { bin: 'bun',   args: ['add', '-g', pkg] }
     case 'pnpm':  return { bin: 'pnpm',  args: ['add', '-g', pkg] }
     case 'yarn':  return { bin: 'yarn',  args: ['global', 'add', pkg] }
-    default:      return { bin: 'npm',   args: ['i', '-g', pkg, '--prefer-online'] }
+    default: {
+      const args = ['i', '-g']
+      if (options.prefix) args.push('--prefix', options.prefix)
+      args.push(pkg, '--prefer-online')
+      return { bin: options.bin || 'npm', args }
+    }
   }
+}
+
+function shellQuoteArg(arg) {
+  const value = String(arg)
+  if (/^[A-Za-z0-9_./:@+=,-]+$/.test(value)) return value
+  return `'${value.replace(/'/g, "'\\''")}'`
+}
+
+function getCurrentInstallOptions(pm = detectPackageManager()) {
+  const installTarget = pm === 'npm' ? resolveCurrentNpmInstallTarget() : null
+  return pm === 'npm' && installTarget ? {
+    prefix: installTarget.prefix,
+    bin: installTarget.bin,
+  } : {}
 }
 
 /**
  * 📖 getManualInstallCmd: human-readable command string for error / fallback messages.
  * @param {'npm' | 'bun' | 'pnpm' | 'yarn'} pm
  * @param {string} version
+ * @param {{ prefix?: string, bin?: string }} [options]
  * @returns {string}
  */
-export function getManualInstallCmd(pm, version) {
-  const { bin, args } = getInstallArgs(pm, version)
-  return `${bin} ${args.join(' ')}`
+export function getManualInstallCmd(pm, version, options = {}) {
+  const { bin, args } = getInstallArgs(pm, version, options)
+  return [bin, ...args].map(shellQuoteArg).join(' ')
 }
 
 /**
@@ -262,14 +311,16 @@ export async function enforceMandatoryStartupUpdate(config, options = {}) {
     base.allowedOutdated = true
     base.warningMessage = buildOutdatedWarningMessage(latestVersion, failures)
     console.log(chalk.red(`  ${base.warningMessage}`))
-    console.log(chalk.dim(`  Manual update: ${getManualInstallCmd(detectPackageManager(), latestVersion)}`))
+    const pm = detectPackageManager()
+    console.log(chalk.dim(`  Manual update: ${getManualInstallCmd(pm, latestVersion, getCurrentInstallOptions(pm))}`))
     console.log()
     return base
   }
 
   base.blocked = true
   console.log(chalk.red('  ✖ Mandatory update failed. FCM will retry on the next launch.'))
-  console.log(chalk.dim(`  Attempt ${failures}/${UPDATE_FAILURE_THRESHOLD}. Manual update: ${getManualInstallCmd(detectPackageManager(), latestVersion)}`))
+  const pm = detectPackageManager()
+  console.log(chalk.dim(`  Attempt ${failures}/${UPDATE_FAILURE_THRESHOLD}. Manual update: ${getManualInstallCmd(pm, latestVersion, getCurrentInstallOptions(pm))}`))
   console.log()
   return base
 }
@@ -305,9 +356,10 @@ export async function fetchLastReleaseDate() {
  * 📖 Bun installs to ~/.bun/install/global/ (always user-writable) so sudo is never needed.
  * 📖 For npm/pnpm/yarn we probe their global root/prefix paths and check writability.
  * @param {'npm' | 'bun' | 'pnpm' | 'yarn'} pm
+ * @param {{ packageRoot: string, prefix: string, bin: string } | null} [installTarget]
  * @returns {{ needsSudo: boolean, checkedPath: string|null }}
  */
-function detectGlobalInstallPermission(pm) {
+function detectGlobalInstallPermission(pm, installTarget = null) {
   if (pm === 'bun') {
     return { needsSudo: false, checkedPath: null }
   }
@@ -326,13 +378,20 @@ function detectGlobalInstallPermission(pm) {
       if (dir) candidates.push(dir)
     } catch {}
   } else {
+    if (installTarget?.prefix) {
+      candidates.push(join(installTarget.prefix, 'lib', 'node_modules'))
+      candidates.push(installTarget.prefix)
+    }
+
+    const npmBin = installTarget?.bin || 'npm'
+
     try {
-      const npmRoot = execFileSync('npm', ['root', '-g'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+      const npmRoot = execFileSync(npmBin, ['root', '-g'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
       if (npmRoot) candidates.push(npmRoot)
     } catch {}
 
     try {
-      const npmPrefix = execFileSync('npm', ['prefix', '-g'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+      const npmPrefix = execFileSync(npmBin, ['prefix', '-g'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
       if (npmPrefix) candidates.push(npmPrefix)
     } catch {}
   }
@@ -346,6 +405,28 @@ function detectGlobalInstallPermission(pm) {
   }
 
   return { needsSudo: false, checkedPath: candidates[0] || null }
+}
+
+function readCurrentPackageVersion() {
+  try {
+    const data = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf8'))
+    return typeof data.version === 'string' ? data.version : null
+  } catch {
+    return null
+  }
+}
+
+function verifyCurrentInstallUpdated(latestVersion, installTarget) {
+  if (!installTarget) return
+
+  const installedVersion = readCurrentPackageVersion()
+  if (installedVersion === latestVersion) return
+
+  const actual = installedVersion ? `v${installedVersion}` : 'an unknown version'
+  throw new Error(
+    `Update command completed, but the active install at ${installTarget.packageRoot} still reports ${actual}. ` +
+    'The package manager likely installed into another global prefix.'
+  )
 }
 
 /**
@@ -402,11 +483,16 @@ function relaunchCurrentProcess() {
  * 📖 installUpdateCommand: run global install using the detected package manager, optionally prefixed with sudo.
  * @param {string} latestVersion
  * @param {boolean} useSudo
+ * @param {{ packageRoot: string, prefix: string, bin: string } | null} [installTarget]
  */
-function installUpdateCommand(latestVersion, useSudo) {
+function installUpdateCommand(latestVersion, useSudo, installTarget = null) {
   const { execFileSync } = require('child_process')
   const pm = detectPackageManager()
-  const { bin, args } = getInstallArgs(pm, latestVersion)
+  const installOptions = pm === 'npm' && installTarget ? {
+    prefix: installTarget.prefix,
+    bin: installTarget.bin,
+  } : {}
+  const { bin, args } = getInstallArgs(pm, latestVersion, installOptions)
 
   if (useSudo) {
     execFileSync('sudo', [bin, ...args], { stdio: 'inherit', shell: false })
@@ -433,7 +519,12 @@ export function runUpdate(latestVersion, options = {}) {
   console.log()
 
   const pm = detectPackageManager()
-  const { needsSudo, checkedPath } = detectGlobalInstallPermission(pm)
+  const installTarget = pm === 'npm' ? resolveCurrentNpmInstallTarget() : null
+  const installOptions = pm === 'npm' && installTarget ? {
+    prefix: installTarget.prefix,
+    bin: installTarget.bin,
+  } : {}
+  const { needsSudo, checkedPath } = detectGlobalInstallPermission(pm, installTarget)
   const sudoAvailable = process.platform !== 'win32' && hasSudoCommand()
   let lastError = null
 
@@ -444,7 +535,8 @@ export function runUpdate(latestVersion, options = {}) {
   }
 
   try {
-    installUpdateCommand(latestVersion, needsSudo && sudoAvailable)
+    installUpdateCommand(latestVersion, needsSudo && sudoAvailable, installTarget)
+    verifyCurrentInstallUpdated(latestVersion, installTarget)
     console.log()
     console.log(chalk.green(`  ✅ Update complete! Version ${latestVersion} installed.`))
     console.log()
@@ -452,13 +544,14 @@ export function runUpdate(latestVersion, options = {}) {
     return { ok: true }
   } catch (err) {
     lastError = err
-    const manualCmd = getManualInstallCmd(pm, latestVersion)
+    const manualCmd = getManualInstallCmd(pm, latestVersion, installOptions)
     console.log()
     if (isPermissionError(err) && !needsSudo && sudoAvailable) {
       console.log(chalk.yellow(`  ⚠ Permission denied during ${pm} global install. Retrying with sudo...`))
       console.log()
       try {
-        installUpdateCommand(latestVersion, true)
+        installUpdateCommand(latestVersion, true, installTarget)
+        verifyCurrentInstallUpdated(latestVersion, installTarget)
         console.log()
         console.log(chalk.green(`  ✅ Update complete with sudo! Version ${latestVersion} installed.`))
         console.log()
@@ -484,5 +577,3 @@ export function runUpdate(latestVersion, options = {}) {
   if (exitOnFailure) process.exit(1)
   return { ok: false, error: lastError }
 }
-
-

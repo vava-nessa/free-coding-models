@@ -55,7 +55,7 @@ import { createOverlayRenderers } from '../src/tui/overlays.js'
 import { buildProviderModelsUrl, parseProviderModelIds, listProviderTestModels, classifyProviderTestOutcome, buildProviderTestDetail } from '../src/tui/key-handler.js'
 import { buildCliHelpText, buildHowTheRouterWorksLines } from '../src/tui/cli-help.js'
 import { buildSyncCandidates } from '../src/core/sync-set.js'
-import { detectPackageManager, getInstallArgs, getManualInstallCmd, buildOutdatedWarningMessage } from '../src/core/updater.js'
+import { detectPackageManager, resolveCurrentNpmInstallTarget, getInstallArgs, getManualInstallCmd, buildOutdatedWarningMessage } from '../src/core/updater.js'
 import {
   buildToolEnv,
   prepareExternalToolLaunch,
@@ -3143,13 +3143,23 @@ describe('router daemon integration hardening', () => {
     await withRouterTestServer(config, async ({ baseUrl }) => {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 1000)
-      const response = await fetch(`${baseUrl}/api/events`, {
-        signal: controller.signal,
-      })
-      clearTimeout(timeout)
+      let response
+      try {
+        response = await fetch(`${baseUrl}/api/events`, {
+          signal: controller.signal,
+        })
 
-      assert.equal(response.status, 200)
-      assert.ok(response.headers.get('content-type')?.includes('text/event-stream'), 'should be SSE')
+        assert.equal(response.status, 200)
+        assert.ok(response.headers.get('content-type')?.includes('text/event-stream'), 'should be SSE')
+      } finally {
+        clearTimeout(timeout)
+        try {
+          await response?.body?.cancel()
+        } catch {
+          // 📖 The stream may already be closed by abort/teardown.
+        }
+        controller.abort()
+      }
     })
   })
 
@@ -5022,11 +5032,48 @@ describe('detectPackageManager', () => {
   })
 })
 
+describe('resolveCurrentNpmInstallTarget', () => {
+  it('detects the npm prefix that owns a global package root', () => {
+    const prefix = join(tmpdir(), `fcm-prefix-${process.pid}-${Date.now()}`)
+    const packageRoot = join(prefix, 'lib', 'node_modules', 'free-coding-models')
+    const binDir = join(prefix, 'bin')
+    const npmBin = join(binDir, process.platform === 'win32' ? 'npm.cmd' : 'npm')
+
+    mkdirSync(packageRoot, { recursive: true })
+    mkdirSync(binDir, { recursive: true })
+    writeFileSync(npmBin, '')
+
+    try {
+      assert.deepEqual(resolveCurrentNpmInstallTarget(packageRoot), {
+        packageRoot,
+        prefix,
+        bin: npmBin,
+      })
+    } finally {
+      rmSync(prefix, { recursive: true, force: true })
+    }
+  })
+
+  it('returns null for a repo checkout package root', () => {
+    assert.equal(resolveCurrentNpmInstallTarget(ROOT), null)
+  })
+})
+
 describe('getInstallArgs', () => {
   it('returns npm install args by default', () => {
     const { bin, args } = getInstallArgs('npm', '1.0.0')
     assert.equal(bin, 'npm')
     assert.deepEqual(args, ['i', '-g', 'free-coding-models@1.0.0', '--prefer-online'])
+  })
+
+  it('targets the npm prefix that owns the active global install', () => {
+    const { bin, args } = getInstallArgs('npm', '1.0.0', {
+      prefix: '/opt/homebrew',
+      bin: '/opt/homebrew/bin/npm',
+    })
+
+    assert.equal(bin, '/opt/homebrew/bin/npm')
+    assert.deepEqual(args, ['i', '-g', '--prefix', '/opt/homebrew', 'free-coding-models@1.0.0', '--prefer-online'])
   })
 
   it('returns bun install args', () => {
@@ -5057,6 +5104,16 @@ describe('getInstallArgs', () => {
 describe('getManualInstallCmd', () => {
   it('returns npm command string', () => {
     assert.equal(getManualInstallCmd('npm', '2.0.0'), 'npm i -g free-coding-models@2.0.0 --prefer-online')
+  })
+
+  it('includes the owner npm prefix in manual install instructions', () => {
+    assert.equal(
+      getManualInstallCmd('npm', '2.0.0', {
+        prefix: '/opt/homebrew',
+        bin: '/opt/homebrew/bin/npm',
+      }),
+      '/opt/homebrew/bin/npm i -g --prefix /opt/homebrew free-coding-models@2.0.0 --prefer-online'
+    )
   })
 
   it('returns bun command string', () => {

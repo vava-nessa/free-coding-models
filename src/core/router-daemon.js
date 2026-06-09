@@ -2508,6 +2508,8 @@ class RouterRuntime {
           Connection: 'keep-alive',
           'x-request-id': requestId,
         })
+        res.flushHeaders?.()
+        res.write(': connected\n\n')
         res.write(`event: hello\ndata: ${JSON.stringify(this.statusPayload())}\n\n`)
         this.sseClients.add(res)
         req.on('close', () => this.sseClients.delete(res))
@@ -2643,6 +2645,8 @@ class RouterRuntime {
           'Connection': 'keep-alive',
           'x-request-id': requestId,
         })
+        res.flushHeaders?.()
+        res.write(': connected\n\n')
         res.write(`data: ${JSON.stringify(getWebStatePayload(this))}\n\n`)
         this.sseClients.add(res)
         req.on('close', () => this.sseClients.delete(res))
