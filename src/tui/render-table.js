@@ -651,12 +651,15 @@ export function renderTable({
       ? providerName.slice(0, 4) + '…'
       : providerName
     const source = themeColors.provider(r.providerKey, providerDisplay.padEnd(wSource))
-    // 📖 Favorites marked with a single ⭐ — no ranking numbers
+    // 📖 Prefix: ⭐ favorite > 🎯 recommended > 🆕 new — only one emoji, never shifts the line
+    const isNewModel = NEW_MODELS.has(r.modelId) || NEW_MODELS.has(`${r.providerKey}/${r.modelId}`)
     let favoritePrefix = ''
     if (r.isRecommended) {
       favoritePrefix = '🎯 '
     } else if (r.isFavorite) {
       favoritePrefix = '⭐ '
+    } else if (isNewModel) {
+      favoritePrefix = '🆕 '
     }
     const prefixDisplayWidth = displayWidth(favoritePrefix)
     const nameWidth = Math.max(0, W_MODEL - prefixDisplayWidth)
@@ -851,12 +854,7 @@ export function renderTable({
       verdictColor = (text) => chalk.bold.rgb(...getTierRgb('C'))(text)
       break
   }
-  // 📖 Add NEW badge for recently added models
-  // 📖 Use padEndDisplay to account for emoji display width (2 cols each) so all rows align
-  const isNewModel = NEW_MODELS.has(r.modelId) || NEW_MODELS.has(`${r.providerKey}/${r.modelId}`)
-  const newBadge = isNewModel ? '🆕' : ''
-  const verdictTextWithBadge = newBadge ? `${newBadge} ${verdictText}` : verdictText
-  const speedCell = verdictColor(padEndDisplay(verdictTextWithBadge, W_VERDICT))
+  const speedCell = verdictColor(padEndDisplay(verdictText, W_VERDICT))
   const moodCell = padEndDisplay(verdictIcon, W_MOOD)
 
     // 📖 Stability column - composite score (0–100) from p95 + jitter + spikes + uptime
