@@ -800,53 +800,53 @@ export function renderTable({
   // 📖 Verdict colors follow the same green→red gradient as TIER_COLOR / SWE%
   switch (verdict) {
     case 'Perfect':
-      verdictIcon = '🟩✨'
+      verdictIcon = '🟩'
       verdictText = `${verdictIcon} Perfect`
       verdictColor = themeColors.successBold
       break
     case 'Normal':
-      verdictIcon = '🟢✨'
+      verdictIcon = '🟢'
       verdictText = `${verdictIcon} Normal`
       verdictColor = themeColors.metricGood
       break
     case 'Spiky':
-      verdictIcon = '🟡✨'
+      verdictIcon = '🟡'
       verdictText = `${verdictIcon} Spiky`
       verdictColor = (text) => chalk.bold.rgb(...getTierRgb('A+'))(text)
       break
     case 'Slow':
-      verdictIcon = '🟠✨'
+      verdictIcon = '🟠'
       verdictText = `${verdictIcon} Slow`
       verdictColor = (text) => chalk.bold.rgb(...getTierRgb('A-'))(text)
       break
     case 'Very Slow':
-      verdictIcon = '🔴✨'
+      verdictIcon = '🔴'
       verdictText = `${verdictIcon} Very Slow`
       verdictColor = (text) => chalk.bold.rgb(...getTierRgb('B+'))(text)
       break
     case 'Overloaded':
-      verdictIcon = '🔥✨'
+      verdictIcon = '🔥'
       verdictText = `${verdictIcon} Overloaded`
       verdictColor = (text) => chalk.bold.rgb(...getTierRgb('B'))(text)
       break
     case 'Unstable':
       // 📖 Avoid ⚠️ here: its variation selector has inconsistent terminal width and shifts the tiny ❔ column.
-      verdictIcon = '🟥✨'
+      verdictIcon = '🟥'
       verdictText = `${verdictIcon} Unstable`
       verdictColor = themeColors.errorBold
       break
     case 'Not Active':
-      verdictIcon = '⚫✨'
+      verdictIcon = '⚫'
       verdictText = `${verdictIcon} Not Active`
       verdictColor = themeColors.dim
       break
     case 'Pending':
-      verdictIcon = '⏳✨'
+      verdictIcon = '⏳'
       verdictText = `${verdictIcon} Pending`
       verdictColor = themeColors.dim
       break
     default:
-      verdictIcon = '💀✨'
+      verdictIcon = '💀'
       verdictText = `${verdictIcon} Unusable`
       verdictColor = (text) => chalk.bold.rgb(...getTierRgb('C'))(text)
       break

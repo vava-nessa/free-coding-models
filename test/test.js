@@ -1285,7 +1285,7 @@ describe('renderTable health labels', () => {
     }))
 
     assert.match(output, /❔/)
-    assert.match(output, /🟩✨\s+Perfect/)
+    assert.match(output, /🟩\s+Perfect/)
   })
 
   it('renders explicit labels for common HTTP failure codes', () => {
