@@ -44,19 +44,19 @@ export const nvidiaNim = [
   ['minimaxai/minimax-m2.7',                       'MiniMax M2.7',        'S+', '80.2%', '200k'],
   ['z-ai/glm-5.1',                                 'GLM 5.1',             'S+', '77.8%', '128k'],
   ['moonshotai/kimi-k2.6',                         'Kimi K2.6',           'S+', '76.8%', '256k'],
-  ['deepseek-ai/deepseek-v4-pro',                  'DeepSeek V4 Pro',     'S+', '73.1%', '128k'],
-  ['deepseek-ai/deepseek-v4-flash',                'DeepSeek V4 Flash',   'S+', '72.0%', '128k'],
-  ['z-ai/glm5',                                    'GLM 5',               'S+', '73.8%', '200k'],
+  ['deepseek-ai/deepseek-v4-pro',                  'DeepSeek V4 Pro',     'S+', '73.1%', '1M'],
+  ['deepseek-ai/deepseek-v4-flash',                'DeepSeek V4 Flash',   'S+', '72.0%', '1M'],
   ['stepfun-ai/step-3.5-flash',                    'Step 3.5 Flash',      'S+', '74.4%', '256k'],
   ['stepfun-ai/step-3.7-flash',                    'Step 3.7 Flash',      'S+', '74.4%', '256k'],
   ['qwen/qwen3-coder-480b-a35b-instruct',          'Qwen3 Coder 480B',    'S+', '70.6%', '256k'],
+  ['nvidia/nemotron-3-ultra-550b-a55b', 'Nemotron 3 Ultra', 'S+', '-', '1M'],
   // ── S tier — SWE-bench Verified 60–70% ──
   ['qwen/qwen3-next-80b-a3b-instruct',             'Qwen3 80B Instruct',  'S',  '65.0%', '128k'],
   ['qwen/qwen3.5-397b-a17b',                       'Qwen3.5 400B VLM',    'S',  '68.0%', '128k'],
   ['openai/gpt-oss-120b',                          'GPT OSS 120B',        'S',  '60.0%', '128k'],
   ['meta/llama-4-maverick-17b-128e-instruct',      'Llama 4 Maverick',    'S',  '62.0%', '1M'],
   ['mistralai/mistral-medium-3.5-128b',             'Mistral Medium 3.5',  'S',  '66.0%', '128k'],
-  ['mistralai/mistral-small-4-119b-2603',           'Mistral Small 4',     'S',  '60.0%', '128k'],
+  ['mistralai/mistral-small-4-119b-2603',           'Mistral Small 4',     'S',  '60.0%', '256k'],
   ['qwen/qwen3.5-122b-a10b',                       'Qwen3.5 122B',        'S',  '64.0%', '128k'],
   // ── A+ tier — SWE-bench Verified 50–60% ──
   ['mistralai/mistral-large-3-675b-instruct-2512', 'Mistral Large 675B',  'A+', '58.0%', '256k'],
@@ -80,6 +80,7 @@ export const nvidiaNim = [
   // llama-3.3-70b-instruct (404), mixtral-8x22b-instruct-v0.1 (404),
   // granite-34b-code-instruct (deprecated), llama-4-scout-17b-16e-instruct (deprecated, not in nvidiaNim),
   // llama-3.1-8b-instruct (404) → replaced by llama-3.2-11b-vision-instruct
+  // Removed (2026-06-10): z-ai/glm5 (replaced by z-ai/glm-5.1)
 ]
 
 // 📖 Groq source - https://console.groq.com
@@ -93,6 +94,13 @@ export const groq = [
   ['qwen/qwen3-32b',                       'Qwen3 32B',          'A+', '50.0%', '131k'],
   ['groq/compound',                        'Groq Compound',      'A',  '45.0%', '131k'],
   ['groq/compound-mini',                   'Groq Compound Mini', 'B+', '32.0%', '131k'],
+  ['whisper-large-v3', 'Whisper', 'C', '-', '-'],
+  ['whisper-large-v3-turbo', 'Whisper Large V3 Turbo', 'C', '-', '-'],
+  ['canopylabs/orpheus-arabic-saudi', 'Canopy Labs Orpheus Arabic Saudi', 'C', '-', '4k'],
+  ['canopylabs/orpheus-v1-english', 'Canopy Labs Orpheus V1 English', 'C', '-', '4k'],
+  ['meta-llama/llama-prompt-guard-2-22m', 'Llama Prompt Guard 2 22M', 'C', '-', '512'],
+  ['meta-llama/llama-prompt-guard-2-86m', 'Prompt Guard 2 86M', 'C', '-', '512'],
+  ['openai/gpt-oss-safeguard-20b', 'Safety GPT OSS 20B', 'C', '-', '131k'],
 ]
 
 // 📖 Cerebras source - https://cloud.cerebras.ai

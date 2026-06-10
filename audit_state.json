@@ -1,17 +1,17 @@
 {
   "_meta": {
-    "totalModels": 153,
+    "totalModels": 161,
     "lastFullAudit": "2026-05-31"
   },
   "nvidia": {
-    "lastAudited": "2026-05-31",
-    "fingerprint": "df98632971314deb47d2670e80b98611",
+    "lastAudited": "2026-06-10",
+    "fingerprint": "cde1331268a4d3686f34297a4487e92b",
     "modelCount": 27
   },
   "groq": {
-    "lastAudited": "2026-05-31",
-    "fingerprint": "dc41cb7450c0b5a97ae5b4c0366656a3",
-    "modelCount": 8
+    "lastAudited": "2026-06-10",
+    "fingerprint": "55eb4c9e73b9f8d5908e9d1cc383d917",
+    "modelCount": 15
   },
   "cerebras": {
     "lastAudited": "2026-05-31",
