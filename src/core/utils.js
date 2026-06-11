@@ -520,8 +520,8 @@ export function findBestModel(results) {
 //   - API key: first positional arg that does not look like a CLI flag (e.g., "nvapi-xxx")
 //   - Boolean flags: --best, --fiable, --opencode, --opencode-desktop, --opencode-web, --openclaw,
 //     --aider, --crush, --goose, --qwen, --kilo,
-//     --openhands, --amp, --pi, --rovo, --hermes, --continue, --cline,
-//     --xcode, --gemini, --jcode, --copilot, --forgecode,
+//     --openhands, --amp, --pi, --hermes, --continue, --cline,
+//     --xcode, --jcode, --copilot, --forgecode,
 //     --daemon, --daemon-bg, --daemon-stop,
 //     --daemon-status, --no-telemetry, --json, --help/-h (case-insensitive)
 //     --playground / playground subcommand (open the in-TUI chat playground)
@@ -600,12 +600,10 @@ export function parseArgs(argv) {
   const openHandsMode = flags.includes('--openhands')
   const ampMode = flags.includes('--amp')
   const piMode = flags.includes('--pi')
-  const rovoMode = flags.includes('--rovo')
   const hermesMode = flags.includes('--hermes')
   const continueMode = flags.includes('--continue')
   const clineMode = flags.includes('--cline')
   const xcodeMode = flags.includes('--xcode')
-  const geminiMode = flags.includes('--gemini')
   const cavemanMode = flags.includes('--caveman')
   const jcodeMode = flags.includes('--jcode')
   const copilotMode = flags.includes('--copilot')
@@ -669,8 +667,6 @@ export function parseArgs(argv) {
     continueMode,
     clineMode,
     xcodeMode,
-    rovoMode,
-    geminiMode,
     cavemanMode,
     jcodeMode,
     copilotMode,

@@ -107,8 +107,6 @@ const PROVIDER_AUTH_ENDPOINTS = {
   zai:          null, // 📖 ZAI undocumented; use ping only
   googleai:     null, // 📖 Google AI Studio has no OpenAI-compatible /models; use ping
   'opencode-zen': null, // 📖 OpenCode Zen uses OpenCode auth only; use ping
-  rovo:         null, // 📖 CLI tool — no API key
-  gemini:       null, // 📖 CLI tool — no API key
 }
 
 // 📖 Sleep helper kept local to this module so the Settings key test flow can
@@ -337,7 +335,7 @@ export function createKeyHandler(ctx) {
   }
 
   function getModelTelemetryFamily(providerKey) {
-    if (providerKey === 'rovo' || providerKey === 'gemini' || providerKey === 'opencode-zen') return providerKey
+    if (providerKey === 'opencode-zen') return providerKey
     return 'standard'
   }
 
@@ -443,15 +441,14 @@ export function createKeyHandler(ctx) {
     console.log()
 
     // 📖 CLI-only tool compatibility checks:
-    // 📖 Case A: Active tool mode is CLI-only (rovo/gemini) but selected model doesn't belong to it
+    // 📖 Case A: Active tool mode is CLI-only but selected model doesn't belong to it
     // 📖 Case B: Selected model belongs to a CLI-only provider but active mode is something else
     const activeMeta = getToolMeta(state.mode)
     const isActiveModeCliOnly = activeMeta.cliOnly === true
-    const isModelFromCliOnly = selected.providerKey === 'rovo' || selected.providerKey === 'gemini'
     const isModelFromZen = selected.providerKey === 'opencode-zen'
     const modelBelongsToActiveMode = selected.providerKey === state.mode
 
-    // 📖 Case A: User is in Rovo/Gemini mode but selected a model from a different provider
+    // 📖 Case A: User is in a CLI-only tool mode but selected a model from a different provider
     if (isActiveModeCliOnly && !modelBelongsToActiveMode) {
       trackAppUseResult(selected, 'blocked_incompatible_model', {
         blocked_by_tool_mode: state.mode,
@@ -472,23 +469,11 @@ export function createKeyHandler(ctx) {
       process.exit(0)
     }
 
-    // 📖 Case B: Selected model is from a CLI-only provider but active mode is different
-    if (isModelFromCliOnly && !modelBelongsToActiveMode) {
-      const modelMeta = getToolMeta(selected.providerKey)
-      console.log(chalk.yellow(`  ⚠ ${selected.label} is a ${modelMeta.label}-exclusive model.`))
-      console.log(chalk.yellow(`  Your current tool is: ${activeMeta.label}`))
-      console.log()
-      console.log(chalk.cyan(`  Switching to ${modelMeta.label} and launching...`))
-      setToolMode(selected.providerKey)
-      console.log(chalk.green(`  ✓ Switched to ${modelMeta.label}`))
-      console.log()
-    }
-
     // 📖 Case C removed: Zen models now work with any OpenAI-compatible tool (Pi, Aider, etc.)
     // 📖 The Zen endpoint (https://opencode.ai/zen/v1/chat/completions) is standard OpenAI-compatible.
 
-    // 📖 OpenClaw, CLI-only tools, and Zen models manage auth differently — skip API key warning for them.
-    if (state.mode !== 'openclaw' && !isModelFromCliOnly && !isModelFromZen) {
+    // 📖 OpenClaw and Zen models manage auth differently — skip API key warning for them.
+    if (state.mode !== 'openclaw' && !isModelFromZen) {
       const selectedApiKey = getApiKey(state.config, selected.providerKey)
       if (!selectedApiKey) {
         console.log(chalk.yellow(`  Warning: No API key configured for ${selected.providerKey}.`))
@@ -500,7 +485,7 @@ export function createKeyHandler(ctx) {
 
     // 📖 CLI-only tool auto-install check — verify the CLI binary is available before launch.
     const toolModeForProvider = selected.providerKey
-    if (isModelFromCliOnly && !isToolInstalled(toolModeForProvider)) {
+    if (isActiveModeCliOnly && !isToolInstalled(toolModeForProvider)) {
       const installPlan = getToolInstallPlan(toolModeForProvider)
       if (installPlan.supported) {
         console.log()

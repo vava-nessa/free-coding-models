@@ -73,11 +73,6 @@
     "fingerprint": "84abb56ab959de853ff0a53fde0668ea",
     "modelCount": 11
   },
-  "gemini": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "7c1853c3e20ec800af5798ac0abbc4ca",
-    "modelCount": 7
-  },
   "opencode-zen": {
     "lastAudited": "2026-06-01",
     "fingerprint": "12f6f6de4460c6708189e0f45bc0cc3f",

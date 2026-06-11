@@ -123,7 +123,6 @@ Only include models in `removed`/`added`/`fixed`/`confirmed` — do not list eve
 | `qwen` | Alibaba DashScope | https://help.aliyun.com/zh/model-studio/ |
 | `cloudflare` | Cloudflare Workers AI | https://developers.cloudflare.com/workers-ai/models/ |
 | `ovhcloud` | OVHcloud AI | https://endpoints.ai.cloud.ovh.net |
-| `gemini` | Gemini CLI | https://ai.google.dev |
 | `opencode-zen` | OpenCode Zen | https://opencode.ai/docs/zen/ |
 
 ---
@@ -141,9 +140,9 @@ After all researchers return, parse the JSON responses and build one consolidate
 | ...      |   |   |   |    | |
 ```
 
-If `googleai` was audited, **clone results to `gemini`** automatically (same models, same source docs).
+Apply `googleai` audit diffs directly to sources.js — no clone needed.
 
-**Gemini deduplication rule:** When `googleai` appears in the diff list, apply the same changes to `gemini` in the same pass — no separate research needed.
+**Gemini CLI was removed** as a separate tool integration; only `googleai` (Google AI Studio / Gemini API) remains in the active free catalog.
 
 Ask: **"Apply changes to sources.js? (Yes / Review diffs / Select providers)"**
 
@@ -262,10 +261,6 @@ free-coding-models --help | head -5
 
 ## Special Cases
 
-### Gemini = Google AI (same models, same docs)
-
-When `googleai` appears in the audit plan, apply its diff to both `googleai` AND `gemini` in the same commit. No separate research for `gemini`.
-
 ### OpenCode Zen models are ephemeral
 
 Zen free tier promotions come and go fast. Don't over-engineer tracking — just audit when user asks. The fingerprint will catch real changes.
@@ -299,6 +294,6 @@ Don't remove it — it still works until the shutdown date.
 | Per-provider markdown reports in `provider_updates/` | JSON diffs parsed directly from researcher output |
 | Archived reports in `provider_updates/archive/vX.Y.Z/` | Git history IS the archive |
 | No state tracking — always audits everything | `audit_state.json` + fingerprints skip unchanged providers |
-| `gemini` and `googleai` audited separately | `googleai` diff cloned to `gemini` automatically |
+| `gemini` and `googleai` audited separately | Only `googleai` remains; `gemini` clone removed |
 | Verbose markdown tables in reports | Minimal JSON diffs |
 | Manual file writing from researcher output | Researchers return JSON, agent parses and applies |

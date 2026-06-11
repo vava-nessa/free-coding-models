@@ -257,16 +257,6 @@ async function benchmarkSingleAttempt({ apiKey, modelId, providerKey, url, timeo
 // 📖 Returns on failure (all attempts exhausted):
 // 📖   { ok: false, code, totalMs, error, retries }
 export async function benchmarkModel({ apiKey, modelId, providerKey, url, timeoutMs = BENCHMARK_TIMEOUT_MS, maxRetries = BENCHMARK_MAX_RETRIES, retryDelayMs = BENCHMARK_RETRY_DELAY_MS }) {
-  // 📖 Guard: unsupported providers that don't do chat completions
-  if (providerKey === 'rovo' || providerKey === 'gemini' || providerKey === 'opencode-zen') {
-    return {
-      ok: false,
-      code: 'UNSUPPORTED',
-      totalMs: 0,
-      error: 'Provider does not support chat completions',
-      retries: 0,
-    }
-  }
 
   let lastResult = null
 

@@ -249,8 +249,6 @@ export async function runApp(cliArgs, config, startupOptions = {}) {
       cline: cliArgs.clineMode,
       xcode: cliArgs.xcodeMode,
       pi: cliArgs.piMode,
-      rovo: cliArgs.rovoMode,
-      gemini: cliArgs.geminiMode,
       caveman: cliArgs.cavemanMode,
       copilot: cliArgs.copilotMode,
       forgecode: cliArgs.forgecodeMode,

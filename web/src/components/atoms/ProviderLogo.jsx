@@ -75,7 +75,6 @@ const PROVIDER_CONFIG = {
   scaleway:         { folder: 'scalewaylogo', iconFile: 'ScalewayLogo', iconClass: 'scalewayLogo', hasColor: false, hasText: false, legacy: true, noCaption: true },
   zai:              { folder: 'zai',         hasColor: false, hasText: true  },
   qwen:             { folder: 'qwen',        hasColor: true,  hasText: true  },
-  gemini:           { folder: 'gemini',      hasColor: true,  hasText: true  },
   'opencode-zen':   { folder: 'opencode',    hasColor: false, hasText: true  },
   // 📖 Codestral intentionally reuses Mistral's branding — the colored Mistral
   // 📖 icon (so the brand association is visible) + the literal caption

@@ -41,8 +41,7 @@ export const TOOL_METADATA = {
   hermes:            { label: 'Hermes',            emoji: '🔮', flag: '--hermes',           color: [200, 160, 255] },
   'continue':        { label: 'Continue CLI',     emoji: '▶️', flag: '--continue',         color: [255, 100, 100] },
   cline:             { label: 'Cline',             emoji: '🧠', flag: '--cline',            color: [100, 220, 180] },
-  rovo:              { label: 'Rovo Dev CLI',      emoji: '🦘', flag: '--rovo',             color: [148, 163, 184], cliOnly: true },
-  gemini:            { label: 'Gemini CLI',        emoji: '♊', flag: '--gemini',           color: [66, 165, 245],  cliOnly: true },
+
   caveman:           { label: 'Caveman Code',      emoji: '🪨', flag: '--caveman',          color: [180, 130, 80] },
   jcode:             { label: 'jcode',              emoji: '🪼', flag: '--jcode',             color: [255, 140, 0]  },
   xcode:             { label: 'Xcode Intelligence',emoji: '🛠️', flag: '--xcode',            color: [20, 126, 251] },
@@ -69,8 +68,7 @@ export const COMPAT_COLUMN_SLOTS = [
   { emoji: '▶️', toolKeys: ['continue'],                     color: [255, 100, 100] },
   { emoji: '🧠', toolKeys: ['cline'],                        color: [100, 220, 180] },
   { emoji: '🧭', toolKeys: ['fcm_router'],                  color: [80, 200, 120] },
-  { emoji: '🦘', toolKeys: ['rovo'],                        color: [148, 163, 184] },
-  { emoji: '♊', toolKeys: ['gemini'],                       color: [66, 165, 245] },
+
   { emoji: '🪨', toolKeys: ['caveman'],                      color: [180, 130, 80] },
   { emoji: '🪼', toolKeys: ['jcode'],                        color: [255, 140, 0]  },
   { emoji: '🛠️', toolKeys: ['xcode'],                        color: [20, 126, 251] },
@@ -97,8 +95,7 @@ export const TOOL_MODE_ORDER = [
   'cline',
   'xcode',
   'fcm_router',
-  'rovo',
-  'gemini',
+
   'caveman',
   'copilot',
   'forgecode',
@@ -112,27 +109,23 @@ export function getToolModeOrder() {
   return [...TOOL_MODE_ORDER]
 }
 
-// 📖 Regular tools: all tools EXCEPT rovo, gemini (which are CLI-only exclusives).
+// 📖 Regular tools: all tools EXCEPT cliOnly ones (which have exclusive models).
 // 📖 Used as the default compatible set for normal provider models.
 const REGULAR_TOOLS = Object.keys(TOOL_METADATA).filter(k => !TOOL_METADATA[k].cliOnly)
 
 // 📖 Zen models use OpenAI-compatible endpoints (https://opencode.ai/zen/v1/chat/completions)
 // 📖 and can be used by ANY tool that supports custom OpenAI-compatible providers.
 // 📖 They are NOT locked to OpenCode — confirmed by OpenCode's own "no lock-in" design goal.
-// 📖 Only CLI-only tools (rovo, gemini) are excluded since they have their own exclusive models.
+// 📖 Only CLI-only tools are excluded since they have their own exclusive models.
 
 /**
  * 📖 Returns the list of tool keys a model is compatible with.
- *   - Rovo models → only 'rovo'
- *   - Gemini models → only 'gemini'
  *   - OpenCode Zen models → all non-cliOnly tools (Zen uses OpenAI-compatible endpoints)
  *   - Regular models → all non-cliOnly tools
- * @param {string} providerKey — the source key from sources.js (e.g. 'nvidia', 'rovo', 'opencode-zen')
+ * @param {string} providerKey — the source key from sources.js (e.g. 'nvidia', 'opencode-zen')
  * @returns {string[]} — array of compatible tool keys
  */
 export function getCompatibleTools(providerKey) {
-  if (providerKey === 'rovo') return ['rovo']
-  if (providerKey === 'gemini') return ['gemini']
   // 📖 Zen models use /v1/chat/completions — compatible with any OpenAI-compatible tool
   if (providerKey === 'opencode-zen') return REGULAR_TOOLS
   return REGULAR_TOOLS

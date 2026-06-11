@@ -6,9 +6,9 @@
 
 <p align="center">
   <strong>Find the fastest free coding model in seconds</strong><br>
-  Track ~153 models across 16 trusted free or free-limited AI providers in real time<br><br>
+  Track ~146 models across 15 trusted free or free-limited AI providers in real time<br><br>
   <strong>Install Free API endpoints to your favorite AI coding tools:</strong><br>
-  OpenCode CLI / Desktop / WebUI, OpenClaw, Crush, Goose, Aider, Kilo CLI, Qwen Code, OpenHands, Amp, Hermes, Continue, Cline, Xcode, Pi, Rovo, Gemini and more...<br><br>
+  OpenCode CLI / Desktop / WebUI, OpenClaw, Crush, Goose, Aider, Kilo CLI, Qwen Code, OpenHands, Amp, Hermes, Continue, Cline, Xcode, Pi and more...<br><br>
   <strong>Use Kimi K2, DeepSeek V3, GPT-OSS, Qwen3, MiniMax M3, GLM, Llama 4, Gemma 4, Devstral and more — for free</strong>
 </p>
 
@@ -16,8 +16,8 @@
   <img src="https://img.shields.io/npm/v/free-coding-models?color=3d6b00&label=npm&logo=npm" alt="npm version" width="200"><br>
   <img src="https://img.shields.io/node/v/free-coding-models?color=3d6b00&logo=node.js" alt="node version" width="200"><br>
   <img src="https://img.shields.io/npm/l/free-coding-models?color=3d6b00" alt="license" width="200"><br>
-  <img src="https://img.shields.io/badge/models-154+-3d6b00?logo=nvidia" alt="models count" width="200"><br>
-  <img src="https://img.shields.io/badge/providers-16-1a56db" alt="providers count" width="200">
+  <img src="https://img.shields.io/badge/models-146-3d6b00?logo=nvidia" alt="models count" width="200"><br>
+  <img src="https://img.shields.io/badge/providers-15-1a56db" alt="providers count" width="200">
 </p>
 
 ```bash
@@ -91,12 +91,11 @@ Create a free account on one provider below to get started:
 | 12 | [ZAI](https://z.ai) | 2 | S | Free Flash models only | `ZAI_API_KEY` |
 | 13 | [Scaleway](https://console.scaleway.com/iam/api-keys) | 10 | S+ → B | 1M free tokens | `SCALEWAY_API_KEY` |
 | 14 | [Alibaba DashScope](https://modelstudio.console.alibabacloud.com) | 11 | S+ → A+ | 1M free tokens/model, Singapore, 90 days | `DASHSCOPE_API_KEY` |
-| 15 | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | 7 | S+ → A | 1,000 req/day with personal Google account | CLI tool ♊ |
-| 16 | [OpenCode Zen](https://opencode.ai/zen) | 6 | S+ → A | Free with OpenCode account | Zen models ✨ |
+| 15 | [OpenCode Zen](https://opencode.ai/zen) | 6 | S+ → A | Free with OpenCode account | Zen models ✨ |
 
 > 💡 One key is enough. Add more at any time with **`P`** inside the TUI.
 
-> 🧹 Audit cleanup: `iFlow` was removed because it shut down on April 17, 2026. `Together AI`, `Perplexity API`, `DeepInfra`, `Replicate`, `Fireworks`, `Hyperbolic`, `Hugging Face`, `SiliconFlow`, `Chutes AI`, and `Rovo` were removed from the active free catalog because they are paid, trial-credit only, too tiny to be useful, unclear as a stable free API, or tool-specific rather than a generally usable free provider.
+> 🧹 Audit cleanup: `iFlow` was removed because it shut down on April 17, 2026. `Together AI`, `Perplexity API`, `DeepInfra`, `Replicate`, `Fireworks`, `Hyperbolic`, `Hugging Face`, `SiliconFlow`, `Chutes AI` were removed from the active free catalog because they are paid, trial-credit only, too tiny to be useful, unclear as a stable free API, or tool-specific rather than a generally usable free provider. `Rovo` and `Gemini CLI` were also wiped out as tool integrations (CLI-only, not generally usable free providers).
 
 ---
 
@@ -425,30 +424,12 @@ Routing behavior:
 | `--cline` | 🧠 Cline |
 | `--xcode` | 🛠️ Xcode Intelligence |
 | `--pi` | π Pi |
-| `--rovo` | 🦘 Rovo Dev CLI |
-| `--gemini` | ♊ Gemini CLI |
 | `--copilot` | 🤖 Copilot CLI |
 | `--forgecode` | 🔥 ForgeCode |
 
 Press **`Z`** in the TUI to cycle between tools without restarting.
 
 ### CLI-Only Tools
-
-**🦘 Rovo Dev CLI**
-- Provider: [Atlassian Rovo](https://www.atlassian.com/rovo)
-- Install: [Installation Guide](https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device/)
-- Free tier: conditional Atlassian/Rovo allowance, not a general free API provider
-- Catalog status: not included in the active free-provider table because access depends on Rovo availability for your account/site
-- Launch: `free-coding-models --rovo` or press `Z` until Rovo mode
-- Features: Jira/Confluence integration, MCP server support
-
-**♊ Gemini CLI**
-- Provider: [Google Gemini](https://github.com/google-gemini/gemini-cli)
-- Install: `npm install -g @google/gemini-cli`
-- Free tier: 1,000 requests/day (personal Google account, no credit card)
-- Models: Gemini 3.1 Pro Preview, Gemini 3 Flash Preview, Gemini 2.5 Pro, Gemini 2.5 Flash
-- Launch: `free-coding-models --gemini` or press `Z` until Gemini mode
-- Features: OpenAI-compatible API support, MCP server support, Google Search grounding
 
 **Note:** When launching these tools via `Z` key or command palette, if the current mode doesn't match the tool, you'll see a confirmation alert asking to switch to the correct tool before launching.
 
@@ -472,10 +453,8 @@ When a tool mode is active (via `Z`), models incompatible with that tool are hig
 
 | Model Type | Compatible Tools |
 |------------|-----------------|
-| Regular (NVIDIA, Groq, etc.) | All tools except 🦘 Rovo and ♊ Gemini |
-| Rovo | 🦘 Rovo Dev CLI only |
-| Gemini | ♊ Gemini CLI only |
-| OpenCode Zen | 📦 OpenCode CLI and 📦 OpenCode Desktop only |
+| Regular (NVIDIA, Groq, etc.) | All tools |
+| OpenCode Zen | All tools (OpenAI-compatible endpoint) |
 
 → **[Full flags reference](./docs/flags.md)**
 
@@ -534,7 +513,7 @@ When a tool mode is active (via `Z`), models incompatible with that tool are hig
 
 ## ✨ Features
 
-- **Parallel pings** — all ~165 API/Zen-callable models tested simultaneously via native `fetch` (~170 total cataloged models including CLI-only Gemini rows)
+- **Parallel pings** — all ~150 API/Zen-callable models tested simultaneously via native `fetch` (~152 total cataloged models)
 - **AI benchmark columns** — `Ctrl+A` benchmarks the selected model, `Ctrl+U` benchmarks visible models, and results split cleanly into **AI Latency** plus **TPS**. Settings includes an opt-in **Startup AI Speed Scan** toggle to run the global benchmark automatically after launch.
 - **Tiny verdict indicator** — the first `❔` column mirrors the full Verdict as a compact emoji (`🟩`, `🟢`, `🟡`, `🟠`, etc.) and sorts by the same verdict order.
 - **Adaptive monitoring** — 2s burst for 60s → 10s normal → 30s idle
@@ -724,8 +703,6 @@ Telemetry is enabled by default and can be disabled with any of the following:
 | IDE | Free tier | Credit card |
 |-----|-----------|-------------|
 | [Qwen Code](https://github.com/QwenLM/qwen-code) | 2,000 requests/day | No |
-| [Rovo Dev CLI](https://www.atlassian.com/rovo) | Conditional Atlassian/Rovo allowance | No |
-| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | 1,000 requests/day | No |
 | [Jules](https://jules.google/) | 15 tasks/day | No |
 | [AWS Kiro](https://kiro.dev/) | 50 credits/month | No |
 | [Trae](https://trae.ai/) | 10 fast + 50 slow requests/month | No |

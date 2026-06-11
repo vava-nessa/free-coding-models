@@ -132,7 +132,6 @@ const ENV_VARS = {
   cloudflare: ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_API_KEY'],
   qwen:       'DASHSCOPE_API_KEY',
   zai:        'ZAI_API_KEY',
-  gemini:     'GEMINI_API_KEY',
   ovhcloud:   'OVH_AI_ENDPOINTS_ACCESS_TOKEN',
   'opencode-zen': 'OPENCODE_ZEN_API_KEY',
 }

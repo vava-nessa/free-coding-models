@@ -27,9 +27,9 @@ import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync } from
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-const LEGACY_TOOL_MODES = new Set(['claude-code', 'codex', 'gemini'])
+const LEGACY_TOOL_MODES = new Set(['claude-code', 'codex'])
 const LEGACY_RUNTIME_FILES = ['daemon.json', 'daemon-stdout.log', 'daemon-stderr.log', 'request-log.jsonl']
-const LEGACY_ENV_FILES = ['.fcm-claude-code-env', '.fcm-codex-env', '.fcm-gemini-env']
+const LEGACY_ENV_FILES = ['.fcm-claude-code-env', '.fcm-codex-env']
 
 function getDefaultPaths(homeDir) {
   return {

@@ -11,10 +11,8 @@ const TOOLS = [
 	{ name: "OpenHands", flag: "--openhands" },
 	{ name: "Amp", flag: "--amp" },
 	{ name: "Hermes", flag: "--hermes" },
-	{ name: "Gemini CLI", flag: "--gemini" },
 	{ name: "Copilot CLI", flag: "--copilot" },
 	{ name: "ForgeCode", flag: "--forgecode" },
-	{ name: "Rovo Dev", flag: "--rovo" },
 ] as const;
 
 export function SocialProof() {

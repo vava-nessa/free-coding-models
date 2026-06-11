@@ -427,29 +427,6 @@ function writeOpenHandsEnv(model, apiKey, baseUrl, paths = getDefaultToolPaths()
   return { filePath, backupPath }
 }
 
-/**
- * 📖 writeRovoConfig - Configure Rovo Dev CLI model selection
- *
- * Rovo Dev CLI uses ~/.rovodev/config.yml for configuration.
- * We write the model ID to the config file before launching.
- *
- * @param {Object} model - Selected model with modelId
- * @param {string} configPath - Path to Rovo config file
- * @returns {{ filePath: string, backupPath: string | null }}
- */
-function writeRovoConfig(model, configPath = join(homedir(), '.rovodev', 'config.yml')) {
-  const backupPath = backupIfExists(configPath)
-  const config = {
-    agent: {
-      modelId: model.modelId,
-    },
-  }
-
-  ensureDir(configPath)
-  writeFileSync(configPath, `agent:\n  modelId: "${model.modelId}"\n`)
-  return { filePath: configPath, backupPath }
-}
-
 // 📖 writeContinueConfig — write ~/.continue/config.yaml with the selected model.
 // 📖 Continue CLI uses YAML config with `provider: openai` for OpenAI-compatible endpoints.
 function writeContinueConfig(model, apiKey, baseUrl, paths = getDefaultToolPaths()) {
@@ -606,33 +583,6 @@ function restartHermesGateway() {
   spawnSync(hermesBin, ['gateway', 'restart'], { stdio: 'ignore', timeout: 10000 })
 }
 
-/**
- * 📖 buildGeminiEnv - Build environment variables for Gemini CLI
- *
- * Gemini CLI supports OpenAI-compatible APIs via environment variables:
- * - GEMINI_API_BASE_URL: Custom API endpoint
- * - GEMINI_API_KEY: API key for custom endpoint
- *
- * @param {Object} model - Selected model with providerKey
- * @param {Object} config - Full app config
- * @param {Object} options - Env options
- * @returns {NodeJS.ProcessEnv}
- */
-function buildGeminiEnv(model, config, options = {}) {
-  const providerKey = model.providerKey || 'gemini'
-  const apiKey = getApiKey(config, providerKey)
-  const baseUrl = getProviderBaseUrl(providerKey)
-
-  const env = cloneInheritedEnv(process.env, SANITIZED_TOOL_ENV_KEYS)
-
-  // If we have a custom API key and base URL, configure OpenAI-compatible mode
-  if (apiKey && baseUrl && options.includeProviderEnv) {
-    env.GEMINI_API_BASE_URL = baseUrl
-    env.GEMINI_API_KEY = apiKey
-  }
-
-  return env
-}
 
 /**
  * 📖 buildCavemanEnv - Build environment variables for Caveman Code
@@ -643,7 +593,7 @@ function buildGeminiEnv(model, config, options = {}) {
  *
  * Supported env vars (from caveman-code source):
  * - ANTHROPIC_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, CEREBRAS_API_KEY
- * - MISTRAL_API_KEY, GOOGLE_API_KEY, GEMINI_API_KEY, etc.
+ * - MISTRAL_API_KEY, GOOGLE_API_KEY, etc.
  *
  * @param {Object} model - Selected model with providerKey
  * @param {Object} config - Full app config
@@ -894,34 +844,6 @@ export function prepareExternalToolLaunch(mode, model, config, options = {}) {
     }
   }
 
-  if (mode === 'rovo') {
-    const result = writeRovoConfig(model, join(homedir(), '.rovodev', 'config.yml'), paths)
-    console.log(chalk.dim(`  📖 Rovo Dev CLI configured with model: ${model.modelId}`))
-    return {
-      command: 'acli',
-      args: ['rovodev', 'run'],
-      env,
-      apiKey: null,
-      baseUrl: null,
-      meta,
-      configArtifacts: [{ path: result.filePath, backupPath: result.backupPath, label: 'config' }],
-    }
-  }
-
-  if (mode === 'gemini') {
-    const geminiEnv = buildGeminiEnv(model, config, { includeProviderEnv: options.includeProviderEnv })
-    console.log(chalk.dim(`  📖 Gemini CLI will use model: ${model.modelId}`))
-    return {
-      command: 'gemini',
-      args: [],
-      env: { ...env, ...geminiEnv },
-      apiKey: geminiEnv.GEMINI_API_KEY || null,
-      baseUrl: geminiEnv.GEMINI_API_BASE_URL || null,
-      meta,
-      configArtifacts: [],
-    }
-  }
-
   if (mode === 'caveman') {
     const cavemanEnv = buildCavemanEnv(model, config, { includeProviderEnv: options.includeProviderEnv })
     console.log(chalk.dim(`  📖 Caveman Code will use model: ${model.modelId}`))
@@ -1106,16 +1028,6 @@ export async function startExternalTool(mode, model, config) {
     console.log(chalk.white(`  4. Click Add, then select `) + chalk.bold(model.modelId) + chalk.white(` from the list.\n`))
     console.log(chalk.dim(`  📖 Attempting to launch Xcode...`))
     return spawnCommand(launchPlan.command, launchPlan.args, launchPlan.env)
-  }
-
-  if (mode === 'rovo') {
-    console.log(chalk.dim(`  📖 Launching Rovo Dev CLI in interactive mode...`))
-    return spawnCommand(resolveLaunchCommand(mode, launchPlan.command), launchPlan.args, launchPlan.env)
-  }
-
-  if (mode === 'gemini') {
-    console.log(chalk.dim(`  📖 Launching Gemini CLI...`))
-    return spawnCommand(resolveLaunchCommand(mode, launchPlan.command), launchPlan.args, launchPlan.env)
   }
 
   if (mode === 'caveman') {

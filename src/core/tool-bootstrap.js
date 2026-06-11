@@ -227,17 +227,6 @@ export const TOOL_BOOTSTRAP_METADATA = {
       },
     },
   },
-  rovo: {
-    binary: 'acli',
-    docsUrl: 'https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device/',
-    install: {
-      default: {
-        shellCommand: 'npm install -g acli',
-        summary: 'Rovo Dev CLI requires ACLI installation. Visit the documentation for platform-specific instructions.',
-        note: 'Rovo is an Atlassian tool that requires an Atlassian account with Rovo Dev activated.',
-      },
-    },
-  },
   'continue': {
     binary: 'cn',
     docsUrl: 'https://docs.continue.dev/cli/overview',
@@ -277,17 +266,6 @@ export const TOOL_BOOTSTRAP_METADATA = {
     },
     installUnsupported: {
       win32: 'Hermes Agent does not support native Windows. Use WSL2 instead.',
-    },
-  },
-  gemini: {
-    binary: 'gemini',
-    docsUrl: 'https://github.com/google-gemini/gemini-cli',
-    install: {
-      default: {
-        shellCommand: 'npm install -g @google/gemini-cli',
-        summary: 'Install Gemini CLI globally via npm.',
-        note: 'After installation, run `gemini` to authenticate with your Google account.',
-      },
     },
   },
   caveman: {

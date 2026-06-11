@@ -187,8 +187,6 @@ const PROVIDER_PALETTES = {
     qwen: [255, 213, 128],
     zai: [150, 208, 255],
     iflow: [211, 229, 101],
-    rovo: [148, 163, 184],
-    gemini: [66, 165, 245],
     'opencode-zen': [185, 146, 255],
   },
   light: {
@@ -214,8 +212,6 @@ const PROVIDER_PALETTES = {
     qwen: [132, 89, 0],
     zai: [0, 104, 171],
     iflow: [107, 130, 0],
-    rovo: [90, 100, 126],
-    gemini: [15, 97, 175],
     'opencode-zen': [108, 58, 183],
   },
 }

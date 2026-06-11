@@ -944,7 +944,7 @@ export function createOverlayRenderers(state, deps) {
     lines.push(`  ${key('Ctrl+A')}  AI Speed Test  ${hint('(benchmark selected model → time + TPS)')}`)
     lines.push(`  ${key('Ctrl+U')}  Global AI Speed Test  ${hint('(benchmark all models; Settings can auto-run it on startup)')}`)
     lines.push(`  ${key('E')}  Cycle filter mode  ${hint('(Normal → Configured only → Usable only)')}`)
-    lines.push(`  ${key('Z')}  Cycle tool mode  ${hint('(📦 OpenCode → π Pi → 🪼 jcode → 📦 Desktop → 🦞 OpenClaw → 💘 Crush → 🪿 Goose → 🛠 Aider → 🐉 Qwen → 🤲 OpenHands → ⚡ Amp → 🦘 Rovo → ♊ Gemini)')}`)
+    lines.push(`  ${key('Z')}  Cycle tool mode  ${hint('(📦 OpenCode → π Pi → 🪼 jcode → 📦 Desktop → 🦞 OpenClaw → 💘 Crush → 🪿 Goose → 🛠 Aider → 🐉 Qwen → 🤲 OpenHands → ⚡ Amp)')}`)
     lines.push(`  ${key('F')}  Toggle favorite on selected row  ${hint('(1️⃣2️⃣3️⃣ = router fallback order, capped at 🔟)')}`)
     lines.push(`  ${key('⇧↑/⇧↓')}  Reorder selected favorite up/down  ${hint('(changes router priority)')}`)
     lines.push(`  ${key('Y')}  Toggle favorites mode  ${hint('(Pinned + always visible ↔ Normal filter/sort behavior)')}`)

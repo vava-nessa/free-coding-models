@@ -29,7 +29,7 @@
  *   📖 Secondary: https://swe-rebench.com (independent evals, scores are lower)
  *   📖 Leaderboard tracker: https://www.marc0.dev/en/leaderboard
  *
- *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, githubModels, mistral, codestral, scaleway, googleai, zai, qwen, cloudflare, ovhcloud, gemini, opencodeZen — model arrays per active provider
+ *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, githubModels, mistral, codestral, scaleway, googleai, zai, qwen, cloudflare, ovhcloud, opencodeZen — model arrays per active provider
  *   @exports sources — map of active free/free-limited providers, each with { name, url, models }
 
  *   @exports MODELS — flat array of [modelId, label, tier, sweScore, ctx, providerKey]
@@ -339,25 +339,7 @@ export const ovhcloud = [
   // Fix (2026-05-26): Qwen3.5-9B ctx 128k→262k, Mistral-Small ctx 131k→128k, Mistral-Nemo ctx 128k→118k, Mistral-7B ctx 32k→127k
 ]
 
-// 📖 Gemini CLI source - https://github.com/google-gemini/gemini-cli
-// 📖 CLI tool with OpenAI-compatible API support
-// 📖 Install: npm install -g @google/gemini-cli
-// 📖 Free tier: 1,000 req/day with personal Google account (no credit card)
-// 📖 Models track Google AI Studio IDs; no stale google/ prefix.
-// 📖 Supports custom OpenAI-compatible providers via GEMINI_API_BASE_URL
-export const gemini = [
-  ['gemini-3.5-flash',                   'Gemini 3.5 Flash',             'S+', '-',     '1M'],
-  ['gemini-3.1-pro-preview',            'Gemini 3.1 Pro Preview',       'S+', '78.0%', '1M'],
-  ['gemini-3-flash-preview',            'Gemini 3 Flash Preview',       'S',  '65.0%', '1M'],
-  ['gemini-3.1-flash-lite',             'Gemini 3.1 Flash Lite',        'A+', '55.0%', '1M'],
-  // ⚠️ DEPRECATED — shutdown Oct 16, 2026
-  ['gemini-2.5-pro',                    'Gemini 2.5 Pro',               'S+', '63.2%', '1M'],
-  // ⚠️ DEPRECATED — shutdown Oct 16, 2026
-  ['gemini-2.5-flash',                  'Gemini 2.5 Flash',             'A+', '50.0%', '1M'],
-  // ⚠️ DEPRECATED — shutdown Oct 16, 2026
-  ['gemini-2.5-flash-lite',             'Gemini 2.5 Flash Lite',        'A',  '42.0%', '1M'],
-  // Removed (2026-05-26): gemini-3.1-flash-lite-preview (endpoint shutdown May 25, 2026)
-]
+
 
 // 📖 OpenCode Zen free models — hosted AI gateway accessed through OpenCode CLI/Desktop
 // 📖 Endpoint: https://opencode.ai/zen/v1/... — requires OpenCode Zen API key
@@ -456,15 +438,7 @@ export const sources = {
     url: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
     models: qwen,
   },
-  gemini: {
-    name: 'Gemini CLI',
-    url: null, // CLI tool - no API endpoint (can use OpenAI-compatible via env)
-    models: gemini,
-    cliOnly: true,
-    installUrl: 'https://github.com/google-gemini/gemini-cli',
-    binary: 'gemini',
-    checkArgs: ['--version'],
-  },
+
   'opencode-zen': {
     name: 'OpenCode Zen',
     url: 'https://opencode.ai/zen/v1/chat/completions',

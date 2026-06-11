@@ -55,7 +55,7 @@ export function createTuiFilters(state, { sources, getApiKey, PROVIDER_METADATA 
 
     state.results.forEach(r => {
       const stickyFavorite = state.favoritesPinnedAndSticky && r.isFavorite
-      // 📖 CLI-only tools (rovo, gemini) and Zen models don't need traditional API keys —
+      // 📖 CLI-only tools and Zen models don't need traditional API keys —
       // 📖 they authenticate via their own CLI login flow, so "configured only" should never hide them.
       const providerMeta = PROVIDER_METADATA[r.providerKey]
       const noKeyNeeded = providerMeta?.cliOnly || providerMeta?.zenOnly

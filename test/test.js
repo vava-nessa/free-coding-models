@@ -3694,19 +3694,9 @@ describe('tool compatibility matrix', () => {
     assert.ok(regularTools.includes('goose'))
     assert.ok(regularTools.includes('amp'))
     assert.ok(regularTools.includes('caveman'), 'regular models should be compatible with caveman')
-    assert.ok(!regularTools.includes('rovo'), 'regular models should NOT be compatible with rovo')
-    assert.ok(!regularTools.includes('gemini'), 'regular models should NOT be compatible with gemini')
   })
 
-  it('rovo models are only compatible with rovo', () => {
-    const tools = getCompatibleTools('rovo')
-    assert.deepEqual(tools, ['rovo'])
-  })
 
-  it('gemini models are only compatible with gemini', () => {
-    const tools = getCompatibleTools('gemini')
-    assert.deepEqual(tools, ['gemini'])
-  })
 
   it('opencode-zen models are compatible with all non-cliOnly tools (OpenAI-compatible endpoint)', () => {
     const tools = getCompatibleTools('opencode-zen')
@@ -3716,14 +3706,11 @@ describe('tool compatibility matrix', () => {
     assert.ok(tools.includes('pi'), 'zen should work with pi')
     assert.ok(tools.includes('aider'), 'zen should work with aider')
     assert.ok(tools.includes('goose'), 'zen should work with goose')
-    assert.ok(!tools.includes('rovo'), 'zen should NOT work with cli-only rovo')
-    assert.ok(!tools.includes('gemini'), 'zen should NOT work with cli-only gemini')
   })
 
   it('isModelCompatibleWithTool returns true for matching pairs', () => {
     assert.ok(isModelCompatibleWithTool('nvidia', 'opencode'))
-    assert.ok(isModelCompatibleWithTool('rovo', 'rovo'))
-    assert.ok(isModelCompatibleWithTool('gemini', 'gemini'))
+
     assert.ok(isModelCompatibleWithTool('opencode-zen', 'opencode'))
     assert.ok(isModelCompatibleWithTool('opencode-zen', 'opencode-desktop'))
     assert.ok(isModelCompatibleWithTool('opencode-zen', 'opencode-web'))
@@ -3733,11 +3720,9 @@ describe('tool compatibility matrix', () => {
   })
 
   it('isModelCompatibleWithTool returns false for incompatible pairs', () => {
-    assert.ok(!isModelCompatibleWithTool('rovo', 'opencode'))
-    assert.ok(!isModelCompatibleWithTool('gemini', 'openclaw'))
-    assert.ok(!isModelCompatibleWithTool('opencode-zen', 'rovo'), 'zen is not compatible with cli-only rovo')
-    assert.ok(!isModelCompatibleWithTool('opencode-zen', 'gemini'), 'zen is not compatible with cli-only gemini')
-    assert.ok(!isModelCompatibleWithTool('nvidia', 'rovo'))
+    // 📖 No cliOnly tools remain — all tools accept all models.
+    // 📖 Compatibility is now binary: every tool accepts every regular model.
+    assert.ok(isModelCompatibleWithTool('opencode-zen', 'caveman'), 'zen is compatible with caveman')
   })
 
   it('every tool in TOOL_MODE_ORDER has an emoji and color', () => {
@@ -3777,17 +3762,6 @@ describe('tool compatibility matrix', () => {
     assert.equal(result[0].sweScore, '72.0%')
     assert.equal(result[1].sweScore, '65.0%')
     assert.equal(result[2].sweScore, '80.0%')
-  })
-
-  it('findSimilarCompatibleModels excludes incompatible models', () => {
-    const mockResults = [
-      { modelId: 'a', label: 'Regular', tier: 'S', sweScore: '70.0%', providerKey: 'nvidia', hidden: false },
-      { modelId: 'b', label: 'Rovo Only', tier: 'S', sweScore: '71.0%', providerKey: 'rovo', hidden: false },
-    ]
-    // 📖 When looking for models compatible with 'opencode', rovo models should be excluded
-    const result = findSimilarCompatibleModels('70.0%', 'opencode', mockResults, 3)
-    assert.equal(result.length, 1)
-    assert.equal(result[0].label, 'Regular')
   })
 
   it('findSimilarCompatibleModels excludes hidden models', () => {
@@ -4376,41 +4350,39 @@ describe('Custom text filter matching logic', () => {
 describe('sortResultsWithPinnedFavorites normal sort order', () => {
   const mockModels = [
     { id: 'nvidia-1', providerKey: 'nvidia', label: 'Llama 3.1', idx: 1, tier: 'A', pings: [], isRecommended: false, isFavorite: false },
-    { id: 'rovo-1', providerKey: 'rovo', label: 'Claude Sonnet 4', idx: 2, tier: 'S+', pings: [], isRecommended: false, isFavorite: false },
+    { id: 'caveman-1', providerKey: 'caveman', label: 'Claude Sonnet 4', idx: 2, tier: 'S+', pings: [], isRecommended: false, isFavorite: false },
     { id: 'openrouter-1', providerKey: 'openrouter', label: 'GPT-4o', idx: 3, tier: 'S', pings: [], isRecommended: false, isFavorite: false },
-    { id: 'gemini-1', providerKey: 'gemini', label: 'Gemini 2.5 Pro', idx: 4, tier: 'S+', pings: [], isRecommended: false, isFavorite: false },
-    { id: 'zen-1', providerKey: 'opencode-zen', label: 'Big Pickle', idx: 5, tier: 'A', pings: [], isRecommended: false, isFavorite: false },
-    { id: 'groq-1', providerKey: 'groq', label: 'Llama 3.3 70B', idx: 6, tier: 'A+', pings: [], isRecommended: false, isFavorite: false },
+    { id: 'zen-1', providerKey: 'opencode-zen', label: 'Big Pickle', idx: 4, tier: 'A', pings: [], isRecommended: false, isFavorite: false },
+    { id: 'groq-1', providerKey: 'groq', label: 'Llama 3.3 70B', idx: 5, tier: 'A+', pings: [], isRecommended: false, isFavorite: false },
   ]
 
   it('returns normal rank sort order — no partitioning by tool compatibility', () => {
     const sorted = sortResultsWithPinnedFavorites(mockModels, 'rank', 'asc', { pinFavorites: false })
-    // 📖 All models in rank ascending order: idx 1,2,3,4,5,6 — rovo/gemini/zen NOT pushed to bottom
+    // 📖 All models in rank ascending order: idx 1,2,3,4,5 — caveman/zen NOT pushed to bottom
     assert.equal(sorted[0].id, 'nvidia-1')
-    assert.equal(sorted[1].id, 'rovo-1')
+    assert.equal(sorted[1].id, 'caveman-1')
     assert.equal(sorted[2].id, 'openrouter-1')
-    assert.equal(sorted[3].id, 'gemini-1')
-    assert.equal(sorted[4].id, 'zen-1')
-    assert.equal(sorted[5].id, 'groq-1')
+    assert.equal(sorted[3].id, 'zen-1')
+    assert.equal(sorted[4].id, 'groq-1')
   })
 
   it('recommended models still pinned above others', () => {
     const models = [
       { id: 'regular-1', providerKey: 'nvidia', label: 'Llama', idx: 1, tier: 'A', pings: [], isRecommended: false, isFavorite: false },
-      { id: 'rovo-1', providerKey: 'rovo', label: 'Claude Sonnet 4', idx: 2, tier: 'S+', pings: [], isRecommended: true, recommendScore: 90, isFavorite: false },
+      { id: 'caveman-1', providerKey: 'caveman', label: 'Claude Sonnet 4', idx: 2, tier: 'S+', pings: [], isRecommended: true, recommendScore: 90, isFavorite: false },
     ]
     const sorted = sortResultsWithPinnedFavorites(models, 'rank', 'asc', { pinFavorites: false })
-    assert.equal(sorted[0].id, 'rovo-1')
+    assert.equal(sorted[0].id, 'caveman-1')
     assert.equal(sorted[1].id, 'regular-1')
   })
 
   it('favorites pinned above non-favorites when pinFavorites=true', () => {
     const models = [
       { id: 'regular-1', providerKey: 'nvidia', label: 'Llama', idx: 1, tier: 'A', pings: [], isRecommended: false, isFavorite: false },
-      { id: 'rovo-fav', providerKey: 'rovo', label: 'Claude Fav', idx: 3, tier: 'S', pings: [], isRecommended: false, isFavorite: true, favoriteRank: 0 },
+      { id: 'caveman-fav', providerKey: 'caveman', label: 'Claude Fav', idx: 3, tier: 'S', pings: [], isRecommended: false, isFavorite: true, favoriteRank: 0 },
     ]
     const sorted = sortResultsWithPinnedFavorites(models, 'rank', 'asc', { pinFavorites: true })
-    assert.equal(sorted[0].id, 'rovo-fav')
+    assert.equal(sorted[0].id, 'caveman-fav')
     assert.equal(sorted[1].id, 'regular-1')
   })
 })
@@ -5415,27 +5387,7 @@ describe('sync-set', () => {
   })
 
   describe('benchmarkModel', () => {
-    it('returns unsupported for CLI-only providers', async () => {
-      const result = await benchmarkModel({
-        apiKey: 'test',
-        modelId: 'test',
-        providerKey: 'rovo',
-        url: 'http://example.com',
-      })
-      assert.equal(result.ok, false)
-      assert.equal(result.code, 'UNSUPPORTED')
-    })
-
-    it('returns unsupported for gemini provider', async () => {
-      const result = await benchmarkModel({
-        apiKey: 'test',
-        modelId: 'test',
-        providerKey: 'gemini',
-        url: 'http://example.com',
-      })
-      assert.equal(result.ok, false)
-      assert.equal(result.code, 'UNSUPPORTED')
-    })
+    // 📖 All current providers use OpenAI-compatible chat completions, no special guard needed.
   })
 
   describe('buildBenchmarkRequest', () => {
