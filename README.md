@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Find the fastest free coding model in seconds</strong><br>
-  Track ~146 models across 15 trusted free or free-limited AI providers in real time<br><br>
+  Track ~191 models across 20 trusted free or free-limited AI providers in real time<br><br>
   <strong>Install Free API endpoints to your favorite AI coding tools:</strong><br>
   OpenCode CLI / Desktop / WebUI, OpenClaw, Crush, Goose, Aider, Kilo CLI, Qwen Code, OpenHands, Amp, Hermes, Continue, Cline, Xcode, Pi and more...<br><br>
   <strong>Use Kimi K2, DeepSeek V3, GPT-OSS, Qwen3, MiniMax M3, GLM, Llama 4, Gemma 4, Devstral and more — for free</strong>
@@ -16,8 +16,8 @@
   <img src="https://img.shields.io/npm/v/free-coding-models?color=3d6b00&label=npm&logo=npm" alt="npm version" width="200"><br>
   <img src="https://img.shields.io/node/v/free-coding-models?color=3d6b00&logo=node.js" alt="node version" width="200"><br>
   <img src="https://img.shields.io/npm/l/free-coding-models?color=3d6b00" alt="license" width="200"><br>
-  <img src="https://img.shields.io/badge/models-146-3d6b00?logo=nvidia" alt="models count" width="200"><br>
-  <img src="https://img.shields.io/badge/providers-15-1a56db" alt="providers count" width="200">
+  <img src="https://img.shields.io/badge/models-191-3d6b00?logo=nvidia" alt="models count" width="200"><br>
+  <img src="https://img.shields.io/badge/providers-20-1a56db" alt="providers count" width="200">
 </p>
 
 ```bash
@@ -59,7 +59,7 @@ free-coding-models
 
 ## 💡 Why this tool?
 
-There are **~153 cataloged free or free-limited coding models** across 16 vetted providers. Which one is fastest right now? Which one is actually stable versus just lucky on the last ping?
+There are **~191 cataloged free or free-limited coding models** across 20 vetted providers. Which one is fastest right now? Which one is actually stable versus just lucky on the last ping?
 
 This CLI pings them all in parallel, shows live latency, and calculates a **live Stability Score (0-100)**. Average latency alone is misleading if a model randomly spikes to 6 seconds; the stability score measures true reliability by combining **p95 latency** (30%), **jitter/variance** (30%), **spike rate** (20%), and **uptime** (20%). 
 
@@ -71,9 +71,9 @@ It then writes the model you pick directly into your coding tool's config — so
 
 ### 🟢 List of Free AI Providers
 
-Create a free account on one provider below to get started:
+Create a free account on one provider below to get started. A few providers (`Kilo`, `LLM7`, OVHcloud sandbox) can also answer without a key, with tighter shared limits.
 
-**~153 coding models** across 16 active providers, ranked by practical free-tier usefulness.
+**~191 coding models** across 20 active providers, ranked by practical free-tier usefulness.
 
 | # | Provider | Models | Tier range | Free tier | Env var |
 |---|----------|--------|-----------|-----------|--------|
@@ -83,7 +83,7 @@ Create a free account on one provider below to get started:
 | 4 | [Google AI Studio](https://aistudio.google.com/apikey) | 7 | S+ → A | Gemini free quotas vary by model/region | `GOOGLE_API_KEY` |
 | 5 | [GitHub Models](https://models.github.ai) | 15 | S+ → C | Quota depends on GitHub/Copilot tier | `GITHUB_TOKEN` |
 | 6 | [Mistral La Plateforme](https://console.mistral.ai/api-keys) | 5 | S+ → A | Experiment plan, free evaluation tier | `MISTRAL_API_KEY` |
-| 7 | [Cloudflare Workers AI](https://dash.cloudflare.com) | 13 | S+ → B | 10K neurons/day, 300 RPM (no credit card) | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` |
+| 7 | [Cloudflare Workers AI](https://dash.cloudflare.com) | 16 | S+ → B | 10K neurons/day, 300 RPM (no credit card) | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` |
 | 8 | [OpenRouter](https://openrouter.ai/keys) | 24 | S+ → C | 50 req/day free, 1K/day with $10 spend | `OPENROUTER_API_KEY` |
 | 9 | [SambaNova](https://cloud.sambanova.ai/apis) | 7 | S+ → B+ | Small developer quota, useful for light usage | `SAMBANOVA_API_KEY` |
 | 10 | [OVHcloud AI Endpoints](https://endpoints.ai.cloud.ovh.net) | 10 | S → B | 2 req/min/IP free, 400 RPM with key | `OVH_AI_ENDPOINTS_ACCESS_TOKEN` |
@@ -91,7 +91,12 @@ Create a free account on one provider below to get started:
 | 12 | [ZAI](https://z.ai) | 2 | S | Free Flash models only | `ZAI_API_KEY` |
 | 13 | [Scaleway](https://console.scaleway.com/iam/api-keys) | 10 | S+ → B | 1M free tokens | `SCALEWAY_API_KEY` |
 | 14 | [Alibaba DashScope](https://modelstudio.console.alibabacloud.com) | 11 | S+ → A+ | 1M free tokens/model, Singapore, 90 days | `DASHSCOPE_API_KEY` |
-| 15 | [OpenCode Zen](https://opencode.ai/zen) | 6 | S+ → A | Free with OpenCode account | Zen models ✨ |
+| 15 | [OpenCode Zen](https://opencode.ai/zen) | 5 | S+ → A | Free with OpenCode account | Zen models ✨ |
+| 16 | [Kilo](https://kilo.ai) | 1 | A+ | Free auto-router works without a key | optional `KILO_API_KEY` |
+| 17 | [LLM7](https://llm7.io) | 4 | S+ → B+ | Shared free tier, optional free token | optional `LLM7_API_KEY` |
+| 18 | [Routeway](https://routeway.ai) | 15 | S+ → C | Explicit `:free` zero-price models | `ROUTEWAY_API_KEY` |
+| 19 | [Novita AI](https://novita.ai) | 4 | S+ → S | Only zero-price live chat models included | `NOVITA_API_KEY` |
+| 20 | [Ollama Cloud](https://ollama.com/pricing) | 17 | S+ → A | Free cloud usage with session/weekly limits | `OLLAMA_API_KEY` |
 
 > 💡 One key is enough. Add more at any time with **`P`** inside the TUI.
 
@@ -513,7 +518,7 @@ When a tool mode is active (via `Z`), models incompatible with that tool are hig
 
 ## ✨ Features
 
-- **Parallel pings** — all ~150 API/Zen-callable models tested simultaneously via native `fetch` (~152 total cataloged models)
+- **Parallel pings** — all ~191 API/Zen-callable models tested simultaneously via native `fetch`
 - **AI benchmark columns** — `Ctrl+A` benchmarks the selected model, `Ctrl+U` benchmarks visible models, and results split cleanly into **AI Latency** plus **TPS**. Settings includes an opt-in **Startup AI Speed Scan** toggle to run the global benchmark automatically after launch.
 - **Tiny verdict indicator** — the first `❔` column mirrors the full Verdict as a compact emoji (`🟩`, `🟢`, `🟡`, `🟠`, etc.) and sorts by the same verdict order.
 - **Adaptive monitoring** — 2s burst for 60s → 10s normal → 30s idle

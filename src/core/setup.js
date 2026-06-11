@@ -36,7 +36,7 @@
 import chalk from 'chalk'
 import { createRequire } from 'module'
 import { sources } from '../../sources.js'
-import { PROVIDER_METADATA } from './provider-metadata.js'
+import { PROVIDER_METADATA, getProviderBillingNote, getProviderLabelWithBilling } from './provider-metadata.js'
 import { saveConfig } from './config.js'
 
 const require = createRequire(import.meta.url)
@@ -62,7 +62,8 @@ export async function promptApiKey(config) {
     const meta = PROVIDER_METADATA[key] || {}
     return {
       key,
-      label: meta.label || sources[key]?.name || key,
+      label: getProviderLabelWithBilling(key, sources[key]?.name || key),
+      billingNote: getProviderBillingNote(key),
       color: meta.color || chalk.white,
       url: meta.signupUrl || 'https://example.com',
       hint: meta.signupHint || 'Create API key',
@@ -77,8 +78,8 @@ export async function promptApiKey(config) {
   })
 
   for (const p of providers) {
-    console.log(`  ${p.color('●')} ${chalk.bold(p.label)}`)
-    console.log(chalk.dim(`    Free key at: `) + chalk.cyanBright(p.url))
+    console.log(`  ${p.color('●')} ${chalk.bold(p.label)}${p.billingNote ? ' ' + chalk.yellow(p.billingNote) : ''}`)
+    console.log(chalk.dim(`    Signup/key page: `) + chalk.cyanBright(p.url))
     console.log(chalk.dim(`    ${p.hint}`))
     const answer = await ask(chalk.dim(`  Enter key (or Enter to skip): `))
     console.log()

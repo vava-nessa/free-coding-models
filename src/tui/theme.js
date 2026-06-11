@@ -188,6 +188,11 @@ const PROVIDER_PALETTES = {
     zai: [150, 208, 255],
     iflow: [211, 229, 101],
     'opencode-zen': [185, 146, 255],
+    kilo: [120, 255, 190],
+    llm7: [180, 255, 140],
+    routeway: [130, 210, 255],
+    novita: [255, 185, 120],
+    'ollama-cloud': [230, 230, 230],
   },
   light: {
     nvidia: [0, 126, 73],
@@ -213,6 +218,11 @@ const PROVIDER_PALETTES = {
     zai: [0, 104, 171],
     iflow: [107, 130, 0],
     'opencode-zen': [108, 58, 183],
+    kilo: [0, 130, 82],
+    llm7: [73, 130, 0],
+    routeway: [0, 105, 180],
+    novita: [173, 84, 0],
+    'ollama-cloud': [88, 88, 88],
   },
 }
 

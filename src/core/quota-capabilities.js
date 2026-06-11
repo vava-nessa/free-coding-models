@@ -54,6 +54,11 @@ export const PROVIDER_CAPABILITIES = {
   cloudflare: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'daily' },
   zai: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'none' },
   'opencode-zen': { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'unknown' },
+  kilo: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'unknown' },
+  llm7: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'rolling' },
+  routeway: { telemetryType: 'header', supportsEndpoint: false, usageDisplay: 'percent', resetCadence: 'unknown' },
+  novita: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'unknown' },
+  'ollama-cloud': { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'rolling' },
 }
 
 /** Fallback for unrecognized providers */

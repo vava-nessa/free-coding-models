@@ -24,6 +24,7 @@ import { buildCliHelpLines } from './cli-help.js'
 import { renderRouterDashboard as renderRouterDashboardOverlay } from '../core/router-dashboard.js'
 import { renderPlayground as renderPlaygroundOverlay } from '../core/playground.js'
 import { themeColors, getThemeStatusLabel, getProviderRgb } from './theme.js'
+import { getProviderBillingNote, getProviderLabelWithBilling } from '../core/provider-metadata.js'
 
 export function createOverlayRenderers(state, deps) {
   const {
@@ -183,13 +184,16 @@ export function createOverlayRenderers(state, deps) {
       else if (testResult === 'rate_limited') testBadge = themeColors.warning('[Rate limit ⏳]')
       else if (testResult === 'no_callable_model') testBadge = chalk.rgb(...getProviderRgb('openrouter'))('[No model ⚠]')
       else if (testResult === 'fail') testBadge = themeColors.error('[Test ❌]')
-      // 📖 No truncation of rate limits - overlay now uses 100% terminal width
-      const rateSummary = themeColors.dim(meta.rateLimits || 'No limit info')
+      // 📖 No truncation of rate limits - overlay now uses 100% terminal width.
+      // 📖 Paid/credits-required providers get an explicit money marker + parenthesized detail.
+      const billingNote = getProviderBillingNote(pk)
+      const rateSummary = themeColors.dim(`${meta.rateLimits || 'No limit info'}${billingNote ? `  ${billingNote}` : ''}`)
 
       const enabledBadge = enabled ? themeColors.successBold('✅') : themeColors.errorBold('❌')
       // 📖 Color provider names the same way as in the main table
       const providerRgb = PROVIDER_COLOR[pk] ?? [105, 190, 245]
-      const providerName = chalk.bold.rgb(...providerRgb)((meta.label || src.name || pk).slice(0, 22).padEnd(22))
+      const providerLabel = getProviderLabelWithBilling(pk, src.name || pk)
+      const providerName = chalk.bold.rgb(...providerRgb)(providerLabel.slice(0, 24).padEnd(24))
 
       const row = `${bullet(isCursor)}[ ${enabledBadge} ] ${providerName}  ${padEndDisplay(keyDisplay, 30)}  ${testBadge}  ${rateSummary}`
       cursorLineByRow[i] = lines.length
@@ -205,9 +209,12 @@ export function createOverlayRenderers(state, deps) {
       const setupStatus = selectedKey ? themeColors.success('API key detected ✅') : themeColors.warning('API key missing ⚠')
       // 📖 Color the provider name in the setup instructions header
       const selectedProviderRgb = PROVIDER_COLOR[selectedProviderKey] ?? [105, 190, 245]
-      const coloredProviderName = chalk.bold.rgb(...selectedProviderRgb)(selectedMeta.label || selectedSource.name || selectedProviderKey)
-      lines.push(`  ${themeColors.textBold('Setup Instructions')} — ${coloredProviderName}`)
+      const selectedProviderLabel = getProviderLabelWithBilling(selectedProviderKey, selectedSource.name || selectedProviderKey)
+      const selectedBillingNote = getProviderBillingNote(selectedProviderKey)
+      const coloredProviderName = chalk.bold.rgb(...selectedProviderRgb)(selectedProviderLabel)
+      lines.push(`  ${themeColors.textBold('Setup Instructions')} — ${coloredProviderName}${selectedBillingNote ? ' ' + themeColors.warning(selectedBillingNote) : ''}`)
       lines.push(themeColors.dim(`  1) Create a ${selectedMeta.label || selectedSource.name} account: ${selectedMeta.signupUrl || 'signup link missing'}`))
+      if (selectedBillingNote) lines.push(themeColors.warning(`     💰 Paid provider note: ${selectedBillingNote}`))
       lines.push(themeColors.dim(`  2) ${selectedMeta.signupHint || 'Generate an API key and paste it with Enter on this row'}`))
       lines.push(themeColors.dim(`  3) Press ${themeColors.hotkey('T')} to test your key. Status: ${setupStatus}`))
       if (selectedProviderKey === 'cloudflare') {

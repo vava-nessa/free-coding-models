@@ -134,6 +134,11 @@ const ENV_VARS = {
   zai:        'ZAI_API_KEY',
   ovhcloud:   'OVH_AI_ENDPOINTS_ACCESS_TOKEN',
   'opencode-zen': 'OPENCODE_ZEN_API_KEY',
+  kilo:       ['KILO_API_KEY', 'KILO_TOKEN'],
+  llm7:       'LLM7_API_KEY',
+  routeway:   'ROUTEWAY_API_KEY',
+  novita:     'NOVITA_API_KEY',
+  'ollama-cloud': 'OLLAMA_API_KEY',
 }
 
 // 📖 Smart Router defaults are intentionally conservative: balanced probing,

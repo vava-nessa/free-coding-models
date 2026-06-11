@@ -267,7 +267,7 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
     .filter(([, p]) => {
       if (!searchQuery) return true
       const q = searchQuery.toLowerCase()
-      return p.name.toLowerCase().includes(q)
+      return `${p.name} ${p.displayName || ''} ${p.billingNote || ''}`.toLowerCase().includes(q)
     })
     .sort((a, b) => a[1].name.localeCompare(b[1].name))
 
@@ -451,8 +451,8 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
                   <IconPlug size={20} stroke={1.5} />
                 </div>
                 <div className={styles.cardInfo}>
-                  <div className={styles.cardName}>{p.name}</div>
-                  <div className={styles.cardMeta}>{p.modelCount} models · {key}</div>
+                  <div className={styles.cardName}>{p.displayName || p.name}</div>
+                  <div className={styles.cardMeta}>{p.modelCount} models · {key}{p.billingNote ? ` · ${p.billingNote}` : ''}</div>
                 </div>
                 <span className={`${styles.cardStatus} ${p.hasKey ? styles.statusConfigured : styles.statusMissing}`}>
                   {p.hasKey ? (
@@ -517,7 +517,7 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
                   )}
 
                   <div className={styles.keyGroup}>
-                    <label className={styles.keyLabel}>{p.hasKey ? 'Update API Key' : 'Add API Key'}</label>
+                    <label className={styles.keyLabel}>{p.hasKey ? 'Update API Key' : 'Add API Key'}{p.billingNote ? ` 💰 ${p.billingNote}` : ''}</label>
                     <div className={styles.keyInputRow}>
                       <input
                         type="password"

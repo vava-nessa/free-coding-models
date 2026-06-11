@@ -59,7 +59,7 @@
  *   ⚙️ Configuration:
  *   - API keys stored per-provider in ~/.free-coding-models.json (0600 perms)
  *   - Old ~/.free-coding-models plain-text auto-migrated as nvidia key on first run
- *   - Env vars override config: NVIDIA_API_KEY, GROQ_API_KEY, CEREBRAS_API_KEY, OPENROUTER_API_KEY, GITHUB_TOKEN, MISTRAL_API_KEY, SCALEWAY_API_KEY, GOOGLE_API_KEY, CLOUDFLARE_API_TOKEN, DASHSCOPE_API_KEY, ZAI_API_KEY, etc.
+ *   - Env vars override config: NVIDIA_API_KEY, GROQ_API_KEY, CEREBRAS_API_KEY, OPENROUTER_API_KEY, GITHUB_TOKEN, MISTRAL_API_KEY, SCALEWAY_API_KEY, GOOGLE_API_KEY, CLOUDFLARE_API_TOKEN, DASHSCOPE_API_KEY, ZAI_API_KEY, LLM7_API_KEY, ROUTEWAY_API_KEY, NOVITA_API_KEY, OLLAMA_API_KEY, etc.
  *   - ZAI (z.ai) uses a non-standard base path; cloudflare needs CLOUDFLARE_ACCOUNT_ID in env.
  *   - Cloudflare Workers AI requires both CLOUDFLARE_API_TOKEN (or CLOUDFLARE_API_KEY) and CLOUDFLARE_ACCOUNT_ID
  *   - Models loaded from sources.js — all provider/model definitions are centralized there
@@ -205,10 +205,11 @@ export async function runApp(cliArgs, config, startupOptions = {}) {
 
   // 📖 Profile system removed - API keys now persist permanently across all sessions
 
-  // 📖 Check if any provider has a key — if not, run the first-time setup wizard
-  const hasAnyKey = Object.keys(sources).some(pk => !!getApiKey(config, pk))
+  // 📖 Check if any provider has a key — if not, run the first-time setup wizard.
+  // 📖 Keyless providers (Kilo/LLM7) can still run immediately, so they also count as usable.
+  const hasAnyUsableProvider = Object.keys(sources).some(pk => !!getApiKey(config, pk) || PROVIDER_METADATA[pk]?.noKeyNeeded)
 
-  if (!hasAnyKey) {
+  if (!hasAnyUsableProvider) {
     const result = await promptApiKey(config)
     if (!result) {
       console.log()

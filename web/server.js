@@ -35,6 +35,7 @@ const { version: LOCAL_VERSION } = require('../package.json')
 
 import { sources, MODELS } from '../sources.js'
 import { loadConfig, getApiKey, saveConfig, isProviderEnabled } from '../src/core/config.js'
+import { getProviderBillingNote, getProviderLabelWithBilling, PROVIDER_METADATA } from '../src/core/provider-metadata.js'
 import { ensureFavoritesConfig } from '../src/core/favorites.js'
 import { ping } from '../src/core/ping.js'
 import { loadChangelog } from '../src/core/changelog-loader.js'
@@ -318,6 +319,9 @@ function getConfigPayload() {
     const rawKey = getApiKey(config, key)
     providers[key] = {
       name: src.name,
+      displayName: getProviderLabelWithBilling(key, src.name),
+      billingNote: getProviderBillingNote(key),
+      paidProviderNote: PROVIDER_METADATA[key]?.paidProviderNote || null,
       hasKey: !!rawKey,
       maskedKey: rawKey ? maskApiKey(rawKey) : null,
       enabled: isProviderEnabled(config, key),

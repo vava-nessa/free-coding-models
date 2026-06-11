@@ -107,6 +107,11 @@ const PROVIDER_AUTH_ENDPOINTS = {
   zai:          null, // 📖 ZAI undocumented; use ping only
   googleai:     null, // 📖 Google AI Studio has no OpenAI-compatible /models; use ping
   'opencode-zen': null, // 📖 OpenCode Zen uses OpenCode auth only; use ping
+  kilo:         { url: 'https://api.kilo.ai/api/gateway/models', method: 'GET' },
+  llm7:         { url: 'https://api.llm7.io/v1/models', method: 'GET' },
+  routeway:     { url: 'https://api.routeway.ai/v1/models', method: 'GET' },
+  novita:       { url: 'https://api.novita.ai/openai/v1/models', method: 'GET' },
+  'ollama-cloud': { url: 'https://ollama.com/v1/models', method: 'GET' },
 }
 
 // 📖 Sleep helper kept local to this module so the Settings key test flow can

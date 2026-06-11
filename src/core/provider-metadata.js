@@ -8,7 +8,8 @@
  *   This module owns three separate concerns that all relate to "knowing about providers":
  *
  *   1. `PROVIDER_METADATA` — human-readable display info (label, colour, signup URL, rate limits)
- *      used in the setup wizard (`promptApiKey`) and the Settings overlay.
+ *      used in the setup wizard (`promptApiKey`) and the Settings overlay. Providers that need
+ *      credits/billing can expose `paidProviderNote`, which Settings renders as a 💰 warning.
  *
  *   2. `ENV_VAR_NAMES` — maps providerKey → the environment variable name that carries the API key.
  *      Used when spawning OpenCode child processes so that keys stored only in
@@ -23,6 +24,7 @@
  *
  * @exports
  *   PROVIDER_METADATA, ENV_VAR_NAMES, OPENCODE_MODEL_MAP,
+ *   getProviderBillingNote, getProviderLabelWithBilling,
  *   isWindows, isMac, isLinux
  *
  * @see bin/free-coding-models.js  — consumes all exports from this module
@@ -55,6 +57,11 @@ export const ENV_VAR_NAMES = {
   ovhcloud:   'OVH_AI_ENDPOINTS_ACCESS_TOKEN',
   qwen:       'DASHSCOPE_API_KEY',
   'opencode-zen': 'OPENCODE_ZEN_API_KEY',
+  kilo:       'KILO_API_KEY',
+  llm7:       'LLM7_API_KEY',
+  routeway:   'ROUTEWAY_API_KEY',
+  novita:     'NOVITA_API_KEY',
+  'ollama-cloud': 'OLLAMA_API_KEY',
 }
 
 // 📖 OPENCODE_MODEL_MAP: sparse table of model IDs that differ between sources.js and OpenCode's
@@ -70,6 +77,7 @@ export const OPENCODE_MODEL_MAP = {
 // 📖 `color` is a chalk function for visual distinction in the TUI.
 // 📖 `signupUrl` / `signupHint` guide users through first-time key generation.
 // 📖 `rateLimits` gives a quick reminder of the free-tier quota without opening a browser.
+// 📖 `paidProviderNote` marks providers that require credits/billing despite exposing free/trial/free-tagged models.
 export const PROVIDER_METADATA = {
   nvidia: {
     label: 'NVIDIA NIM',
@@ -143,6 +151,7 @@ export const PROVIDER_METADATA = {
     signupUrl: 'https://deepinfra.com/login',
     signupHint: 'Login → API keys',
     rateLimits: 'Free tier: 200 concurrent requests (default)',
+    paidProviderNote: 'trial credit provider',
   },
   fireworks: {
     label: 'Fireworks AI',
@@ -157,6 +166,7 @@ export const PROVIDER_METADATA = {
     signupUrl: 'https://console.mistral.ai/api-keys',
     signupHint: 'La Plateforme → API keys (MISTRAL_API_KEY; CODESTRAL_API_KEY also works)',
     rateLimits: 'Codestral free access: 30 req/min, 2000/day',
+    paidProviderNote: 'paid - free Experiment plan',
   },
   hyperbolic: {
     label: 'Hyperbolic',
@@ -192,6 +202,7 @@ export const PROVIDER_METADATA = {
     signupUrl: 'https://api.together.ai/settings/api-keys',
     signupHint: 'Settings → API keys',
     rateLimits: 'Credits/promos vary by account (check console)',
+    paidProviderNote: 'trial credit provider',
   },
   cloudflare: {
     label: 'Cloudflare Workers AI',
@@ -257,4 +268,64 @@ export const PROVIDER_METADATA = {
     signupHint: 'Manager → Public Cloud → AI Endpoints → API keys (optional: sandbox works without key)',
     rateLimits: 'Free sandbox: 2 req/min per IP per model (no key). With API key: 400 RPM',
   },
+  kilo: {
+    label: 'Kilo',
+    color: chalk.rgb(120, 255, 190),
+    signupUrl: 'https://kilo.ai',
+    signupHint: 'No key needed for kilo-auto/free; optional OAuth/API token unlocks more models',
+    rateLimits: 'Free router model works without a key; limits are managed by Kilo',
+    noKeyNeeded: true,
+  },
+  llm7: {
+    label: 'LLM7',
+    color: chalk.rgb(180, 255, 140),
+    signupUrl: 'https://token.llm7.io',
+    signupHint: 'Optional: sign in at token.llm7.io for a free token',
+    rateLimits: 'Free shared tier without key; optional free token improves quota',
+    noKeyNeeded: true,
+  },
+  routeway: {
+    label: 'Routeway',
+    color: chalk.rgb(130, 210, 255),
+    signupUrl: 'https://routeway.ai',
+    signupHint: 'Create account → API key',
+    rateLimits: 'Free :free models with an API key; paid models excluded here',
+    paidProviderNote: 'paid — has :free models',
+  },
+  novita: {
+    label: 'Novita AI',
+    color: chalk.rgb(255, 185, 120),
+    signupUrl: 'https://novita.ai/settings/key-management',
+    signupHint: 'Settings → Key Management → Create API key',
+    rateLimits: 'Only zero-price live chat models are listed; other Novita models are paid/trial-credit',
+    paidProviderNote: 'paid — 3 free models',
+  },
+  'ollama-cloud': {
+    label: 'Ollama Cloud',
+    color: chalk.rgb(230, 230, 230),
+    signupUrl: 'https://ollama.com/settings/keys',
+    signupHint: 'Settings → Keys → Create API key',
+    rateLimits: 'Free plan includes cloud access with session + weekly limits',
+  },
+}
+
+/**
+ * 📖 Return the short paid/billing warning note for a provider, formatted for UI display.
+ * @param {string} providerKey
+ * @returns {string}
+ */
+export function getProviderBillingNote(providerKey) {
+  const note = PROVIDER_METADATA[providerKey]?.paidProviderNote
+  return typeof note === 'string' && note.trim() ? `(${note.trim()})` : ''
+}
+
+/**
+ * 📖 Return a provider label with a small money marker when credits/billing are required.
+ * @param {string} providerKey
+ * @param {string} fallbackLabel
+ * @returns {string}
+ */
+export function getProviderLabelWithBilling(providerKey, fallbackLabel) {
+  const label = PROVIDER_METADATA[providerKey]?.label || fallbackLabel || providerKey
+  return getProviderBillingNote(providerKey) ? `${label} 💰` : label
 }

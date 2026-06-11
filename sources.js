@@ -29,7 +29,7 @@
  *   📖 Secondary: https://swe-rebench.com (independent evals, scores are lower)
  *   📖 Leaderboard tracker: https://www.marc0.dev/en/leaderboard
  *
- *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, githubModels, mistral, codestral, scaleway, googleai, zai, qwen, cloudflare, ovhcloud, opencodeZen — model arrays per active provider
+ *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, githubModels, mistral, codestral, scaleway, googleai, zai, qwen, cloudflare, ovhcloud, opencodeZen, kilo, llm7, routeway, novita, ollamaCloud — model arrays per active provider
  *   @exports sources — map of active free/free-limited providers, each with { name, url, models }
 
  *   @exports MODELS — flat array of [modelId, label, tier, sweScore, ctx, providerKey]
@@ -363,6 +363,76 @@ export const opencodeZen = [
   // Added (2026-06-01): minimax-m3-free — MiniMax M3, 1M context, MSA attention (SWE-Bench Pro 59.0%)
 ]
 
+// 📖 Kilo source - https://api.kilo.ai/api/gateway
+// 📖 OpenAI-compatible gateway. `kilo-auto/free` works without a key and routes to Kilo's current free model pool.
+// 📖 Keep only the stable router model here; individual promo `:free` models churn too quickly.
+export const kilo = [
+  ['kilo-auto/free',                         'Kilo Auto Free',      'A+', '-',     '256k'],
+]
+
+// 📖 LLM7 source - https://api.llm7.io/v1
+// 📖 Free unauthenticated tier works with tight shared limits; optional free token at https://token.llm7.io
+// 📖 Pro-tagged models from /v1/models are intentionally excluded.
+export const llm7 = [
+  ['qwen3-235b',                             'Qwen3 235B',          'S+', '70.0%', '240k'],
+  ['mistral-small-3.2',                      'Mistral Small 3.2',   'B+', '34.0%', '128k'],
+  ['codestral-latest',                       'Codestral Latest',    'B+', '34.0%', '32k'],
+  ['devstral-small-2:24b',                   'Devstral Small 2',    'A',  '-',     '128k'],
+]
+
+// 📖 Routeway source - https://api.routeway.ai/v1/models
+// 📖 OpenAI-compatible gateway with explicit zero-price `:free` chat models.
+// 📖 Live catalog checked 2026-06-11; only chat-completions models with free pricing are listed.
+export const routeway = [
+  ['deepseek-v4-flash:free',                 'DeepSeek V4 Flash',   'S+', '72.0%', '1M'],
+  ['step-3.5-flash:free',                    'Step 3.5 Flash',      'S+', '74.4%', '256k'],
+  ['ling-2.6-flash:free',                    'Ling 2.6 Flash',      'S',  '-',     '262k'],
+  ['gpt-oss-120b:free',                      'GPT OSS 120B',        'S',  '60.0%', '131k'],
+  ['minimax-m2:free',                        'MiniMax M2',          'S',  '-',     '197k'],
+  ['laguna-m.1:free',                        'Poolside Laguna M.1', 'S+', '-',     '131k'],
+  ['laguna-xs.2:free',                       'Poolside Laguna XS.2','S+', '-',     '131k'],
+  ['gemma-4-31b-it:free',                    'Gemma 4 31B',         'A',  '45.0%', '262k'],
+  ['nemotron-3-nano-30b-a3b:free',           'Nemotron Nano 30B',   'A',  '43.0%', '256k'],
+  ['llama-3.3-70b-instruct:free',            'Llama 3.3 70B',       'A-', '39.5%', '131k'],
+  ['mistral-nemo-instruct:free',             'Mistral Nemo',        'B+', '30.0%', '16k'],
+  ['nemotron-nano-9b-v2:free',               'Nemotron Nano 9B',    'B+', '18.0%', '128k'],
+  ['llama-3.1-8b-instruct:free',             'Llama 3.1 8B',        'B',  '28.8%', '16k'],
+  ['llama-3.2-3b-instruct:free',             'Llama 3.2 3B',        'B',  '20.0%', '16k'],
+  ['llama-3.2-1b-instruct:free',             'Llama 3.2 1B',        'C',  '-',     '16k'],
+]
+
+// 📖 Novita AI source - https://api.novita.ai/openai/v1/models
+// 📖 Novita is mostly paid/trial-credit, so this catalog only includes live chat models reporting 0 input/output price.
+// 📖 Test/dev/placeholder zero-price IDs were intentionally excluded.
+export const novita = [
+  ['qwen/qwen3.6-plus',                      'Qwen3.6 Plus',        'S+', '72.0%', '1M'],
+  ['qwen/qwen3.5-plus',                      'Qwen3.5 Plus',        'S',  '68.0%', '1M'],
+  ['nex-agi/nex-n2-pro',                     'Nex N2 Pro',          'S',  '-',     '262k'],
+  ['minimax/m2-her',                         'MiniMax M2 HER',      'S',  '-',     '32k'],
+]
+
+// 📖 Ollama Cloud source - https://ollama.com/pricing and https://ollama.com/v1/models
+// 📖 Free plan includes cloud model access with session/weekly limits. This list keeps coding-relevant cloud models only.
+export const ollamaCloud = [
+  ['minimax-m2.7',                           'MiniMax M2.7',        'S+', '80.2%', '200k'],
+  ['glm-5.1',                                'GLM 5.1',             'S+', '77.8%', '203k'],
+  ['kimi-k2.6',                              'Kimi K2.6',           'S+', '76.8%', '131k'],
+  ['deepseek-v4-pro',                        'DeepSeek V4 Pro',     'S+', '73.1%', '1M'],
+  ['deepseek-v4-flash',                      'DeepSeek V4 Flash',   'S+', '72.0%', '1M'],
+  ['devstral-2:123b',                        'Devstral 2 123B',     'S+', '72.2%', '200k'],
+  ['qwen3-coder:480b',                       'Qwen3 Coder 480B',    'S+', '70.6%', '256k'],
+  ['nemotron-3-ultra',                       'Nemotron 3 Ultra',    'S+', '-',     '1M'],
+  ['glm-4.7',                                'GLM 4.7',             'S+', '73.8%', '128k'],
+  ['qwen3.5:397b',                           'Qwen3.5 397B',        'S',  '68.0%', '128k'],
+  ['qwen3-coder-next',                       'Qwen3 Coder Next',    'S',  '65.0%', '256k'],
+  ['gpt-oss:120b',                           'GPT OSS 120B',        'S',  '60.0%', '128k'],
+  ['minimax-m3',                             'MiniMax M3',          'S',  '59.0%', '1M'],
+  ['mistral-large-3:675b',                   'Mistral Large 3',     'A+', '58.0%', '256k'],
+  ['nemotron-3-super',                       'Nemotron 3 Super',    'A+', '56.0%', '128k'],
+  ['gemma4:31b',                             'Gemma 4 31B',         'A',  '45.0%', '256k'],
+  ['gpt-oss:20b',                            'GPT OSS 20B',         'A',  '42.0%', '128k'],
+]
+
 // 📖 All sources combined - used by the main script
 // 📖 Each source has: name (display), url (API endpoint), models (array of model tuples)
 // 📖 Providers ordered by generosity of free tier (most generous first)
@@ -444,6 +514,33 @@ export const sources = {
     url: 'https://opencode.ai/zen/v1/chat/completions',
     models: opencodeZen,
     zenOnly: true,
+  },
+  kilo: {
+    name: 'Kilo',
+    url: 'https://api.kilo.ai/api/gateway/chat/completions',
+    models: kilo,
+    noKeyNeeded: true,
+  },
+  llm7: {
+    name: 'LLM7',
+    url: 'https://api.llm7.io/v1/chat/completions',
+    models: llm7,
+    noKeyNeeded: true,
+  },
+  routeway: {
+    name: 'Routeway',
+    url: 'https://api.routeway.ai/v1/chat/completions',
+    models: routeway,
+  },
+  novita: {
+    name: 'Novita AI',
+    url: 'https://api.novita.ai/openai/v1/chat/completions',
+    models: novita,
+  },
+  'ollama-cloud': {
+    name: 'Ollama Cloud',
+    url: 'https://ollama.com/v1/chat/completions',
+    models: ollamaCloud,
   },
 }
 

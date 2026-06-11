@@ -58,7 +58,7 @@ export function createTuiFilters(state, { sources, getApiKey, PROVIDER_METADATA 
       // 📖 CLI-only tools and Zen models don't need traditional API keys —
       // 📖 they authenticate via their own CLI login flow, so "configured only" should never hide them.
       const providerMeta = PROVIDER_METADATA[r.providerKey]
-      const noKeyNeeded = providerMeta?.cliOnly || providerMeta?.zenOnly
+      const noKeyNeeded = providerMeta?.cliOnly || providerMeta?.zenOnly || providerMeta?.noKeyNeeded
       // 📖 E toggles "Show only configured & working models":
       // 📖 hide models where provider has no key, or where the health status is noauth/auth_error (but keep timeout and 429)
       const badHealth = r.status === 'noauth' || r.status === 'auth_error'
