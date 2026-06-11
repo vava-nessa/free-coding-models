@@ -200,7 +200,8 @@ const BASE_COMMAND_TREE = [
         ],
       },
       { id: 'action-cycle-theme', label: 'Cycle theme', shortcut: 'G', icon: '🌗', description: 'Switch dark/light/auto', keywords: ['theme', 'dark', 'light', 'auto'] },
-      { id: 'action-reset-view', label: 'Reset view', shortcut: 'N', icon: '🔄', description: 'Reset filters and sort', keywords: ['reset', 'view', 'sort', 'filters'] },
+      { id: 'action-reset-view', label: 'Reset view', shortcut: 'N', icon: '\u{1F504}', description: 'Reset filters and sort', keywords: ['reset', 'view', 'sort', 'filters'] },
+      { id: 'action-probe-404', label: 'Probe 404 Models', shortcut: 'Ctrl+Shift+P', icon: '\u{1F50D}', description: 'Test all configured models for 404/410 errors. Auto-hides broken models.', keywords: ['probe', '404', 'broken', 'dead', 'health', 'check', 'test', 'verify'] },
     ],
   },
   // 📖 Pages - directly at root level, not in submenu

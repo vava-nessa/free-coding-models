@@ -315,6 +315,18 @@ export async function runApp(cliArgs, config, startupOptions = {}) {
       isPinging: false, // 📖 Per-row live flag so Last Ping can keep last value and show a spinner during refresh.
       hidden: false,  // 📖 Simple flag to hide/show models
     }))
+
+  // 📖 Auto-hide models that were previously marked broken by the 404 probe.
+  // 📖 Only applies when autoHideBrokenModels setting is enabled (default).
+  if (config.settings?.autoHideBrokenModels !== false && config.hiddenModels instanceof Set) {
+    for (const r of results) {
+      const modelKey = `${r.providerKey}/${r.modelId}`
+      if (config.hiddenModels.has(modelKey)) {
+        r.hidden = true
+      }
+    }
+  }
+
   syncFavoriteFlags(results, config)
   // 📖 Garbage-collect favorites that reference models no longer in sources.js,
   // 📖 so the router dashboard only shows real, launchable models.
@@ -826,6 +838,10 @@ export async function runApp(cliArgs, config, startupOptions = {}) {
       benchmarkResults: state.benchmarkResults,
       benchmarkRunning: state.benchmarkRunning,
       headerFlashColumn: state.headerFlashColumn,
+      probeRunning: state.probeRunning,
+      probeTotal: state.probeTotal,
+      probeCompleted: state.probeCompleted,
+      probeHiddenCount: state.probeHiddenCount,
     }
     if (state.commandPaletteOpen) {
       if (!state.commandPaletteFrozenTable) {

@@ -21,6 +21,9 @@
 .error      { color: #ff4444; }
 .errorBold  { color: #ff4444; font-weight: 800; }
 .dim        { color: var(--color-text-dim); }
+/* 📖 Models not in the active router set — muted text so they stand out from
+   📖 genuinely 'pending' models that are still waiting for their first probe. */
+.notInSet   { color: #4a4a5a; opacity: 0.7; }
 
 /* 📖 The "NO KEY" treatment is intentionally louder than the other states:
    📖   - yellow chip background instead of plain text
@@ -54,3 +57,4 @@
 :global([data-theme="light"]) .error,
 :global([data-theme="light"]) .errorBold  { color: #c02323; }
 :global([data-theme="light"]) .dim        { color: #888; }
+:global([data-theme="light"]) .notInSet   { color: #a0a0a8; }

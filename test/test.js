@@ -3397,6 +3397,64 @@ describe('router daemon integration hardening', () => {
     })
   })
 
+  it('serves Web Dashboard route aliases directly from the daemon for Docker mode', async () => {
+    const config = buildRouterTestConfig([
+      { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },
+    ])
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const statusResp = await fetch(`${baseUrl}/api/router/status`)
+      assert.equal(statusResp.status, 200)
+      const status = await statusResp.json()
+      assert.equal(status.ok, true)
+      assert.equal(status.activeSet, 'test-set')
+
+      const statsResp = await fetch(`${baseUrl}/api/router/stats`)
+      assert.equal(statsResp.status, 200)
+      const stats = await statsResp.json()
+      assert.equal(stats.ok, true)
+      assert.ok(Array.isArray(stats.models))
+
+      const setsResp = await fetch(`${baseUrl}/api/router/sets`)
+      assert.equal(setsResp.status, 200)
+      const sets = await setsResp.json()
+      assert.equal(sets.activeSet, 'test-set')
+      assert.ok(sets.sets['test-set'])
+
+      const addResp = await fetch(`${baseUrl}/api/router/sets/test-set/models`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ provider: 'nvidia', model: 'openai/gpt-oss-120b' }),
+      })
+      assert.equal(addResp.status, 201)
+      const addPayload = await addResp.json()
+      assert.ok(addPayload.set.models.some((m) => m.provider === 'nvidia' && m.model === 'openai/gpt-oss-120b'))
+
+      const forbiddenAddResp = await fetch(`${baseUrl}/api/router/sets/test-set/models`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'origin': 'https://evil.example.com' },
+        body: JSON.stringify({ provider: 'nvidia', model: 'openai/gpt-oss-20b' }),
+      })
+      assert.equal(forbiddenAddResp.status, 403)
+
+      const tokensResp = await fetch(`${baseUrl}/api/router/tokens`)
+      assert.equal(tokensResp.status, 200)
+      const tokens = await tokensResp.json()
+      assert.ok(tokens.all_time)
+
+      const quickSetupResp = await fetch(`${baseUrl}/api/router/quick-setup`)
+      assert.equal(quickSetupResp.status, 200)
+      const quickSetup = await quickSetupResp.json()
+      assert.equal(quickSetup.running, true)
+      assert.equal(quickSetup.model, 'fcm')
+      assert.match(quickSetup.baseUrl, /\/v1$/)
+
+      const changelogResp = await fetch(`${baseUrl}/api/changelog`)
+      assert.equal(changelogResp.status, 200)
+      const changelog = await changelogResp.json()
+      assert.equal(typeof changelog.versions, 'object')
+    })
+  })
+
   it('autoHealActiveSet is a no-op when the set is user-customized', async () => {
     const config = buildRouterTestConfig([
       { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 },

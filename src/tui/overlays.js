@@ -121,7 +121,8 @@ export function createOverlayRenderers(state, deps) {
     const themeRowIdx = updateRowIdx + 1
     const favoritesModeRowIdx = themeRowIdx + 1
     const startupAiSpeedScanRowIdx = favoritesModeRowIdx + 1
-    const cleanupLegacyProxyRowIdx = startupAiSpeedScanRowIdx + 1
+    const autoHideBrokenModelsRowIdx = startupAiSpeedScanRowIdx + 1
+    const cleanupLegacyProxyRowIdx = autoHideBrokenModelsRowIdx + 1
     const changelogViewRowIdx = cleanupLegacyProxyRowIdx + 1
     const shellEnvRowIdx = changelogViewRowIdx + 1
     const EL = '\x1b[K'
@@ -276,6 +277,16 @@ export function createOverlayRenderers(state, deps) {
     const startupAiSpeedScanRow = `${bullet(state.settingsCursor === startupAiSpeedScanRowIdx)}${themeColors.textBold('Startup AI Speed Scan').padEnd(44)} ${startupAiSpeedScanStatus}`
     cursorLineByRow[startupAiSpeedScanRowIdx] = lines.length
     lines.push(state.settingsCursor === startupAiSpeedScanRowIdx ? themeColors.bgCursorSettingsList(startupAiSpeedScanRow) : startupAiSpeedScanRow)
+
+    // 📖 Auto-hide broken models row: toggles auto-hiding of 404/410 models from probe.
+    const autoHideEnabled = state.config.settings?.autoHideBrokenModels !== false
+    const hiddenCount = state.config.hiddenModels instanceof Set ? state.config.hiddenModels.size : 0
+    const autoHideStatus = autoHideEnabled
+      ? themeColors.successBold(`✅ Enabled (${hiddenCount} hidden)`)
+      : themeColors.errorBold('❌ Disabled')
+    const autoHideRow = `${bullet(state.settingsCursor === autoHideBrokenModelsRowIdx)}${themeColors.textBold('Auto-hide Broken Models').padEnd(44)} ${autoHideStatus}`
+    cursorLineByRow[autoHideBrokenModelsRowIdx] = lines.length
+    lines.push(state.settingsCursor === autoHideBrokenModelsRowIdx ? themeColors.bgCursorSettingsList(autoHideRow) : autoHideRow)
 
     if (updateState === 'error' && state.settingsUpdateError) {
       lines.push(themeColors.error(`      ${state.settingsUpdateError}`))
@@ -950,6 +961,7 @@ export function createOverlayRenderers(state, deps) {
     lines.push(`  ${key('Ctrl+P')}  Open ⚡️ command palette  ${hint('(search and run actions quickly)')}`)
     lines.push(`  ${key('Ctrl+A')}  AI Speed Test  ${hint('(benchmark selected model → time + TPS)')}`)
     lines.push(`  ${key('Ctrl+U')}  Global AI Speed Test  ${hint('(benchmark all models; Settings can auto-run it on startup)')}`)
+    lines.push(`  ${key('Ctrl+Shift+P')}  Probe 404 Models  ${hint('(test all configured models; auto-hide broken 404/410)')}`)
     lines.push(`  ${key('E')}  Cycle filter mode  ${hint('(Normal → Configured only → Usable only)')}`)
     lines.push(`  ${key('Z')}  Cycle tool mode  ${hint('(📦 OpenCode → π Pi → 🪼 jcode → 📦 Desktop → 🦞 OpenClaw → 💘 Crush → 🪿 Goose → 🛠 Aider → 🐉 Qwen → 🤲 OpenHands → ⚡ Amp)')}`)
     lines.push(`  ${key('F')}  Toggle favorite on selected row  ${hint('(1️⃣2️⃣3️⃣ = router fallback order, capped at 🔟)')}`)

@@ -264,6 +264,10 @@ function serializeModel(result) {
   const jitter = getJitter(result)
   const stability = getStabilityScore(result)
   const latest = result.pings.length > 0 ? result.pings[result.pings.length - 1] : null
+  const routerConfig = config.router || {}
+  const activeSetName = routerConfig.activeSet || 'fast-coding'
+  const activeSetModels = routerConfig.sets?.[activeSetName]?.models || []
+  const inRouterSet = activeSetModels.some((m) => m.provider === result.providerKey && m.model === result.modelId)
 
   return {
     idx: result.idx,
@@ -290,6 +294,7 @@ function serializeModel(result) {
     pingHistory: result.pings.slice(-20).map((p) => ({ ms: p.ms, code: p.code })),
     pingCount: result.pings.length,
     hasApiKey: !!getApiKey(config, result.providerKey),
+    inRouterSet,
     benchmarkKey: key,
     isBenchmarking: benchmarkRunning.has(key),
     benchmark: benchmarkResults.get(key) || null,

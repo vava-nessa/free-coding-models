@@ -192,6 +192,10 @@ export function renderTable({
   benchmarkResults = {},
   benchmarkRunning = new Set(),
   headerFlashColumn = null,
+  probeRunning = false,
+  probeTotal = 0,
+  probeCompleted = 0,
+  probeHiddenCount = 0,
 } = _) {
   // 📖 Filter out hidden models for display
   const visibleResults = results.filter(r => !r.hidden)
@@ -1157,13 +1161,25 @@ export function renderTable({
   const speedTestLabel = chalk.bgRgb(...currentPalette().badgeSpeedTestBg).rgb(...currentPalette().badgeSpeedTestFg).bold(' NEW ⭐️ Ctrl+A 🤖 AI Speed Test ')
   const globalBenchmarkLabel = chalk.bgRgb(...currentPalette().badgeBenchmarkBg).rgb(...currentPalette().badgeBenchmarkFg).bold(' NEW Ctrl+U : Global AI Speed Test (Uses a lot of requests!) ')
 
-  // 📖 Line 3: Speed Test (Ctrl+A) + Global Benchmark (Ctrl+U) + Last release
-  if (releaseLabel || speedTestLabel || globalBenchmarkLabel) {
+  // 📖 Probe badge: show progress when 404 probe is running or recently completed
+  let probeLabel = ''
+  if (probeRunning) {
+    const pct = probeTotal > 0 ? Math.round((probeCompleted / probeTotal) * 100) : 0
+    const bar = '█'.repeat(Math.floor(pct / 5)) + '░'.repeat(20 - Math.floor(pct / 5))
+    probeLabel = chalk.bgRgb(180, 40, 40).rgb(255, 255, 255).bold(` 🔍 Probe ${bar} ${probeCompleted}/${probeTotal} `)
+  } else if (probeHiddenCount > 0 && probeTotal > 0) {
+    probeLabel = chalk.bgRgb(120, 60, 60).rgb(255, 200, 200).bold(` 🔍 Probe done: ${probeHiddenCount} broken model${probeHiddenCount > 1 ? 's' : ''} hidden `)
+  }
+
+  // 📖 Line 3: Speed Test + Global Benchmark + Probe + Last release
+  if (releaseLabel || speedTestLabel || globalBenchmarkLabel || probeLabel) {
     const parts = [
       { text: '  ', key: null },
       { text: speedTestLabel, key: 'a' },
       { text: '  ', key: null },
       { text: globalBenchmarkLabel, key: 'u' },
+      { text: probeLabel ? '  ' : '', key: null },
+      { text: probeLabel, key: null },
       { text: '  ', key: null },
       { text: releaseLabel, key: null },
     ]

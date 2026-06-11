@@ -67,7 +67,7 @@ function ModelCellRenderer({ row }) {
   const showNoKey = !m.hasApiKey && !m.cliOnly
   return (
     <div className={styles.modelCell}>
-      <StatusDot status={m.status} />
+      <StatusDot status={m.status} inRouterSet={m.inRouterSet} />
       <div className={styles.modelMeta}>
         <div className={styles.modelHeader}>
           <span className={styles.modelName}>{m.label}</span>
@@ -120,7 +120,7 @@ function AvgPingCellRenderer({ row }) {
 
 function HealthCellRenderer({ row }) {
   const m = row.original
-  return <HealthCell status={m.status} httpCode={m.httpCode} />
+  return <HealthCell status={m.status} httpCode={m.httpCode} inRouterSet={m.inRouterSet} />
 }
 
 function VerdictCellRenderer({ row }) {
@@ -525,6 +525,9 @@ export default function ModelTable({
             }
             if (m.status === 'noauth' || m.status === 'auth_error') {
               rowClasses.push(styles.unusable)
+            }
+            if (m.status === 'pending' && m.inRouterSet === false) {
+              rowClasses.push(styles.notInSetRow)
             }
             return (
               <Fragment key={row.id}>

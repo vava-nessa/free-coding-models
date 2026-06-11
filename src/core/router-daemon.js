@@ -49,6 +49,7 @@ import {
 } from './config.js'
 import { buildChatCompletionPingBody, ping, resolveCloudflareUrl, shouldUseDisabledThinkingForProvider } from './ping.js'
 import { benchmarkModel, BENCHMARK_TIMEOUT_MS } from './benchmark.js'
+import { loadChangelog } from './changelog-loader.js'
 import { sendUsageTelemetry } from './telemetry.js'
 
 export const ROUTER_DEFAULT_PORT = 19280
@@ -2397,8 +2398,8 @@ class RouterRuntime {
    * 📖 with only the ones that come back 2xx. Returns the new set + a
    * 📖 sample of probe results so the UI can show "what changed".
    */
-  async handleSyncSetRequest(req, res, requestId) {
-    const url = req.url ? new URL(req.url, 'http://localhost') : null
+  async handleSyncSetRequest(req, res, requestId, routeUrl = null) {
+    const url = routeUrl || (req.url ? new URL(req.url, 'http://localhost') : null)
     const pathname = url ? url.pathname : ''
     const setSyncMatch = pathname.match(/^\/sets\/([^/]+)\/sync$/)
     if (!setSyncMatch) {
@@ -2522,6 +2523,87 @@ class RouterRuntime {
       }
       if (url.pathname === '/daemon/probe-mode' && req.method === 'POST') {
         await this.handleProbeModeRequest(req, res, requestId)
+        return
+      }
+
+      // 📖 Docker mode serves the built Web Dashboard directly from the daemon
+      // 📖 on :19280. The React app uses the same `/api/router/*` routes as
+      // 📖 local dev (`web/server.js`), so the daemon must expose aliases for
+      // 📖 its canonical `/health`, `/stats`, and `/sets` APIs instead of
+      // 📖 forcing the frontend to special-case Docker.
+      if (req.method === 'GET' && url.pathname === '/api/router/status') {
+        sendJson(res, 200, this.statusPayload(), { 'x-request-id': requestId })
+        return
+      }
+      if (req.method === 'GET' && url.pathname === '/api/router/stats') {
+        sendJson(res, 200, this.statsPayload(), { 'x-request-id': requestId })
+        return
+      }
+      if (req.method === 'GET' && url.pathname === '/api/router/tokens') {
+        sendJson(res, 200, this.tokenTracker.summary(), { 'x-request-id': requestId })
+        return
+      }
+      if (req.method === 'GET' && url.pathname === '/api/router/quick-setup') {
+        const router = this.routerConfig()
+        sendJson(res, 200, {
+          running: true,
+          port: this.port,
+          baseUrl: `http://127.0.0.1:${this.port}/v1`,
+          model: 'fcm',
+          activeSet: router.activeSet || DEFAULT_ROUTER_SETTINGS.activeSet,
+          apiKey: 'not-needed',
+        }, { 'x-request-id': requestId })
+        return
+      }
+      if (url.pathname === '/api/router/start') {
+        if (req.method !== 'POST') {
+          sendError(res, 405, 'Method not allowed', 'invalid_request_error', 'method_not_allowed', requestId, { allowed: ['POST'] })
+          return
+        }
+        if (!isSameOriginOrLocal(req)) {
+          sendError(res, 403, 'Forbidden cross-origin request', 'invalid_request_error', 'forbidden_origin', requestId)
+          return
+        }
+        sendJson(res, 200, { ...this.statusPayload(), alreadyRunning: true }, { 'x-request-id': requestId })
+        return
+      }
+      if (url.pathname === '/api/router/stop') {
+        if (req.method !== 'POST') {
+          sendError(res, 405, 'Method not allowed', 'invalid_request_error', 'method_not_allowed', requestId, { allowed: ['POST'] })
+          return
+        }
+        if (!isSameOriginOrLocal(req)) {
+          sendError(res, 403, 'Forbidden cross-origin request', 'invalid_request_error', 'forbidden_origin', requestId)
+          return
+        }
+        sendJson(res, 200, { ok: true, stopped: true, message: 'Daemon shutting down' }, { 'x-request-id': requestId })
+        setTimeout(() => this.shutdown(0), 50)
+        return
+      }
+      if (url.pathname === '/api/router/probe-mode' && req.method === 'POST') {
+        if (!isSameOriginOrLocal(req)) {
+          sendError(res, 403, 'Forbidden cross-origin request', 'invalid_request_error', 'forbidden_origin', requestId)
+          return
+        }
+        await this.handleProbeModeRequest(req, res, requestId)
+        return
+      }
+      if (req.method === 'GET' && url.pathname === '/api/changelog') {
+        sendJson(res, 200, loadChangelog(), { 'x-request-id': requestId })
+        return
+      }
+      if (url.pathname === '/api/router/sets' || url.pathname.startsWith('/api/router/sets/')) {
+        if (req.method !== 'GET' && !isSameOriginOrLocal(req)) {
+          sendError(res, 403, 'Forbidden cross-origin request', 'invalid_request_error', 'forbidden_origin', requestId)
+          return
+        }
+        const aliasedUrl = new URL(req.url, `http://localhost:${this.port}`)
+        aliasedUrl.pathname = aliasedUrl.pathname.replace(/^\/api\/router/, '')
+        if (/^\/sets\/[^/]+\/sync$/.test(aliasedUrl.pathname) && req.method === 'POST') {
+          await this.handleSyncSetRequest(req, res, requestId, aliasedUrl)
+          return
+        }
+        await this.handleSetsRequest(req, res, aliasedUrl, requestId)
         return
       }
       if (url.pathname === '/sets' || url.pathname.startsWith('/sets/')) {

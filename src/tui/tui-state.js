@@ -280,6 +280,12 @@ export function createTuiState({
     globalBenchmarkTotal: 0,
     globalBenchmarkCompleted: 0,
 
+    // 📖 404 Probe state (Ctrl+Shift+P)
+    probeRunning: false,
+    probeTotal: 0,
+    probeCompleted: 0,
+    probeHiddenCount: 0,
+
     // 📖 Header click flash animation: briefly highlights the clicked column header
     // 📖 with an inverse/bright style for ~250ms (3 frames at 12 FPS).
     headerFlashColumn: null,       // 📖 Column name being flashed (null = no flash active)

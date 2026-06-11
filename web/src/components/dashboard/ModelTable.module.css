@@ -345,6 +345,15 @@
   opacity: 0.8;
 }
 
+/* 📖 Models not in the active router set — slightly faded so users can
+   📖 instantly see which models are being tested vs just cataloged. */
+.notInSetRow {
+  opacity: 0.6;
+}
+.notInSetRow:hover {
+  opacity: 0.85;
+}
+
 /* ─── M3: per-row endpoint install plug ─── */
 .launchCell {
   display: flex;

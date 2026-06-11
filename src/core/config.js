@@ -210,6 +210,18 @@ function normalizeFavoriteList(favorites) {
   return normalized
 }
 
+// 📖 normalizeStringSet: Convert an array (from JSON) or existing Set into a Set<string>.
+// 📖 Used for hiddenModels and similar set-shaped config fields.
+function normalizeStringSet(value) {
+  if (value instanceof Set) return value
+  if (!Array.isArray(value)) return new Set()
+  const result = new Set()
+  for (const entry of value) {
+    if (typeof entry === 'string' && entry.trim()) result.add(entry.trim())
+  }
+  return result
+}
+
 function normalizeApiKeyValue(value) {
   if (Array.isArray(value)) {
     const normalized = []
@@ -263,6 +275,7 @@ function normalizeSettingsSection(settings) {
     hideUnconfiguredModels: typeof safeSettings.hideUnconfiguredModels === 'boolean' ? safeSettings.hideUnconfiguredModels : true,
     favoritesPinnedAndSticky: typeof safeSettings.favoritesPinnedAndSticky === 'boolean' ? safeSettings.favoritesPinnedAndSticky : false,
     runAiSpeedTestOnStartup: typeof safeSettings.runAiSpeedTestOnStartup === 'boolean' ? safeSettings.runAiSpeedTestOnStartup : false,
+    autoHideBrokenModels: typeof safeSettings.autoHideBrokenModels === 'boolean' ? safeSettings.autoHideBrokenModels : true,
     theme: ['dark', 'light', 'auto'].includes(safeSettings.theme) ? safeSettings.theme : 'auto',
   }
 }
@@ -471,8 +484,9 @@ function normalizeConfigShape(config) {
     favorites: normalizeFavoriteList(safeConfig.favorites),
     telemetry: normalizeTelemetrySection(safeConfig.telemetry),
     endpointInstalls: normalizeEndpointInstalls(safeConfig.endpointInstalls),
-
-
+    // 📖 hiddenModels: Set of "provider/modelId" keys auto-hidden by the 404 probe (Ctrl+Shift+P).
+    // 📖 Only populated when settings.autoHideBrokenModels is true (default).
+    hiddenModels: normalizeStringSet(safeConfig.hiddenModels),
   }
   const normalizedRouter = normalizeRouterConfig(safeConfig.router)
   if (normalizedRouter) normalized.router = normalizedRouter
@@ -684,8 +698,12 @@ export function saveConfig(config, options = {}) {
 
   try {
     const persistedConfig = buildPersistedConfig(config, readStoredConfigSnapshot(), options)
-    const json = JSON.stringify(persistedConfig, null, 2)
-    writeFileSync(tempPath, json, { mode: 0o600 })
+    // 📖 Serialize Sets to arrays for JSON compatibility (e.g. hiddenModels)
+    const jsonSafe = JSON.stringify(persistedConfig, (key, value) => {
+      if (value instanceof Set) return [...value]
+      return value
+    }, 2)
+    writeFileSync(tempPath, jsonSafe, { mode: 0o600 })
     renameSync(tempPath, CONFIG_PATH)
 
     // 📖 Verify the write succeeded by reading back and validating
@@ -1082,6 +1100,7 @@ export function _emptyProfileSettings() {
     hideUnconfiguredModels: true, // 📖 true = default to providers that are actually configured
     favoritesPinnedAndSticky: false, // 📖 default mode keeps favorites as normal starred rows; press Y to pin+stick them.
     runAiSpeedTestOnStartup: false, // 📖 opt-in: automatically fire the Ctrl+U global AI Speed Test after startup.
+    autoHideBrokenModels: true, // 📖 opt-out: auto-hide models that return 404/410 from probe (Ctrl+Shift+P).
     preferredToolMode: 'opencode', // 📖 remember the last Z-selected launcher across app restarts
     theme: 'auto',        // 📖 'auto' follows the terminal/OS theme, override with 'dark' or 'light' if needed
   }
@@ -1131,5 +1150,6 @@ function _emptyConfig() {
     telemetry: { enabled: null, consentVersion: 0, anonymousId: null },
     endpointInstalls: [],
     settings: _emptyProfileSettings(),
+    hiddenModels: new Set(),
   }
 }

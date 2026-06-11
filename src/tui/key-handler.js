@@ -792,6 +792,42 @@ export function createKeyHandler(ctx) {
     })
   }
 
+  // 📖 toggleAutoHideBrokenModels: Toggle auto-hiding of 404/410 models from probe.
+  // 📖 When disabling, unhide all previously hidden models so they become visible again.
+  function toggleAutoHideBrokenModels() {
+    if (!state.config.settings || typeof state.config.settings !== 'object') state.config.settings = {}
+    const wasEnabled = state.config.settings.autoHideBrokenModels !== false
+    state.config.settings.autoHideBrokenModels = !wasEnabled
+
+    if (!wasEnabled) {
+      // 📖 Just enabled — models that were hidden before enabling will be picked up on next probe
+    } else {
+      // 📖 Just disabled — unhide all probe-hidden models so user can see them again
+      if (state.config.hiddenModels instanceof Set && state.config.hiddenModels.size > 0) {
+        const keysToUnhide = [...state.config.hiddenModels]
+        state.config.hiddenModels.clear()
+        for (const key of keysToUnhide) {
+          const [pk, ...rest] = key.split('/')
+          const modelId = rest.join('/')
+          const result = state.results.find(r => r.providerKey === pk && r.modelId === modelId)
+          if (result) result.hidden = false
+        }
+      }
+    }
+
+    saveConfig(state.config)
+    const hiddenCount = state.config.hiddenModels instanceof Set ? state.config.hiddenModels.size : 0
+    state.settingsSyncStatus = {
+      type: 'success',
+      msg: state.config.settings.autoHideBrokenModels
+        ? `✅ Auto-hide enabled — broken models (404/410) from Ctrl+Shift+P probe are hidden automatically.${hiddenCount ? ` (${hiddenCount} currently hidden)` : ''}`
+        : '✅ Auto-hide disabled — all models are visible. Previously hidden models have been unhidden.',
+    }
+    trackAppAction('auto_hide_broken_models_toggled', {
+      enabled: state.config.settings.autoHideBrokenModels !== false,
+    })
+  }
+
   function toggleShellEnv() {
     if (!state.config.settings) state.config.settings = {}
     const currentlyEnabled = state.config.settings.shellEnvEnabled === true
@@ -1130,6 +1166,96 @@ export function createKeyHandler(ctx) {
       }
     })
     return Promise.all(workers).then(() => results)
+  }
+
+  // 📖 runBrokenModelProbe: Probe all configured models for 404/broken endpoints.
+  // 📖 Sends a real chat-completion request to each model with an API key.
+  // 📖 Models returning 404 or 410 are auto-hidden when setting is enabled.
+  // 📖 Results flash live in the TUI table — models flip status in real time.
+  async function runBrokenModelProbe(state) {
+    if (state.probeRunning) return
+
+    // 📖 Only probe models where the user has an API key configured
+    const probeable = state.results.filter(r => {
+      const apiKey = getApiKey(state.config, r.providerKey)
+      return !!apiKey
+    })
+
+    if (probeable.length === 0) return
+
+    state.probeRunning = true
+    state.probeTotal = probeable.length
+    state.probeCompleted = 0
+    state.probeHiddenCount = 0
+
+    const autoHide = state.config.settings?.autoHideBrokenModels !== false
+    const HTTP_CODES_404 = new Set([404, '404'])
+    const HTTP_CODES_GONE = new Set([410, '410'])
+
+    const tasks = probeable.map(r => async () => {
+      const apiKey = getApiKey(state.config, r.providerKey) ?? null
+      const providerUrl = sources[r.providerKey]?.url ?? null
+      if (!apiKey || !providerUrl) {
+        state.probeCompleted++
+        return { model: r, ok: false, reason: 'no_key' }
+      }
+
+      try {
+        const { code } = await ping(apiKey, r.modelId, r.providerKey, providerUrl)
+        state.probeCompleted++
+
+        if (HTTP_CODES_404.has(code) || HTTP_CODES_GONE.has(code)) {
+          // 📖 Model is broken (404/410) — mark it
+          r.status = 'down'
+          r.httpCode = String(code)
+
+          if (autoHide) {
+            const modelKey = `${r.providerKey}/${r.modelId}`
+            if (!state.config.hiddenModels) state.config.hiddenModels = new Set()
+            state.config.hiddenModels.add(modelKey)
+            r.hidden = true
+            state.probeHiddenCount++
+          }
+
+          return { model: r, ok: false, code, reason: 'broken' }
+        } else if (code === '200') {
+          // 📖 Model is alive — unhide if it was previously hidden by probe
+          const modelKey = `${r.providerKey}/${r.modelId}`
+          if (state.config.hiddenModels?.has(modelKey)) {
+            state.config.hiddenModels.delete(modelKey)
+            r.hidden = false
+          }
+          r.status = 'up'
+          return { model: r, ok: true, code }
+        } else {
+          // 📖 Other codes (401, 429, etc.) — leave status unchanged, don't hide
+          return { model: r, ok: false, code, reason: 'other' }
+        }
+      } catch (err) {
+        state.probeCompleted++
+        return { model: r, ok: false, reason: 'error', error: err?.message }
+      }
+    })
+
+    await runWithConcurrency(tasks, 5)
+
+    // 📖 Persist hidden models set to config
+    if (autoHide && state.probeHiddenCount > 0) {
+      saveConfig(state.config)
+    }
+
+    state.probeRunning = false
+    // 📖 Keep totals visible for a few seconds so user can see results
+    setTimeout(() => {
+      if (!state.probeRunning) {
+        state.probeTotal = 0
+        state.probeCompleted = 0
+        // 📖 Don't reset probeHiddenCount immediately — user needs to see how many were hidden
+        setTimeout(() => {
+          state.probeHiddenCount = 0
+        }, 5000)
+      }
+    }, 3000)
   }
 
   // 📖 runGlobalBenchmark: Benchmark all visible models with up to 5 concurrent requests.
@@ -1486,6 +1612,7 @@ export function createKeyHandler(ctx) {
       case 'action-toggle-favorite': return toggleFavoriteOnSelectedRow()
       case 'action-toggle-favorite-mode': return toggleFavoritesDisplayMode()
       case 'action-reset-view': return resetViewSettings()
+      case 'action-probe-404': return runBrokenModelProbe(state)
       default:
         return
     }
@@ -1512,10 +1639,19 @@ export function createKeyHandler(ctx) {
     }
 
     // 📖 Ctrl+U: Global AI Speed Benchmark (benchmark all visible models, 5 concurrent)
-    // 📖 Also handles the raw \x15 byte as a fallback for terminals where readline doesn't
-    // 📖 set key.ctrl properly (same pattern as Ctrl+C → \x03 fallback).
+    // Also handles the raw \x15 byte as a fallback for terminals where readline doesn't
+    // set key.ctrl properly (same pattern as Ctrl+C → \x03 fallback).
     if ((key.ctrl && key.name === 'u') || str === '\x15') {
       await runGlobalBenchmark(state)
+      return
+    }
+
+    // 📖 Ctrl+Shift+P: Probe all configured models for 404/broken endpoints.
+    // 📖 Sends a real chat-completion request to every model that has an API key.
+    // 📖 Models returning 404/410 are auto-hidden (when setting is enabled).
+    // 📖 Results flash live in the table — models flip from down→up in real time.
+    if (key.ctrl && key.shift && key.name === 'p') {
+      await runBrokenModelProbe(state)
       return
     }
 
@@ -2534,7 +2670,8 @@ export function createKeyHandler(ctx) {
       const themeRowIdx = updateRowIdx + 1
       const favoritesModeRowIdx = themeRowIdx + 1
       const startupAiSpeedScanRowIdx = favoritesModeRowIdx + 1
-      const cleanupLegacyProxyRowIdx = startupAiSpeedScanRowIdx + 1
+      const autoHideBrokenModelsRowIdx = startupAiSpeedScanRowIdx + 1
+      const cleanupLegacyProxyRowIdx = autoHideBrokenModelsRowIdx + 1
       const changelogViewRowIdx = cleanupLegacyProxyRowIdx + 1
       const shellEnvRowIdx = changelogViewRowIdx + 1
         // 📖 Profile system removed - API keys now persist permanently across all sessions
@@ -2696,6 +2833,12 @@ export function createKeyHandler(ctx) {
           return
         }
 
+        // 📖 Auto-hide broken models toggle
+        if (state.settingsCursor === autoHideBrokenModelsRowIdx) {
+          toggleAutoHideBrokenModels()
+          return
+        }
+
         if (state.settingsCursor === cleanupLegacyProxyRowIdx) {
           runLegacyProxyCleanup()
           return
@@ -2753,6 +2896,11 @@ export function createKeyHandler(ctx) {
           toggleStartupAiSpeedScan()
           return
         }
+        // 📖 Auto-hide broken models toggle (space)
+        if (state.settingsCursor === autoHideBrokenModelsRowIdx) {
+          toggleAutoHideBrokenModels()
+          return
+        }
         // 📖 Profile system removed - API keys now persist permanently across all sessions
 
         // 📖 Toggle enabled/disabled for selected provider
@@ -2770,6 +2918,7 @@ export function createKeyHandler(ctx) {
           || state.settingsCursor === themeRowIdx
           || state.settingsCursor === favoritesModeRowIdx
           || state.settingsCursor === startupAiSpeedScanRowIdx
+          || state.settingsCursor === autoHideBrokenModelsRowIdx
           || state.settingsCursor === cleanupLegacyProxyRowIdx
           || state.settingsCursor === changelogViewRowIdx
         ) return

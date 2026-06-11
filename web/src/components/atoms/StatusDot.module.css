@@ -6,10 +6,14 @@
   margin-right: 6px;
   vertical-align: middle;
 }
-.up      { background: #00ff88; box-shadow: 0 0 6px rgba(0,255,136,0.4); }
-.down    { background: #ff4444; }
-.timeout { background: #ff4444; }
-.pending { background: #555570; animation: pulse 1.5s ease-in-out infinite; }
+.up       { background: #00ff88; box-shadow: 0 0 6px rgba(0,255,136,0.4); }
+.down     { background: #ff4444; }
+.timeout  { background: #ff4444; }
+.pending  { background: #555570; animation: pulse 1.5s ease-in-out infinite; }
+/* 📖 Models not in the active router set — static dim dot, no pulse animation.
+   📖 Visually distinct from 'pending' (yellow animated) so users know this
+   📖 model is simply not being tested, not still loading. */
+.notInSet { background: #3a3a4a; opacity: 0.5; }
 
 @keyframes pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(118,185,0,0.25); }
@@ -18,7 +22,8 @@
 
 /* 📖 Light theme: deep green/red for the dot so it still reads as "up"/"down"
    📖 on a white card; the glow halo is dimmed so it doesn't blow out. */
-:global([data-theme="light"]) .up      { background: #008f4d; box-shadow: 0 0 4px rgba(0,143,77,0.35); }
+:global([data-theme="light"]) .up       { background: #008f4d; box-shadow: 0 0 4px rgba(0,143,77,0.35); }
 :global([data-theme="light"]) .down,
-:global([data-theme="light"]) .timeout { background: #c8143a; }
-:global([data-theme="light"]) .pending { background: #888899; }
+:global([data-theme="light"]) .timeout  { background: #c8143a; }
+:global([data-theme="light"]) .pending  { background: #888899; }
+:global([data-theme="light"]) .notInSet { background: #b0b0b8; opacity: 0.6; }

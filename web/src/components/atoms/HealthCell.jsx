@@ -23,6 +23,7 @@ import {
   IconChecks,
   IconHourglass,
   IconHourglassOff,
+  IconCircleDotted,
   IconLock,
   IconFlame,
   IconError404,
@@ -69,10 +70,10 @@ const ERROR_ICON = {
   '504': { Icon: IconClock,        color: HEALTH_ICON_COLOR.danger  },
 }
 
-function statusLabel(status, httpCode) {
+function statusLabel(status, httpCode, inRouterSet) {
   if (status === 'noauth')  return 'NO KEY'
   if (status === 'auth_error') return 'AUTH FAIL'
-  if (status === 'pending') return 'wait'
+  if (status === 'pending') return inRouterSet ? 'wait' : 'NOT IN SET'
   if (status === 'timeout') return 'TIMEOUT'
   if (status === 'down') {
     return ERROR_LABELS[httpCode] || (httpCode || 'ERROR')
@@ -81,20 +82,21 @@ function statusLabel(status, httpCode) {
   return '?'
 }
 
-function statusClass(status) {
+function statusClass(status, inRouterSet) {
   if (status === 'noauth')     return styles.noKey
   if (status === 'up')         return styles.up
   if (status === 'down')       return styles.error
   if (status === 'timeout')    return styles.warning
   if (status === 'auth_error') return styles.errorBold
-  if (status === 'pending')    return styles.warning
+  if (status === 'pending')    return inRouterSet ? styles.warning : styles.notInSet
   return styles.dim
 }
 
-export default function HealthCell({ status, httpCode }) {
-  const text = statusLabel(status, httpCode)
-  const cls = statusClass(status)
+export default function HealthCell({ status, httpCode, inRouterSet = true }) {
+  const text = statusLabel(status, httpCode, inRouterSet)
+  const cls = statusClass(status, inRouterSet)
   const isNoKey = status === 'noauth'
+  const isNotInSet = status === 'pending' && !inRouterSet
 
   // 📖 Pick the right icon + color combo for this state.
   let Icon = null
@@ -105,6 +107,9 @@ export default function HealthCell({ status, httpCode }) {
   } else if (status === 'timeout') {
     Icon = IconHourglassOff
     iconColor = HEALTH_ICON_COLOR.warning
+  } else if (isNotInSet) {
+    Icon = IconCircleDotted
+    iconColor = HEALTH_ICON_COLOR.dim
   } else if (status === 'pending') {
     Icon = IconHourglass
     iconColor = HEALTH_ICON_COLOR.warning
