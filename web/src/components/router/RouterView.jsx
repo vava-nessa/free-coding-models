@@ -55,7 +55,7 @@ const SAVE_STATUS_SAVING = { kind: 'saving' }
 const SAVE_STATUS_SAVED = { kind: 'saved' }
 const SAVE_STATUS_ERROR = (message) => ({ kind: 'error', message })
 
-export default function RouterView({ onClose, onToast }) {
+export default function RouterView({ onClose, onToast, favorites }) {
   const [status, setStatus] = useState(null)
   const [stats, setStats] = useState(null)
   const [quickSetup, setQuickSetup] = useState(null)
@@ -249,6 +249,48 @@ export default function RouterView({ onClose, onToast }) {
     } catch (err) {
       setSaveStatus(SAVE_STATUS_ERROR(err.message || String(err)))
       onToast?.(`Sync failed: ${err.message}`, 'error')
+    }
+  }
+
+  // 📖 Replace active set models with favorites
+  const handleUseFavorites = async () => {
+    if (!activeSetName) return
+    const favList = favorites?.favorites || []
+    if (favList.length === 0) {
+      onToast?.('You do not have any favorite models yet. Star some models first!', 'info')
+      return
+    }
+
+    const nextModels = favList.map((key, idx) => {
+      const parts = key.split('/')
+      const provider = parts[0]
+      const model = parts.slice(1).join('/')
+      return { provider, model, priority: idx + 1 }
+    })
+
+    setSaveStatus(SAVE_STATUS_SAVING)
+    try {
+      const resp = await fetch(`/api/router/sets/${encodeURIComponent(activeSetName)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ models: nextModels }),
+      })
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}))
+        throw new Error(err.error || `HTTP ${resp.status}`)
+      }
+      const data = await resp.json()
+      if (data?.sets?.[activeSetName]) {
+        setSetsData((prev) => ({ ...prev, sets: data.sets }))
+      } else {
+        await fetchSets()
+      }
+      setSaveStatus(SAVE_STATUS_SAVED)
+      onToast?.(`Replaced active set with ${favList.length} favorite model${favList.length === 1 ? '' : 's'}.`, 'success')
+      await fetchStatus()
+    } catch (err) {
+      setSaveStatus(SAVE_STATUS_ERROR(err.message || String(err)))
+      onToast?.(`Failed to replace set: ${err.message}`, 'error')
     }
   }
 
@@ -675,6 +717,17 @@ export default function RouterView({ onClose, onToast }) {
                     <IconWand size={11} />
                     Sync best
                   </button>
+                  {favorites && (
+                    <button
+                      className={styles.smallBtn}
+                      onClick={handleUseFavorites}
+                      disabled={saveStatus.kind === 'saving'}
+                      title="Replace current router models with your favorite models"
+                    >
+                      <IconList size={11} />
+                      Use favorites
+                    </button>
+                  )}
                   {/* 📖 Probe all — run AI Latency benchmarks on every model in the
                       set. Results stream into the rows below (AI Lat column). */}
                   <button

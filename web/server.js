@@ -751,6 +751,45 @@ async function handleRequest(req, res) {
       return
     }
 
+    // 📖 /api/router/sets/:name — PUT to edit/rename/replace models in the set.
+    const setPutMatch = url.pathname.match(/^\/api\/router\/sets\/([^/]+)$/)
+    if (setPutMatch && req.method === 'PUT') {
+      const setName = decodeURIComponent(setPutMatch[1])
+      const body = await readJsonBody(req)
+      const proxy = await proxyToDaemon(`/sets/${encodeURIComponent(setName)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (proxy?.ok) { sendJson(res, 200, proxy.data); return }
+      // 📖 Fallback: if daemon is offline, edit config directly so the UI still works.
+      if (!proxy || !proxy.ok) {
+        if (!config.router) config.router = {}
+        if (!config.router.sets) config.router.sets = {}
+        if (config.router.sets[setName]) {
+          const nextName = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : setName
+          const nextSets = { ...config.router.sets }
+          delete nextSets[setName]
+          nextSets[nextName] = {
+            ...config.router.sets[setName],
+            ...body,
+            name: nextName,
+            models: Array.isArray(body.models) ? body.models : config.router.sets[setName].models,
+          }
+          config.router.sets = nextSets
+          if (config.router.activeSet === setName) {
+            config.router.activeSet = nextName
+          }
+          saveConfig(config)
+          broadcastUpdate({ immediate: true })
+          sendJson(res, 200, { set: config.router.sets[nextName], router: config.router })
+          return
+        }
+      }
+      sendJson(res, proxy?.status || 502, proxy?.data || { error: 'Daemon not reachable' })
+      return
+    }
+
     // 📖 /api/router/sets/:name/sync — re-run the probe-based sync pipeline
     // 📖 against the named set. Used by the Web Router Dashboard's "Sync
     // 📖 best models" button so the user can rebuild a set with models

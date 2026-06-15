@@ -3519,6 +3519,21 @@ describe('router daemon integration hardening', () => {
       const addPayload = await addResp.json()
       assert.ok(addPayload.set.models.some((m) => m.provider === 'nvidia' && m.model === 'openai/gpt-oss-120b'))
 
+      const putResp = await fetch(`${baseUrl}/api/router/sets/test-set`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          models: [
+            { provider: 'groq', model: 'llama-3.3-70b-versatile', priority: 1 }
+          ]
+        }),
+      })
+      assert.equal(putResp.status, 200)
+      const putPayload = await putResp.json()
+      assert.equal(putPayload.set.models.length, 1)
+      assert.equal(putPayload.set.models[0].provider, 'groq')
+      assert.equal(putPayload.set.models[0].model, 'llama-3.3-70b-versatile')
+
       const forbiddenAddResp = await fetch(`${baseUrl}/api/router/sets/test-set/models`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'origin': 'https://evil.example.com' },

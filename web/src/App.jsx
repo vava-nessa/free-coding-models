@@ -500,6 +500,7 @@ export default function App() {
         <RouterView
           onClose={() => setRouterOpen(false)}
           onToast={addToast}
+          favorites={favorites}
         />
       )}
 
