@@ -208,7 +208,9 @@ export const githubModels = [
 export const mistral = [
   ['mistral-large-2512',        'Mistral Large 3',     'S+', '70.0%', '256k'],
   ['mistral-medium-3-5',        'Mistral Medium 3.5',  'S+', '77.6%', '256k'],
+  // ⚠️ DEPRECATED — retire Jul 31, 2026 → replacement mistral-medium-3-5 (already cataloged)
   ['devstral-2512',             'Devstral 2',          'S+', '72.2%', '256k'],
+  // ⚠️ DEPRECATED — retire Jul 31, 2026 → replacement mistral-medium-3-5 (already cataloged)
   ['magistral-medium-2509',     'Magistral Medium 1.2','A+', '52.0%', '128k'],
   ['mistral-small-2603',        'Mistral Small 4',     'A',  '48.0%', '256k'],
   // Removed (2026-05-26): devstral-medium-latest (deprecated, replaced by devstral-2512)
@@ -294,18 +296,17 @@ export const qwen = [
 export const cloudflare = [
   // ── S+ tier ──
   ['@cf/moonshotai/kimi-k2.6',                'Kimi K2.6',         'S+', '76.8%', '262k'],
+  ['@cf/moonshotai/kimi-k2.7-code',           'Kimi K2.7 Code',    'S+', '-',     '262k'],
   // ── S tier ──
   ['@cf/zai-org/glm-4.7-flash',               'GLM-4.7-Flash',     'S',  '59.2%', '131k'],
+  ['@cf/openai/gpt-oss-120b',                 'GPT OSS 120B',      'S',  '60.0%', '128k'],
   // ── A+ tier ──
   // Removed (2026-05-31): @cf/qwen/qwq-32b (upstream deprecation — Groq removed qwen-qwq-32b July 2025)
   ['@cf/nvidia/nemotron-3-120b-a12b',         'Nemotron 3 Super',  'A+', '56.0%', '32k'],
   // ── A tier ──
   ['@cf/meta/llama-4-scout-17b-16e-instruct', 'Llama 4 Scout',     'A',  '44.0%', '131k'],
-  ['@cf/meta/llama-3.2-90b-instruct',          'Llama 3.2 90B',     'A+', '45.0%', '128k'],
+  // ⚠️ DEPRECATED upstream — still callable, marked Deprecated on the Cloudflare catalog
   ['@cf/mistralai/mistral-7b-instruct-v0.2',   'Mistral 7B v0.2',   'A',  '38.0%', '128k'],
-  ['@cf/google/gemma-2-9b-it',                 'Gemma 2 9B',        'A',  '35.0%', '128k'],
-  ['@cf/anthropic/claude-3-5-sonnet',         'Claude 3.5 Sonnet',  'S+', '62.4%', '200k'],
-  ['@cf/openai/gpt-4o-mini',                   'GPT-4o Mini',       'A+', '50.0%', '128k'],
   ['@cf/qwen/qwen3-30b-a3b-fp8',              'Qwen3 30B MoE',     'A',  '45.0%', '128k'],
   ['@cf/qwen/qwen2.5-coder-32b-instruct',     'Qwen2.5 Coder 32B', 'A',  '46.0%', '128k'],
   ['@cf/openai/gpt-oss-20b',                  'GPT OSS 20B',       'A',  '42.0%', '128k'],
@@ -319,6 +320,8 @@ export const cloudflare = [
   // Removed (2026-05-26): @cf/google/gemma-4-31b-it (never existed on Cloudflare)
   // Removed (2026-05-26): @cf/meta/llama-3.1-8b-instruct (deprecated May 30 + actual ctx = 8k, not 128k)
   // Fix (2026-05-26): @cf/moonshotai/kimi-k2.6 ctx 256k → 262k
+  // Removed (2026-06-16): @cf/meta/llama-3.2-90b-instruct, @cf/google/gemma-2-9b-it (404 — not real Cloudflare models)
+  // Removed (2026-06-16): @cf/anthropic/claude-3-5-sonnet, @cf/openai/gpt-4o-mini (404 — Cloudflare never hosted Claude/GPT-4o; phantom entries)
 ]
 
 // 📖 OVHcloud AI Endpoints - https://endpoints.ai.cloud.ovh.net

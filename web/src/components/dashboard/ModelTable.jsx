@@ -13,13 +13,14 @@
  * 📖 Custom widths persist in localStorage via the useColumnSizing hook and survive reloads.
  * 📖 A "Reset columns" button appears in the toolbar only when the user has custom widths.
  */
-import { useMemo, useEffect, useState, useCallback, useRef, Fragment } from 'react'
+import { useMemo, useEffect, useState, useCallback, useRef } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { IconStar, IconStarFilled, IconPlayerPlayFilled } from '@tabler/icons-react'
 import { useColumnSizing } from '../../hooks/useColumnSizing.js'
 
@@ -44,7 +45,6 @@ import { sweClass } from '../../utils/ranks.js'
 // 📖 providers are compatible with which tools.
 import { getCompatibleTools } from '../../../../src/core/tool-metadata.js'
 import ExpandedDetailRow from './ExpandedDetailRow.jsx'
-import TableBeamOverlay from './TableBeamOverlay.jsx'
 import styles from './ModelTable.module.css'
 
 const colHelper = createColumnHelper()
@@ -354,11 +354,11 @@ export default function ModelTable({
   // 📖 Expand row state — only one row expanded at a time (accordion)
   const [expandedRowId, setExpandedRowId] = useState(null)
 
-  // 📖 Refs for the grid-beam overlay: the scrolling element (reads scroll +
-  // 📖 viewport size) and the <table> (measures real border positions). The
-  // 📖 overlay paints mono beams that travel along the table's borders.
+  // 📖 scrollRef is the internal scroll container — shared by the sticky
+  // 📖 <thead> header and the row virtualizer (only visible rows are in the
+  // 📖 DOM; off-screen rows stay in React state so live pings/probes keep
+  // 📖 updating them and re-render correctly when scrolled into view).
   const scrollRef = useRef(null)
-  const tableRef = useRef(null)
 
   const toggleExpand = useCallback((model) => {
     const key = `${model.providerKey}/${model.modelId}`
@@ -411,6 +411,42 @@ export default function ModelTable({
 
   const rows = table.getRowModel().rows
 
+  // 📖 Flatten rows + any expanded detail panel into a single virtualized
+  // 📖 list. One <tr> per item keeps TanStack Virtual's dynamic measurement
+  // 📖 clean (one measured element per virtual item). The expand item only
+  // 📖 exists for the single accordion-open row, so count changes by at most 1.
+  const flatRows = useMemo(() => {
+    const out = []
+    for (const row of rows) {
+      const m = row.original
+      const key = `${m.providerKey}/${m.modelId}`
+      out.push({ type: 'row', row, key })
+      if (expandedRowId === key) {
+        out.push({ type: 'expand', row, key: `${key}__expand` })
+      }
+    }
+    return out
+  }, [rows, expandedRowId])
+
+  // 📖 Row virtualizer: renders only the ~15-25 rows in the viewport (+overscan)
+  // 📖 instead of all 190+. Spacer <tr>s above/below preserve the full scroll
+  // 📖 height. This is a RENDER-only optimization — ALL model data (including
+  // 📖 live pings/probes for off-screen rows) still lives in React state via
+  // 📖 useSocket, so updates continue uninterrupted and show fresh values the
+  // 📖 moment a row scrolls back into view. Nothing about probing changes.
+  const rowVirtualizer = useVirtualizer({
+    count: flatRows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: (i) => (flatRows[i]?.type === 'expand' ? 260 : 47),
+    overscan: 10,
+    getItemKey: (i) => flatRows[i].key,
+  })
+  const virtualItems = rowVirtualizer.getVirtualItems()
+  const totalSize = rowVirtualizer.getTotalSize()
+  const padTop = virtualItems.length ? Math.max(0, virtualItems[0].start) : 0
+  const lastVi = virtualItems.length ? virtualItems[virtualItems.length - 1] : null
+  const padBottom = lastVi ? Math.max(0, totalSize - lastVi.end) : 0
+
   // 📖 Total table width = sum of all column sizes. Used to drop the min-width
   // 📖 override once the user has manually tuned the columns, so horizontal
   // 📖 scrolling reflects the user's layout rather than the 1200px default.
@@ -459,13 +495,11 @@ export default function ModelTable({
           </button>
         </div>
       )}
-      {/* 📖 scrollInner is the actual scroller; the grid-beam canvas lives as a
-          📖 sibling OUTSIDE it so the overlay never scrolls away with content.
-          📖 Bounded by the .dashboardView main (viewport height) so it scrolls
-          📖 internally and the sticky <thead> header engages. */}
+      {/* 📖 scrollInner is the actual scroller. It is the scroll element for
+          📖 both the sticky <thead> header and the row virtualizer. Bounded by
+          📖 .dashboardView (viewport height) so the table scrolls internally. */}
       <div className={styles.scrollInner} ref={scrollRef}>
       <table
-        ref={tableRef}
         className={styles.table}
         style={hasCustomSizing ? { minWidth: `${totalTableWidth}px` } : undefined}
       >
@@ -525,10 +559,45 @@ export default function ModelTable({
           ))}
         </thead>
         <tbody>
-          {rows.map((row, i) => {
+          {/* 📖 Top spacer: represents the scroll height of all virtualized-out
+              📖 rows ABOVE the viewport. aria-hidden + empty cell keeps it
+              📖 invisible while preserving table column layout. */}
+          {padTop > 0 && (
+            <tr aria-hidden="true" style={{ height: padTop }}>
+              <td style={{ height: padTop, padding: 0, border: 0 }} />
+            </tr>
+          )}
+          {virtualItems.map((vi) => {
+            const item = flatRows[vi.index]
+            // 📖 Expanded detail panel row — its own virtual item so dynamic
+            // 📖 measurement stays one-element-per-item (clean heights).
+            if (item.type === 'expand') {
+              return (
+                <tr
+                  key={item.key}
+                  className={styles.expandRowWrapper}
+                  data-index={vi.index}
+                  ref={rowVirtualizer.measureElement}
+                >
+                  <td colSpan={item.row.getVisibleCells().length} className={styles.expandRowCell}>
+                    <ExpandedDetailRow
+                      model={item.row.original}
+                      favorites={favorites}
+                      onBenchmark={onBenchmarkRow}
+                      onLaunch={onLaunch}
+                      onToast={onToast}
+                      toolMode={toolMode}
+                      onSetToolMode={onSetToolMode}
+                      onCycleToolMode={onCycleToolMode}
+                      onOpenFallback={onOpenFallback}
+                    />
+                  </td>
+                </tr>
+              )
+            }
+            const row = item.row
             const m = row.original
-            const rowKey = `${m.providerKey}/${m.modelId}`
-            const isExpanded = expandedRowId === rowKey
+            const isExpanded = expandedRowId === item.key
             const rankIdx = [...top3Ids].indexOf(m.modelId)
             const rowClasses = []
             if (rankIdx >= 0) rowClasses.push(styles[`rank${rankIdx + 1}`])
@@ -547,57 +616,37 @@ export default function ModelTable({
               rowClasses.push(styles.notInSetRow)
             }
             return (
-              <Fragment key={row.id}>
-                <tr
-                  className={rowClasses.join(' ')}
-                  onClick={() => toggleExpand(m)}
-                >
-                  {row.getVisibleCells().map(cell => {
-                    const sizePx = `${cell.column.getSize()}px`
-                    return (
-                      <td
-                        key={cell.id}
-                        className={styles.td}
-                        style={{ width: sizePx, minWidth: sizePx, maxWidth: sizePx }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    )
-                  })}
-                </tr>
-                {/* 📖 Expanded detail row — 3-column panel with info, playground, AI latency */}
-                {isExpanded && (
-                  <tr className={styles.expandRowWrapper}>
-                    <td colSpan={row.getVisibleCells().length} className={styles.expandRowCell}>
-                      <ExpandedDetailRow
-                        model={m}
-                        favorites={favorites}
-                        onBenchmark={onBenchmarkRow}
-                        onLaunch={onLaunch}
-                        onToast={onToast}
-                        toolMode={toolMode}
-                        onSetToolMode={onSetToolMode}
-                        onCycleToolMode={onCycleToolMode}
-                        onOpenFallback={onOpenFallback}
-                      />
+              <tr
+                key={item.key}
+                className={rowClasses.join(' ')}
+                onClick={() => toggleExpand(m)}
+                data-index={vi.index}
+                ref={rowVirtualizer.measureElement}
+              >
+                {row.getVisibleCells().map(cell => {
+                  const sizePx = `${cell.column.getSize()}px`
+                  return (
+                    <td
+                      key={cell.id}
+                      className={styles.td}
+                      style={{ width: sizePx, minWidth: sizePx, maxWidth: sizePx }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
-                  </tr>
-                )}
-              </Fragment>
+                  )
+                })}
+              </tr>
             )
           })}
+          {/* 📖 Bottom spacer: scroll height of all virtualized-out rows BELOW. */}
+          {padBottom > 0 && (
+            <tr aria-hidden="true" style={{ height: padBottom }}>
+              <td style={{ height: padBottom, padding: 0, border: 0 }} />
+            </tr>
+          )}
         </tbody>
       </table>
       </div>
-      {/* 📖 Grid-beam canvas overlay — mono beams traveling along the table's
-          📖 real borders (port of cult-ui Grid Beam). Sits above body cells,
-          📖 below the sticky header. Respects prefers-reduced-motion. */}
-      <TableBeamOverlay
-        scrollRef={scrollRef}
-        tableRef={tableRef}
-        rowCount={rows.length}
-        colCount={columns.length}
-      />
     </div>
   )
 }
