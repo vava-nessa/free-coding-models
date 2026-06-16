@@ -46,24 +46,24 @@
 }
 
 /* ─── Brand ─── */
-.logo { display: flex; align-items: center; gap: 6px; }
-.logoIcon {
+.logo { display: flex; align-items: center; gap: 8px; }
+.logoIconSvg {
   color: var(--color-brand);
-  font-family: var(--font-mono);
-  font-size: 20px;
-  font-weight: 900;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 .logoText {
-  font-size: 14px; font-weight: 700;
+  font-size: 16px; font-weight: 750;
+  font-family: var(--font-mono);
   color: var(--color-text);
   display: flex;
   align-items: center;
+  letter-spacing: -0.2px;
 }
 .logoTextHighlight { color: var(--color-brand); }
 .version {
-  font-size: 10px; font-weight: 500; font-family: var(--font-mono);
+  font-size: 12px; font-weight: 500; font-family: var(--font-mono);
   color: var(--color-text-muted); background: var(--color-surface);
   padding: 2px 6px; border-radius: 999px; border: 1px solid var(--color-border);
 }
@@ -72,7 +72,7 @@
 .nav {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 8px;
   margin-left: 8px;
   padding-left: 12px;
   border-left: 1px solid var(--color-border);
@@ -82,39 +82,44 @@
 .navBtn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   height: 30px;
-  padding: 0 10px;
-  font-size: 12px;
+  padding: 0 12px;
+  font-size: 13px;
   font-weight: 600;
-  font-family: var(--font-sans);
+  font-family: var(--font-mono); /* Monospace font looks extremely high-tech */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   color: var(--color-text-muted);
-  background: transparent;
-  border: 1px solid transparent;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   cursor: pointer;
-  transition: background 150ms, color 150ms, border-color 150ms;
+  transition: all 150ms var(--ease-out);
   white-space: nowrap;
 }
 .navBtn:hover {
   background: var(--color-bg-hover);
   color: var(--color-text);
+  border-color: var(--color-border-hover);
 }
 .navBtnActive {
-  background: var(--color-accent-dim);
-  color: var(--color-accent);
-  border-color: var(--color-border);
-  font-weight: 700;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-color: var(--color-accent);
+  font-weight: 800;
+  box-shadow: 0 0 12px var(--color-accent-glow);
 }
 .navBtnActive:hover {
-  background: var(--color-accent-dim);
-  color: var(--color-accent);
+  background: var(--color-accent-hover);
+  color: var(--color-bg);
+  border-color: var(--color-accent-hover);
 }
 
 /* 📖 "Coming in M2" badge — small inline label that shows the menu structure
    📖 is honest even before those milestones land. */
 .comingBadge {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   font-family: var(--font-mono);
   color: var(--color-text-dim);
@@ -156,7 +161,7 @@
   gap: 8px;
   width: 100%;
   padding: 7px 10px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--color-text);
   background: transparent;
@@ -180,10 +185,10 @@
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
-.searchIcon { font-size: 14px; flex-shrink: 0; }
+.searchIcon { font-size: 16px; flex-shrink: 0; }
 .searchInput {
   flex: 1; background: none; border: none; outline: none;
-  color: var(--color-text); font-size: 13px; font-family: var(--font-sans);
+  color: var(--color-text); font-size: 15px; font-family: var(--font-sans);
   min-width: 0;
 }
 .searchInput::placeholder { color: var(--color-text-dim); }
@@ -193,7 +198,7 @@
   display: inline-flex; align-items: center; justify-content: center;
   padding: 6px 8px; border: 1px solid var(--color-border); border-radius: 6px;
   background: var(--color-surface); color: var(--color-text);
-  cursor: pointer; font-size: 16px; transition: all 150ms;
+  cursor: pointer; font-size: 18px; transition: all 150ms;
 }
 .iconBtn:hover { background: var(--color-bg-hover); border-color: var(--color-border-hover); }
 
@@ -204,7 +209,7 @@
   padding: 0 10px; height: 30px;
   border: 1px solid var(--color-border); border-radius: 6px;
   background: var(--color-surface); color: var(--color-text);
-  cursor: pointer; font-size: 12px; font-weight: 600;
+  cursor: pointer; font-size: 14px; font-weight: 600;
   font-family: var(--font-mono);
   transition: all 150ms;
 }
@@ -212,12 +217,12 @@
   border-color: var(--color-accent);
   background: var(--color-bg-hover);
 }
-.cmdkLabel { font-size: 11px; letter-spacing: 0.5px; }
+.cmdkLabel { font-size: 13px; letter-spacing: 0.5px; }
 
 /* ─── AI Latency benchmark button (reused from before) ─── */
 .benchmarkBtn {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 0 12px; height: 30px; font-size: 12px; font-weight: 700;
+  padding: 0 12px; height: 30px; font-size: 14px; font-weight: 700;
   border: 1px solid var(--color-border); border-radius: 6px;
   background: var(--color-surface); color: var(--color-text);
   cursor: pointer; font-family: var(--font-mono); transition: all 150ms;
@@ -307,7 +312,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--color-text-muted);
   background: transparent;

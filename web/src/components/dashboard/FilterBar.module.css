@@ -2,12 +2,19 @@
  * @file web/src/components/dashboard/FilterBar.module.css
  * @description Filter bar styles — M1 parity chips (tier, status, verdict, health,
  * visibility, provider, custom text filter, reset, ping mode).
- * 📖 Sticky below the header (`top: 60px` = header height) so the filter chips
- * 📖 stay visible while the user scrolls a long table.
+ * 📖 The bar is a STATIC header above the model table (flex-shrink:0). It used
+ * 📖 to be `position: sticky; top: 60px` for the old whole-page-scroll layout,
+ * 📖 but the dashboard now scrolls the table INTERNALLY (main.dashboardView is
+ * 📖 the bounded box, .scrollInner scrolls). With main as the scroll container,
+ * 📖 `top: 60px` stuck the bar 60px DOWN inside main, dropping it over the
+ * 📖 table's green <thead>. Since the bar lives OUTSIDE the internal scroller,
+ * 📖 it is naturally always visible — no sticky needed. Keep z-index modest so
+ * 📖 it never fights the sticky table header (z-index: 10) if they ever meet.
  */
 
 .filters {
-  position: sticky; top: 60px; z-index: 99;
+  position: relative; z-index: 5;
+  flex-shrink: 0;
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   padding: 10px 20px;
   background: var(--color-bg-card);
@@ -19,7 +26,7 @@
 .group { display: flex; align-items: center; gap: 6px; }
 
 .filterLabel {
-  font-size: 10px; font-weight: 700; color: var(--color-text-muted);
+  font-size: 12px; font-weight: 700; color: var(--color-text-muted);
   text-transform: uppercase; letter-spacing: 0.5px;
   white-space: nowrap;
 }
@@ -31,7 +38,7 @@
 
 .filterTrigger {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11px; font-family: var(--font-mono);
+  font-size: 13px; font-family: var(--font-mono);
   padding: 4px 8px; border-radius: 5px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -59,7 +66,7 @@
 }
 
 .filterTriggerLabel {
-  font-size: 10px; font-weight: 700;
+  font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.5px;
   color: var(--color-text-muted);
 }
@@ -103,7 +110,7 @@
 }
 
 .filterChip {
-  font-size: 11px; font-weight: 600; font-family: var(--font-mono);
+  font-size: 13px; font-weight: 600; font-family: var(--font-mono);
   padding: 4px 9px;
   border: 1px solid var(--color-border);
   background: var(--color-bg-card);
@@ -136,7 +143,7 @@
 .select, .providerSelect {
   background: var(--color-surface); color: var(--color-text);
   border: 1px solid var(--color-border); border-radius: 5px;
-  padding: 4px 8px; font-size: 11px; font-family: var(--font-sans);
+  padding: 4px 8px; font-size: 13px; font-family: var(--font-sans);
   cursor: pointer; outline: none;
   min-width: 130px;
 }
@@ -151,11 +158,11 @@
   border-radius: 5px;
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
 }
 .toolStatus strong {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -164,7 +171,7 @@
 
 .resetBtn {
   display: inline-flex; align-items: center; gap: 5px;
-  font-size: 11px; font-weight: 700; font-family: var(--font-mono);
+  font-size: 13px; font-weight: 700; font-family: var(--font-mono);
   padding: 4px 9px; border-radius: 5px;
   border: 1px solid var(--color-border-hover);
   background: var(--color-accent-dim);
@@ -178,7 +185,7 @@
 .resetBadge {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 16px; height: 16px;
-  font-size: 9px; font-weight: 800;
+  font-size: 11px; font-weight: 800;
   background: var(--color-bg);
   color: var(--color-accent);
   border-radius: 999px;
@@ -188,7 +195,7 @@
 /* ── Custom text filter chip (TUI Ctrl+P "Apply text filter") ── */
 .customFilterChip {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 600; font-family: var(--font-mono);
+  font-size: 13px; font-weight: 600; font-family: var(--font-mono);
   padding: 3px 4px 3px 8px;
   border: 1px solid var(--color-accent);
   background: var(--color-accent-dim);
@@ -217,18 +224,18 @@
 /* ── Next ping countdown (TUI parity) ── */
 .nextPing {
   display: flex; align-items: center; gap: 6px;
-  font-size: 11px; font-family: var(--font-mono);
+  font-size: 13px; font-family: var(--font-mono);
   padding: 4px 8px;
   border: 1px solid var(--color-border);
   border-radius: 5px;
   background: var(--color-surface);
 }
 .nextPingLabel {
-  font-size: 10px; font-weight: 500; color: var(--color-text-muted);
+  font-size: 12px; font-weight: 500; color: var(--color-text-muted);
   text-transform: uppercase; letter-spacing: 0.5px;
 }
 .nextPingTime {
-  font-size: 13px; font-weight: 700; color: var(--color-text);
+  font-size: 15px; font-weight: 700; color: var(--color-text);
   min-width: 32px;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -240,7 +247,7 @@
 
 .live {
   display: flex; align-items: center; gap: 5px;
-  font-size: 10px; font-weight: 700; color: var(--color-accent);
+  font-size: 12px; font-weight: 700; color: var(--color-accent);
   text-transform: uppercase; letter-spacing: 1px;
 }
 .liveDot {
@@ -261,16 +268,16 @@
 }
 .benchmarkLabel {
   display: flex; align-items: center; gap: 5px;
-  font-size: 11px; font-weight: 700;
+  font-size: 13px; font-weight: 700;
   color: #b400ff; font-family: var(--font-mono);
   white-space: nowrap;
 }
 .benchmarkSpinner {
   display: inline-block;
   animation: spinSp 0.8s linear infinite;
-  font-size: 12px; line-height: 1;
+  font-size: 14px; line-height: 1;
 }
-.benchmarkCount { font-size: 10px; opacity: 0.8; }
+.benchmarkCount { font-size: 12px; opacity: 0.8; }
 .benchmarkTrack {
   width: 120px; height: 5px;
   background: rgba(255,255,255,0.1);
@@ -284,7 +291,7 @@
   transition: width 0.5s ease;
 }
 .benchmarkPct {
-  font-size: 11px; font-weight: 700;
+  font-size: 13px; font-weight: 700;
   color: #b400ff; font-family: var(--font-mono);
   min-width: 32px; text-align: right;
 }
@@ -292,4 +299,44 @@
 @keyframes spinSp {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* ─── Search Bar ─── */
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 0 6px;
+  height: 24px;
+  width: 125px;
+  transition: border-color 150ms, box-shadow 150ms, width 200ms var(--ease-out);
+}
+.searchBar:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-glow);
+  width: 180px;
+}
+.searchIcon {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+.searchInput {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--color-text);
+  font-size: 10.5px;
+  font-family: var(--font-sans);
+  min-width: 0;
+  padding: 0;
+}
+.searchInput::placeholder {
+  color: var(--color-text-dim);
+  font-size: 10px;
 }

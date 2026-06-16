@@ -9,7 +9,7 @@
  *     — click the trigger to expand the chip row, click again or outside to close.
  */
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { IconRefresh, IconX, IconFilter, IconChevronDown } from '@tabler/icons-react'
+import { IconRefresh, IconX, IconFilter, IconChevronDown, IconSearch } from '@tabler/icons-react'
 import { getToolMeta } from '../../../../src/core/tool-metadata.js'
 import ProviderDropdown from './ProviderDropdown.jsx'
 import styles from './FilterBar.module.css'
@@ -158,7 +158,7 @@ export default function FilterBar({
   filterHealth, setFilterHealth,
   visibilityMode, setVisibilityMode,
   customTextFilter, setCustomTextFilter,
-  searchQuery,
+  searchQuery, onSearchChange,
   onResetView,
   providers,
   pingMode, setPingMode,
@@ -252,6 +252,21 @@ export default function FilterBar({
           value={filterProvider}
           onChange={setFilterProvider}
         />
+      </div>
+
+      <div className={styles.group}>
+        <div className={styles.searchBar}>
+          <span className={styles.searchIcon}><IconSearch size={13} stroke={1.5} /></span>
+          <input
+            type="text"
+            className={styles.searchInput}
+            placeholder="Search models, providers..."
+            value={searchQuery || ''}
+            onChange={(e) => onSearchChange?.(e.target.value)}
+            autoComplete="off"
+            aria-label="Search models"
+          />
+        </div>
       </div>
 
       <div className={styles.group}>

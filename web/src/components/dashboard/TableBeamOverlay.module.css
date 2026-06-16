@@ -1,0 +1,22 @@
+/**
+ * @file web/src/components/dashboard/TableBeamOverlay.module.css
+ * @description Canvas overlay positioning for the grid-beam effect.
+ * 📖 The canvas is a direct child of the table container (which is the
+ * 📖 relative, non-scrolling box) so it stays pinned over the visible
+ * 📖 viewport and NEVER scrolls away with the table content.
+ * 📖 Stacking: z-index 3 sits ABOVE body cells (z auto) but BELOW the sticky
+ * 📖 header (z-index 10) and toolbar (z-index 11), so the beams glow over the
+ * 📖 data area without washing out the header. pointer-events:none keeps all
+ * 📖 row clicks, header sorts, and column-resize handles fully interactive.
+ */
+.beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+  /* 📖 The canvas is transparent; only the beam pixels are drawn. */
+  display: block;
+}

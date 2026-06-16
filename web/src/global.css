@@ -8,24 +8,24 @@
 
 /* ─── CSS Custom Properties (Design Tokens) ─── */
 :root {
-  --color-brand:        #76b900;
-  --color-bg:           #000000;
-  --color-bg-elevated:  #0a0a0a;
-  --color-bg-card:      #0a0a0a;
-  --color-bg-hover:     #161616;
-  --color-bg-active:    #222222;
-  --color-surface:      #111111;
-  --color-border:       #262626;
-  --color-border-hover: #404040;
+  --color-brand:        #c0f20c;
+  --color-bg:           #050505;
+  --color-bg-elevated:  #090a09;
+  --color-bg-card:      #080908;
+  --color-bg-hover:     #121512;
+  --color-bg-active:    #181d18;
+  --color-surface:      #0d100d;
+  --color-border:       #161a16;
+  --color-border-hover: #2e3b2e;
 
   --color-text:         #ffffff;
-  --color-text-muted:   #888888;
-  --color-text-dim:     #444444;
+  --color-text-muted:   #8fa08f;
+  --color-text-dim:     #455245;
 
-  --color-accent:       #ffffff;
-  --color-accent-hover: #eaeaea;
-  --color-accent-glow:  rgba(255, 255, 255, 0.1);
-  --color-accent-dim:   rgba(255, 255, 255, 0.05);
+  --color-accent:       #c0f20c;
+  --color-accent-hover: #d2ff2b;
+  --color-accent-glow:  rgba(192, 242, 12, 0.15);
+  --color-accent-dim:   rgba(192, 242, 12, 0.08);
 
   --color-danger:       #ff4444;
   --color-danger-dim:   rgba(255, 68, 68, 0.1);
@@ -160,7 +160,7 @@ textarea:focus-visible {
 }
 
 html {
-  font-size: 14px;
+  font-size: 16px;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -179,23 +179,16 @@ body {
 
 a { color: var(--color-accent); text-decoration: none; }
 a:hover { color: var(--color-accent-hover); }
-code { font-family: var(--font-mono); font-size: 12px; background: var(--color-surface); padding: 2px 6px; border-radius: 4px; }
+code { font-family: var(--font-mono); font-size: 14px; background: var(--color-surface); padding: 2px 6px; border-radius: 4px; }
 
 /* ─── Background Effects ─── */
-.bg-grid {
-  display: none;
-}
-
-.bg-glow {
-  display: none;
-}
-
-
-[data-theme="light"] .bg-glow { opacity: 0.12; }
-[data-theme="light"] .bg-grid {
+[data-theme="light"] .app-shell {
   background-image:
-    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+    linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+}
+[data-theme="light"] .app-shell::before {
+  background: radial-gradient(circle, rgba(0, 143, 77, 0.03) 0%, transparent 70%);
 }
 
 /* ─── App Layout ─── */
@@ -207,6 +200,25 @@ code { font-family: var(--font-mono); font-size: 12px; background: var(--color-s
   width: 100%;
   position: relative;
   z-index: 1;
+  background-color: var(--color-bg);
+  /* background grid effect */
+  background-image: 
+    linear-gradient(rgba(192, 242, 12, 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(192, 242, 12, 0.012) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: center top;
+}
+
+.app-shell::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 25%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(192, 242, 12, 0.03) 0%, transparent 70%);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .app-content {
@@ -225,6 +237,21 @@ code { font-family: var(--font-mono); font-size: 12px; background: var(--color-s
   min-height: 0;
 }
 
+/* 📖 Dashboard-only: bound the main box to the viewport height (minus the
+   📖 global header) so the model table scrolls INTERNALLY inside .scrollInner
+   📖 instead of growing the whole page. That internal scroll is what lets the
+   📖 green <thead> header be position:sticky and stay pinned while you scroll
+   📖 190+ model rows. Scoped to the dashboard only (main.dashboardView has
+   📖 higher specificity than the shared .view rule, so flex:none + the capped
+   📖 height reliably win). Settings / Analytics / Playground keep their layout. */
+main.dashboardView {
+  flex: none;
+  height: calc(100vh - var(--header-h));
+  height: calc(100dvh - var(--header-h));
+  min-height: 0;
+  overflow: hidden;
+}
+
 .update-warning-banner {
   position: sticky;
   top: var(--header-h, 60px);
@@ -234,7 +261,7 @@ code { font-family: var(--font-mono); font-size: 12px; background: var(--color-s
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.22);
   font-weight: 800;
-  font-size: 13px;
+  font-size: 15px;
   letter-spacing: 0.01em;
   text-align: center;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);

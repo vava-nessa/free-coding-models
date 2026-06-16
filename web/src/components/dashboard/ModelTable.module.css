@@ -15,6 +15,25 @@
   margin: 0;
   flex: 1;
   min-height: 0;
+  /* 📖 The container itself no longer scrolls — it is the relative clip box
+     📖 that hosts BOTH the scrolling table (scrollInner) and the grid-beam
+     📖 canvas overlay as siblings. overflow:hidden keeps the canvas (which is
+     📖 position:absolute inset:0) neatly clipped to the table viewport.
+     📖 isolation:isolate creates a clean stacking context so the overlay
+     📖 (z-index 3) reliably layers above body cells but below the sticky
+     📖 header (z-index 10) and toolbar (z-index 11). */
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 📖 The real scroll surface for the table. Moved out of .container so the
+   📖 grid-beam overlay can sit as a non-scrolling sibling above it. */
+.scrollInner {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -24,27 +43,29 @@
   width: 100%;
   min-width: 1200px;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 14px;
   border: 0;
 }
 
 /* ─── Header ─── */
 .th {
-  padding: 9px 8px;
-  font-size: 10px;
-  font-weight: 700;
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: var(--font-mono);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--color-text-muted);
-  background: var(--color-bg-elevated);
-  border-bottom: 1px solid var(--color-border-hover);
-  border-right: 1px solid var(--color-border);
+  letter-spacing: 0.8px;
+  color: var(--color-bg);
+  background: var(--color-accent);
+  border-bottom: 2px solid var(--color-border);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
   white-space: nowrap;
   user-select: none;
   position: sticky;
   top: 0;
   z-index: 10;
   text-align: center;
+  transition: all 120ms var(--ease-out);
   /* 📖 Disable user-select on the whole header so dragging the resize handle
      📖 never accidentally selects the cell text on rapid drags. */
   -webkit-user-select: none;
@@ -52,7 +73,7 @@
   -ms-user-select: none;
 }
 .th:last-child { border-right: 0; }
-.th:hover { color: var(--color-accent); background: var(--color-bg-active); }
+.th:hover { color: var(--color-bg); background: var(--color-accent-hover); }
 
 /* 📖 Inner flex container: header label on the left, resize handle on the right.
    📖 Letting the label shrink keeps the column tight when the user makes it narrow. */
@@ -120,8 +141,10 @@
   user-select: none !important;
 }
 
-/* 📖 Floating toolbar that appears only when the user has custom column widths.
-   📖 Sits at the top-right of the table area without pushing rows down. */
+/* 📖 Floating bar shown only when the user has custom column widths.
+   📖 Rendered OUTSIDE the scroller (a normal flex child at the top of the
+   📖 table container) so it stays put without colliding with the sticky
+   📖 <thead>. It shrinks the scroll area; the sticky header sticks below it. */
 .resizeToolbar {
   display: flex;
   align-items: center;
@@ -130,11 +153,9 @@
   padding: 6px 10px;
   background: var(--color-bg-elevated);
   border-bottom: 1px solid var(--color-border);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--color-text-muted);
-  position: sticky;
-  top: 0;
-  z-index: 11;
+  flex-shrink: 0;
 }
 .resizeToolbarHint {
   display: inline-flex;
@@ -154,7 +175,7 @@
   color: var(--color-text-muted);
   padding: 3px 10px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: background 120ms var(--ease-out, ease), color 120ms var(--ease-out, ease), border-color 120ms var(--ease-out, ease);
@@ -176,8 +197,8 @@
 .th:nth-child(11) { text-align: left; } /* Verdict */
 
 /* Sort icons */
-.sortIcon   { opacity: 0.3; margin-left: 3px; font-size: 9px; }
-.sortIconActive { color: var(--color-accent); margin-left: 3px; font-size: 10px; font-weight: 800; }
+.sortIcon   { opacity: 0.4; margin-left: 3px; font-size: 9px; color: var(--color-bg); }
+.sortIconActive { color: var(--color-bg); margin-left: 3px; font-size: 10px; font-weight: 900; }
 
 /* ─── Data cells ─── */
 .td {
@@ -190,6 +211,11 @@
 .td:nth-child(6) { text-align: left; }   /* Model */
 .td:nth-child(7) { text-align: left; }   /* Provider */
 .td:nth-child(11) { text-align: left; } /* Verdict */
+
+/* 📖 Center the BOOKMARKS column (star button) so it sits nicely in its
+   📖 wider header. Other narrow numeric columns are centered by default. */
+.td:nth-child(1),
+.th:nth-child(1) { text-align: center; }
 
 /* ─── Row hover ─── */
 .table tbody tr {
@@ -206,7 +232,7 @@
 /* ─── Shared cell values ─── */
 .rankNum {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--color-text-dim);
   text-align: center;
   display: block;
@@ -217,7 +243,7 @@
 .sweMid  { color: #3ddc84; }
 .sweLow  { color: var(--color-text-dim); }
 
-.ctx { font-family: var(--font-mono); font-size: 11px; }
+.ctx { font-family: var(--font-mono); font-size: 13px; }
 
 .ping { font-family: var(--font-mono); font-weight: 600; }
 .pingFast   { color: #00ff88; }
@@ -232,14 +258,14 @@
 :global([data-theme="light"]) .pingMedium { color: #b86b00; }
 :global([data-theme="light"]) .pingSlow   { color: #c8143a; }
 
-.uptime { font-family: var(--font-mono); font-size: 11px; }
+.uptime { font-family: var(--font-mono); font-size: 13px; }
 
 /* ─── Model cell ─── */
 .modelCell    { display: flex; align-items: center; gap: 6px; overflow: hidden; }
 .modelMeta    { flex: 1; min-width: 0; }
 .modelHeader  { display: flex; align-items: center; gap: 5px; }
-.modelName    { font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.modelId      { font-family: var(--font-mono); font-size: 9px; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modelName    { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modelId      { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 📖 Provider cell now uses <ProviderLogo /> (icon + wordmark) — see
    📖 atoms/ProviderLogo.module.css for the layout. The old bordered pill
@@ -368,13 +394,43 @@
 }
 
 /* ─── Expandable row styles ─── */
-.expandedRow {
-  background: var(--color-bg-active) !important;
+.expandedRow td {
+  background: var(--color-accent) !important;
+  color: var(--color-bg) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.15) !important;
+}
+.expandedRow td * {
+  color: var(--color-bg) !important;
+}
+.expandedRow :global(.status-dot) {
+  border-color: var(--color-bg) !important;
+}
+.expandedRow :global(.provider-wordmark) {
+  filter: brightness(0) saturate(100%) !important; /* Forces logos to render dark/black for contrast */
+}
+.expandedRow .rankNum,
+.expandedRow .modelId {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+.expandedRow .sweLow,
+.expandedRow .sweMid,
+.expandedRow .sweHigh {
+  color: var(--color-bg) !important;
+}
+.expandedRow .pingFast,
+.expandedRow .pingMedium,
+.expandedRow .pingSlow {
+  color: var(--color-bg) !important;
+  font-weight: 800;
 }
 .expandRowWrapper {
   border: none;
 }
 .expandRowCell {
   padding: 0 !important;
-  border-bottom: 2px solid var(--color-accent) !important;
+  border-bottom: 3px solid var(--color-accent) !important;
+  background: var(--color-bg-elevated) !important;
+}
+.expandRowCell * {
+  color: inherit;
 }

@@ -22,20 +22,18 @@ import styles from './Header.module.css'
 // 📖 order, icon, and "coming soon" milestone are colocated with the
 // 📖 rendering code. When a view ships, remove the `comingIn` field.
 const NAV_ITEMS = [
-  { id: 'dashboard',   label: 'Dashboard',   icon: IconLayoutDashboard },
-  { id: 'settings',    label: 'Settings',    icon: IconSettings },
-  { id: 'analytics',   label: 'Analytics',   icon: IconActivity },
-  { id: 'recommend',   label: 'Recommend',   icon: IconSparkles },
-  { id: 'router',      label: 'Router',      icon: IconRoute },
-  { id: 'playground',  label: 'Playground',  icon: IconMessageChatbot },
+  { id: 'dashboard',         label: 'Dashboard',          icon: IconLayoutDashboard },
+  { id: 'router',            label: 'Router',             icon: IconRoute },
+  { id: 'playground',        label: 'Playground',         icon: IconMessageChatbot },
+  { id: 'help',              label: 'Help',               icon: IconQuestionMark },
+  { id: 'install-endpoints', label: 'Install Endpoints',  icon: IconPlug },
 ]
 
-// 📖 Overflow menu items — Help + Changelog shipped in M2; Install Endpoints
-// 📖 and Installed Models are still M4.
+// 📖 Overflow menu items
 const MENU_ITEMS = [
-  { id: 'help',              label: 'Help',               icon: IconQuestionMark },
+  { id: 'analytics',         label: 'Analytics',          icon: IconActivity },
+  { id: 'recommend',         label: 'Recommend',          icon: IconSparkles },
   { id: 'changelog',         label: 'Changelog',          icon: IconHistory },
-  { id: 'install-endpoints', label: 'Install Endpoints',  icon: IconPlug },
   { id: 'installed-models',  label: 'Installed Models',   icon: IconFolders },
 ]
 
@@ -90,8 +88,11 @@ export default function Header({
   return (
     <header className={styles.header}>
       <div className={styles.left}>
-        <div className={styles.logo}>
-          <span className={styles.logoIcon}>&gt;</span>
+        <div className={styles.logo} onClick={() => onNavigate('dashboard')} style={{ cursor: 'pointer' }}>
+          <svg className={styles.logoIconSvg} width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 5L11 12L4 19" stroke="var(--color-brand)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M14 5V19M14 5H21M14 11H18" stroke="var(--color-brand)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
           <span className={styles.logoText}>
             <span className={styles.logoTextHighlight}>free</span>
             <span>-coding-models</span>
@@ -200,21 +201,18 @@ export default function Header({
         </nav>
       </div>
 
-      <div className={styles.center}>
-        <div className={styles.searchBar}>
-          <span className={styles.searchIcon}><IconSearch size={16} stroke={1.5} /></span>
-          <input
-            type="text"
-            className={styles.searchInput}
-            placeholder="Search models, providers, tiers..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
-      </div>
-
       <div className={styles.right}>
+        <button
+          className={`${styles.navBtn} ${currentView === 'settings' ? styles.navBtnActive : ''}`}
+          onClick={() => onNavigate('settings')}
+          title="Settings"
+          aria-current={currentView === 'settings' ? 'page' : undefined}
+          style={{ marginRight: '2px' }}
+        >
+          <IconSettings size={14} stroke={1.5} />
+          <span>Settings</span>
+        </button>
+
         <ToolPicker
           toolMode={toolMode}
           onSetToolMode={onSetToolMode}

@@ -366,7 +366,7 @@ export default function App() {
 
         <div className="app-content">
           {currentView === 'dashboard' && (
-            <main className="view">
+            <main className="view dashboardView">
               <FilterBar
                 filterTier={filterTier}
                 setFilterTier={setFilterTier}
@@ -383,6 +383,7 @@ export default function App() {
                 customTextFilter={customTextFilter}
                 setCustomTextFilter={setCustomTextFilter}
                 searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
                 onResetView={handleResetView}
                 providers={providers}
                 pingMode={pingMode}

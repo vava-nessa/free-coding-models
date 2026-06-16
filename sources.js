@@ -48,7 +48,6 @@ export const nvidiaNim = [
   ['deepseek-ai/deepseek-v4-flash',                'DeepSeek V4 Flash',   'S+', '72.0%', '1M'],
   ['stepfun-ai/step-3.5-flash',                    'Step 3.5 Flash',      'S+', '74.4%', '256k'],
   ['stepfun-ai/step-3.7-flash',                    'Step 3.7 Flash',      'S+', '74.4%', '256k'],
-  ['qwen/qwen3-coder-480b-a35b-instruct',          'Qwen3 Coder 480B',    'S+', '70.6%', '256k'],
   ['nvidia/nemotron-3-ultra-550b-a55b', 'Nemotron 3 Ultra', 'S+', '-', '1M'],
   // ── S tier — SWE-bench Verified 60–70% ──
   ['qwen/qwen3-next-80b-a3b-instruct',             'Qwen3 80B Instruct',  'S',  '65.0%', '128k'],
@@ -58,6 +57,7 @@ export const nvidiaNim = [
   ['mistralai/mistral-medium-3.5-128b',             'Mistral Medium 3.5',  'S',  '66.0%', '128k'],
   ['mistralai/mistral-small-4-119b-2603',           'Mistral Small 4',     'S',  '60.0%', '256k'],
   ['qwen/qwen3.5-122b-a10b',                       'Qwen3.5 122B',        'S',  '64.0%', '128k'],
+  ['minimaxai/minimax-m3',                         'MiniMax M3',          'S',  '59.0%', '1M'],
   // ── A+ tier — SWE-bench Verified 50–60% ──
   ['mistralai/mistral-large-3-675b-instruct-2512', 'Mistral Large 675B',  'A+', '58.0%', '256k'],
   ['nvidia/nemotron-3-super-120b-a12b',             'Nemotron 3 Super',    'A+', '56.0%', '128k'],
@@ -81,6 +81,7 @@ export const nvidiaNim = [
   // granite-34b-code-instruct (deprecated), llama-4-scout-17b-16e-instruct (deprecated, not in nvidiaNim),
   // llama-3.1-8b-instruct (404) → replaced by llama-3.2-11b-vision-instruct
   // Removed (2026-06-10): z-ai/glm5 (replaced by z-ai/glm-5.1)
+  // Removed (2026-06-16): qwen/qwen3-coder-480b-a35b-instruct (free endpoint no longer listed in live NIM /v1/models — fails to ping)
 ]
 
 // 📖 Groq source - https://console.groq.com

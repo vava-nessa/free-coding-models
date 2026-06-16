@@ -13,7 +13,7 @@
  * 📖 Custom widths persist in localStorage via the useColumnSizing hook and survive reloads.
  * 📖 A "Reset columns" button appears in the toolbar only when the user has custom widths.
  */
-import { useMemo, useEffect, useState, useCallback, Fragment } from 'react'
+import { useMemo, useEffect, useState, useCallback, useRef, Fragment } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -44,6 +44,7 @@ import { sweClass } from '../../utils/ranks.js'
 // 📖 providers are compatible with which tools.
 import { getCompatibleTools } from '../../../../src/core/tool-metadata.js'
 import ExpandedDetailRow from './ExpandedDetailRow.jsx'
+import TableBeamOverlay from './TableBeamOverlay.jsx'
 import styles from './ModelTable.module.css'
 
 const colHelper = createColumnHelper()
@@ -176,10 +177,12 @@ function TrendCellRenderer({ row }) {
 // 📖 the cells always see fresh values.
 const buildColumns = ({ favorites, onBenchmarkRow, onSelectModel, onLaunch, toolMode }) => [
   // 📖 Star column — leftmost, mirrors the TUI's `F` key.
+  // 📖 First column = bookmarks (TUI `F` key). Widened from 32→104 so the
+  // 📖 "BOOKMARKS" header label fits horizontally without clipping.
   colHelper.display({
     id: 'fav',
-    header: '⭐',
-    size: 32,
+    header: 'BOOKMARKS',
+    size: 104,
     enableSorting: false,
     cell: ({ row }) => {
       const m = row.original
@@ -351,6 +354,12 @@ export default function ModelTable({
   // 📖 Expand row state — only one row expanded at a time (accordion)
   const [expandedRowId, setExpandedRowId] = useState(null)
 
+  // 📖 Refs for the grid-beam overlay: the scrolling element (reads scroll +
+  // 📖 viewport size) and the <table> (measures real border positions). The
+  // 📖 overlay paints mono beams that travel along the table's borders.
+  const scrollRef = useRef(null)
+  const tableRef = useRef(null)
+
   const toggleExpand = useCallback((model) => {
     const key = `${model.providerKey}/${model.modelId}`
     setExpandedRowId((prev) => prev === key ? null : key)
@@ -433,6 +442,8 @@ export default function ModelTable({
 
   return (
     <div className={styles.container}>
+      {/* 📖 resizeToolbar lives OUTSIDE the scroller so it never overlaps the
+          📖 sticky table header (thead th sticks to the top of scrollInner). */}
       {hasCustomSizing && (
         <div className={styles.resizeToolbar}>
           <span className={styles.resizeToolbarHint}>
@@ -448,7 +459,13 @@ export default function ModelTable({
           </button>
         </div>
       )}
+      {/* 📖 scrollInner is the actual scroller; the grid-beam canvas lives as a
+          📖 sibling OUTSIDE it so the overlay never scrolls away with content.
+          📖 Bounded by the .dashboardView main (viewport height) so it scrolls
+          📖 internally and the sticky <thead> header engages. */}
+      <div className={styles.scrollInner} ref={scrollRef}>
       <table
+        ref={tableRef}
         className={styles.table}
         style={hasCustomSizing ? { minWidth: `${totalTableWidth}px` } : undefined}
       >
@@ -571,6 +588,16 @@ export default function ModelTable({
           })}
         </tbody>
       </table>
+      </div>
+      {/* 📖 Grid-beam canvas overlay — mono beams traveling along the table's
+          📖 real borders (port of cult-ui Grid Beam). Sits above body cells,
+          📖 below the sticky header. Respects prefers-reduced-motion. */}
+      <TableBeamOverlay
+        scrollRef={scrollRef}
+        tableRef={tableRef}
+        rowCount={rows.length}
+        colCount={columns.length}
+      />
     </div>
   )
 }
