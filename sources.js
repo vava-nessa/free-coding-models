@@ -317,10 +317,8 @@ export const opencodeZen = [
   ['big-pickle',                       'Big Pickle',              'S+', '72.0%', '200k'],
   ['deepseek-v4-flash-free',           'DeepSeek V4 Flash Free',  'S+', '79.0%', '200k'],
   ['mimo-v2.5-free',                   'MiMo-V2.5 Free',          'S+', '-',     '200k'],
-  ['nemotron-3-super-free',            'Nemotron 3 Super Free',   'A+', '52.0%', '200k'],
-  ['minimax-m3-free',                  'MiniMax M3 Free',         'S+', '59.0%', '1M'],
-  // Fix (2026-05-26): nematron-3-super-free ctx 1M → 200k (Zen limits it)
-  // Added (2026-06-01): minimax-m3-free — MiniMax M3, 1M context, MSA attention (SWE-Bench Pro 59.0%)
+  ['nemotron-3-ultra-free',            'Nemotron 3 Ultra Free',   'A+', '-',     '200k'],
+  ['north-mini-code-free',             'North Mini Code Free',    'B+', '-',     '200k'],
 ]
 
 // 📖 Kilo source - https://api.kilo.ai/api/gateway
