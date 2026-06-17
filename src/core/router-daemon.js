@@ -13,20 +13,20 @@
  *   never written to logs or telemetry.
  *
  * @functions
- *   → runRouterDaemon() — Start the foreground daemon HTTP server
- *   → startRouterDaemonBackground() — Spawn the daemon detached from the TUI
- *   → stopRouterDaemon() — Send SIGTERM to the recorded daemon process
- *   → getRouterDaemonStatus() — Discover and read `/health` from a running daemon
- *   → buildDefaultRouterSet() — Create the first priority-ordered model set
- *   → formatOpenAiError() — Build OpenAI-compatible error response payloads
- *   → createRouterRuntimeForTest() — Build an isolated runtime for mock-upstream tests
+ *   → runRouterDaemon() - Start the foreground daemon HTTP server
+ *   → startRouterDaemonBackground() - Spawn the daemon detached from the TUI
+ *   → stopRouterDaemon() - Send SIGTERM to the recorded daemon process
+ *   → getRouterDaemonStatus() - Discover and read `/health` from a running daemon
+ *   → buildDefaultRouterSet() - Create the first priority-ordered model set
+ *   → formatOpenAiError() - Build OpenAI-compatible error response payloads
+ *   → createRouterRuntimeForTest() - Build an isolated runtime for mock-upstream tests
  *
  * @exports runRouterDaemon, startRouterDaemonBackground, stopRouterDaemon
  * @exports getRouterDaemonStatus, buildDefaultRouterSet, formatOpenAiError
  * @exports createRouterRuntimeForTest
  *
- * @see ./config.js — router config is persisted under `router`
- * @see ../sources.js — provider URLs and model IDs are resolved from the catalog
+ * @see ./config.js - router config is persisted under `router`
+ * @see ../sources.js - provider URLs and model IDs are resolved from the catalog
  */
 
 import { createServer } from 'node:http'
@@ -53,6 +53,7 @@ import { loadChangelog } from './changelog-loader.js'
 import { sendUsageTelemetry } from './telemetry.js'
 import { TIER_ORDER } from './utils.js'
 import { atomicWriteJson, safeJsonParse, sleep, maskApiKey, isRouteableProvider } from './shared-helpers.js'
+import { normalizeRequestBody } from './schema-normalizer.js'
 
 export const ROUTER_DEFAULT_PORT = 19280
 export const ROUTER_MAX_PORT = 19289
@@ -64,7 +65,7 @@ export const ROUTER_MAX_PORT_DEV = 29289
 // 📖 IMPORTANT: _isDev() is a function, not a constant, so it picks up FCM_DEV
 // 📖 changes that happen after module load (e.g. the bin entry point setting
 // 📖 FCM_DEV=1 on git checkouts). Constant exports for PID/PORT/LOG paths
-// 📖 are still computed eagerly — they are only used by the daemon child process
+// 📖 are still computed eagerly - they are only used by the daemon child process
 // 📖 which always has FCM_DEV set before import. The TUI and dashboard use
 // 📖 getRouterPortRange() and getRouterPidPath() for dynamic resolution.
 function _isDev() { return typeof process.env.FCM_DEV !== 'undefined' ? !!process.env.FCM_DEV : false }
@@ -74,7 +75,7 @@ export const ROUTER_PORT_PATH = join(homedir(), `.free-coding-models-daemon${_de
 export const ROUTER_LOG_PATH = join(homedir(), `.free-coding-models-daemon${_dev ? '-dev' : ''}.log`)
 export const ROUTER_TOKENS_PATH = join(homedir(), `.free-coding-models-tokens${_dev ? '-dev' : ''}.json`)
 
-// 📖 Dynamic path resolvers — used by the TUI dashboard which may have FCM_DEV
+// 📖 Dynamic path resolvers - used by the TUI dashboard which may have FCM_DEV
 // 📖 set after module load time (git checkout auto-detection in bin/ entry).
 export function getRouterPidPath() { return join(homedir(), `.free-coding-models-daemon${_isDev() ? '-dev' : ''}.pid`) }
 export function getRouterPortPath() { return join(homedir(), `.free-coding-models-daemon${_isDev() ? '-dev' : ''}.port`) }
@@ -124,7 +125,7 @@ function modelKey(provider, model) {
   return `${provider}/${model}`
 }
 
-// 📖 parseJsonResult is still local — it returns {ok, value/error} which is different from safeJsonParse
+// 📖 parseJsonResult is still local - it returns {ok, value/error} which is different from safeJsonParse
 function parseJsonResult(raw) {
   try {
     return { ok: true, value: JSON.parse(raw) }
@@ -215,7 +216,7 @@ function isLoopbackHostname(hostname) {
   return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1' || h.endsWith('.localhost')
 }
 
-// 📖 Private-network hostname check. Allows RFC 1918 IPs (10.x, 172.16–31.x,
+// 📖 Private-network hostname check. Allows RFC 1918 IPs (10.x, 172.16-31.x,
 // 📖 192.168.x) and hostnames that end in `.local` or `.internal`. This
 // 📖 enables Docker and LAN setups where the browser hits the FCM web UI
 // 📖 from a different machine but still on a trusted network.
@@ -310,7 +311,7 @@ function getWebModelsPayload(runtime) {
         : null
       const recentOk = pings.filter((p) => typeof p.ms === 'number' && String(p.code) === '200').length
       const stability = pings.length > 0 ? recentOk / pings.length : null
-      const verdict = avg === null ? '—' : avg < 1000 ? 'Excellent' : avg < 2000 ? 'Good' : avg < 4000 ? 'Fair' : 'Poor'
+      const verdict = avg === null ? '-' : avg < 1000 ? 'Excellent' : avg < 2000 ? 'Good' : avg < 4000 ? 'Fair' : 'Poor'
       const uptime = pings.length > 0 ? recentOk / pings.length : null
       payload.push({
         idx: payload.length + 1,
@@ -633,7 +634,7 @@ export function injectPrePrompt(messages, prePrompt) {
   if (!prePrompt || prePrompt.enabled !== true) return messages
   const text = typeof prePrompt.text === 'string' ? prePrompt.text.trim() : ''
   if (!text) return messages
-  // 📖 Skip injection if the very first message is already an exact match —
+  // 📖 Skip injection if the very first message is already an exact match -
   // 📖 prevents duplicate system messages when the client retries a request
   // 📖 or the Playground already sent the pre-prompt itself.
   const first = messages[0]
@@ -944,7 +945,7 @@ class RouterRuntime {
   }
 
   /**
-   * 📖 markSetCustomized — flip `router.userCustomized = true` and
+   * 📖 markSetCustomized - flip `router.userCustomized = true` and
    * 📖 `router.autoHeal = false` so the user's manual edits are
    * 📖 preserved on the next daemon start. Called from the HTTP
    * 📖 endpoints that mutate the active set (add / remove / reorder /
@@ -1164,19 +1165,19 @@ class RouterRuntime {
     })
   }
 
-  // 📖 getRoutingCandidates — the ordered list of models the router will try,
+  // 📖 getRoutingCandidates - the ordered list of models the router will try,
   // 📖 in EXACT attempt order. This is the heart of routing.
   // 📖
   // 📖 Strategy (priority-first): the user's priority order is authoritative.
   // 📖 A model ranked #1 is always tried first while it is healthy, even if a
   // 📖 lower-priority model has a better health score. The health score is only
-  // 📖 used to break ties between models that share the same priority — which
+  // 📖 used to break ties between models that share the same priority - which
   // 📖 happens in practice when multiple models tie because they have no probe
   // 📖 data yet (cold start) or identical stats.
   // 📖
   // 📖 Why: before this, priority was only 20% of the score and a fast
   // 📖 low-priority model could steal traffic from a deliberately higher-ranked
-  // 📖 one (see issue #120 — GPT-OSS 120B served despite higher-priority models
+  // 📖 one (see issue #120 - GPT-OSS 120B served despite higher-priority models
   // 📖 being healthy). Users set the fallback chain on purpose; routing must
   // 📖 respect it.
   // 📖
@@ -1200,7 +1201,7 @@ class RouterRuntime {
     return [...closed.sort(byPriorityThenHealth), ...halfOpen.sort(byPriorityThenHealth)]
   }
 
-  // 📖 getRoutingOrder — slim projection of getRoutingCandidates for the /stats
+  // 📖 getRoutingOrder - slim projection of getRoutingCandidates for the /stats
   // 📖 payload and dashboards. Exposes the EXACT order the router will attempt
   // 📖 on the next request, so the UI can mark the model that will serve it
   // 📖 (routingOrder[0]) and label every entry as Primary vs Fallback.
@@ -1377,7 +1378,7 @@ class RouterRuntime {
       // 📖 `running` mirrors `ok` so every consumer (Router view reads `ok`,
       // 📖 Playground reads `running`) agrees on daemon state. Without this,
       // 📖 the Playground showed "router offline" even when the Router card
-      // 📖 said "Running" — both hit /api/router/status but read different fields.
+      // 📖 said "Running" - both hit /api/router/status but read different fields.
       running: true,
       version: LOCAL_VERSION,
       pid: process.pid,
@@ -1420,12 +1421,12 @@ class RouterRuntime {
       ...this.statusPayload(),
       tokens: this.tokenTracker.summary(),
       models: this.getModelHealth(activeSet),
-      // 📖 routingOrder — the exact attempt order for the next request
+      // 📖 routingOrder - the exact attempt order for the next request
       // 📖 (priority-first among healthy models). routingOrder[0] is what will
       // 📖 serve the next chat completion. Surfaced so dashboards can mark the
       // 📖 "next" model and label Primary vs Fallback semantics. See issue #120.
       routingOrder: this.getRoutingOrder(activeSet),
-      // 📖 Global AI Latency probe progress — powers the Router Dashboard's
+      // 📖 Global AI Latency probe progress - powers the Router Dashboard's
       // 📖 "Probe all" button progress bar. Per-model results live on each
       // 📖 entry of `models` above (isBenchmarking / benchmark).
       globalBenchmark: {
@@ -1482,7 +1483,7 @@ class RouterRuntime {
       if (response.ok) {
         this.markSuccess(key)
         this.recordProbeResult(key, { ok: true, latencyMs, code: response.status })
-        this.logger.info(`Probe ok ${key} — ${latencyMs}ms`)
+        this.logger.info(`Probe ok ${key} - ${latencyMs}ms`)
       } else if (AUTH_STATUS_CODES.has(response.status)) {
         this.markAuthError(key, `HTTP ${response.status}`)
         this.recordProbeResult(key, { ok: false, latencyMs, code: response.status })
@@ -1510,7 +1511,7 @@ class RouterRuntime {
   }
 
   /**
-   * 📖 autoHealActiveSet — replaces broken models in the active set with
+   * 📖 autoHealActiveSet - replaces broken models in the active set with
    * 📖 working alternatives, so the Playground and Router Dashboard both
    * 📖 start with a usable set by default. The user's manual edits are
    * 📖 always respected: once `router.userCustomized` is true (set by
@@ -1538,12 +1539,12 @@ class RouterRuntime {
     }
 
     // 📖 Build a candidate pool from EVERY routeable model in the
-    // 📖 catalog, not just the ones in the active set — we need healthy
+    // 📖 catalog, not just the ones in the active set - we need healthy
     // 📖 alternatives to swap in, and the active set's only models are
     // 📖 the broken ones we're trying to replace.
     const healthByKey = new Map()
     const aliveByProvider = new Map()
-    // 📖 Per-provider probe stats — we use these to detect "the user's
+    // 📖 Per-provider probe stats - we use these to detect "the user's
     // 📖 whole <provider> is dead" (every probe has auth-errored) and
     // 📖 skip that provider as a candidate for replacements.
     const providerProbeStats = new Map() // provider -> { probed: n, authError: n, stale: n, alive: n }
@@ -1604,7 +1605,7 @@ class RouterRuntime {
 
     // 📖 Also pick up models that are in the active set but NOT in the
     // 📖 current catalog (e.g. removed from sources.js, deprecated by the
-    // 📖 provider). They should be marked as broken and replaced too —
+    // 📖 provider). They should be marked as broken and replaced too -
     // 📖 otherwise they'd stay in the set forever as silent dead weight.
     for (const entry of set.models) {
       const key = `${entry.provider}/${entry.model}`
@@ -1624,7 +1625,7 @@ class RouterRuntime {
     // 📖 Decide what's broken. We heal AUTH_ERROR (key is wrong for that
     // 📖 model) and STALE/TIMEOUT (upstream isn't responding). We do
     // 📖 NOT heal HALF_OPEN (recovering) or OPEN (circuit breaker tripped
-    // 📖 on a transient blip) — those should resolve on their own.
+    // 📖 on a transient blip) - those should resolve on their own.
     const isBroken = (key) => {
       const health = healthByKey.get(key)
       if (!health) return false
@@ -1790,7 +1791,7 @@ class RouterRuntime {
     if (candidates.length === 0) {
       const health = this.getModelHealth(set)
       const quotaExhausted = [...this.quotaExhausted].filter((key) => set.models.some((model) => modelKey(model.provider, model.model) === key))
-      
+
       let statusCode = 503
       let errorCode = 'all_models_unavailable'
       let errorType = 'service_unavailable'
@@ -1919,8 +1920,11 @@ class RouterRuntime {
     // 📖 curl, custom Playground) gets the FCM persona without any client
     // 📖 change. Non-streaming path.
     const bodyWithPrePrompt = applyPrePromptToBody(body, this.routerConfig().prePrompt)
+    // 📖 Apply per-provider schema normalization (GLM, Mistral, Codestral).
+    // 📖 Returns the body unchanged for providers without a registered normalizer.
+    const bodyNormalized = normalizeRequestBody(bodyWithPrePrompt, candidate.provider)
     const upstreamBody = {
-      ...bodyWithPrePrompt,
+      ...bodyNormalized,
       model: getApiModelId(candidate.provider, candidate.model),
       stream: false,
     }
@@ -1928,7 +1932,7 @@ class RouterRuntime {
     if (upstreamBody.add_generation_prompt !== undefined) delete upstreamBody.add_generation_prompt
     if (upstreamBody.continue_final_message !== undefined) delete upstreamBody.continue_final_message
     if (upstreamBody.tools?.length === 0) delete upstreamBody.tools
-    
+
     const clientAbort = attachClientAbort(req, res, controller)
     try {
       const response = await fetch(providerUrl, {
@@ -1983,7 +1987,7 @@ class RouterRuntime {
           tokens: usage?.total_tokens || 0,
           failover: attemptIndex > 0,
         })
-        this.logger.info(`Routed to ${key} — ${latencyMs}ms`, { request_id: requestId, status: response.status })
+        this.logger.info(`Routed to ${key} - ${latencyMs}ms`, { request_id: requestId, status: response.status })
         if (!res.writableEnded) {
           res.writeHead(response.status, {
             ...headerEntries(response.headers),
@@ -2007,7 +2011,7 @@ class RouterRuntime {
         return { done: false, failoverToNext: true, reason: `http_${response.status}` }
       }
 
-      // 📖 Provide failover fallback for non-retryable errors from the provider (like 400 Bad Request) 
+      // 📖 Provide failover fallback for non-retryable errors from the provider (like 400 Bad Request)
       // when they are caused by format idiosyncrasies (e.g. empty tools array that another model might accept)
       if (response.status >= 400 && response.status < 500) {
         this.recordRouterError(`http_${response.status}`, requestId, { model: key, status: response.status, body: text })
@@ -2057,8 +2061,11 @@ class RouterRuntime {
     // 📖 curl, custom Playground) gets the FCM persona without any client
     // 📖 change. Streaming path.
     const bodyWithPrePrompt = applyPrePromptToBody(body, this.routerConfig().prePrompt)
+    // 📖 Apply per-provider schema normalization (GLM, Mistral, Codestral).
+    // 📖 Returns the body unchanged for providers without a registered normalizer.
+    const bodyNormalized = normalizeRequestBody(bodyWithPrePrompt, candidate.provider)
     const upstreamBody = {
-      ...bodyWithPrePrompt,
+      ...bodyNormalized,
       model: getApiModelId(candidate.provider, candidate.model),
       stream: true,
     }
@@ -2066,7 +2073,7 @@ class RouterRuntime {
     if (upstreamBody.add_generation_prompt !== undefined) delete upstreamBody.add_generation_prompt
     if (upstreamBody.continue_final_message !== undefined) delete upstreamBody.continue_final_message
     if (upstreamBody.tools?.length === 0) delete upstreamBody.tools
-    
+
     const timeout = setTimeout(() => controller.abort(), this.routerConfig().failover.requestTimeoutMs)
     let sentToClient = false
     const clientAbort = attachClientAbort(req, res, controller)
@@ -2100,8 +2107,8 @@ class RouterRuntime {
           this.addRequestLog({ request_id: requestId, model: key, status: response.status, latency_ms: latencyMs, tokens: 0, failover: attemptIndex > 0, error: `http_${response.status}`, stream: true })
           return { done: false, failoverToNext: true, reason: `http_${response.status}` }
         }
-        
-        // 📖 Provide failover fallback for non-retryable errors from the provider (like 400 Bad Request) 
+
+        // 📖 Provide failover fallback for non-retryable errors from the provider (like 400 Bad Request)
         // when they are caused by format idiosyncrasies (e.g. empty tools array that another model might accept)
         if (response.status >= 400 && response.status < 500) {
           const rawErr = await response.text()
@@ -2305,7 +2312,7 @@ class RouterRuntime {
       return
     }
 
-    // 📖 POST /sets/:name/models — append a single model to a set. The model
+    // 📖 POST /sets/:name/models - append a single model to a set. The model
     // 📖 is auto-prioritized to the end of the list (priority = count+1).
     // 📖 This is the granular alternative to PUT /sets/:name for clients
     // 📖 that just want to add one entry without resending the full array.
@@ -2353,7 +2360,7 @@ class RouterRuntime {
       return
     }
 
-    // 📖 DELETE /sets/:name/models — remove a single model from a set.
+    // 📖 DELETE /sets/:name/models - remove a single model from a set.
     // 📖 The body is `{ provider, model }` (using the body keeps the URL
     // 📖 short and matches the POST shape).
     if (setModelsMatch && req.method === 'DELETE') {
@@ -2390,7 +2397,7 @@ class RouterRuntime {
       return
     }
 
-    // 📖 POST /sets/:name/reorder — accept a full priority order from the
+    // 📖 POST /sets/:name/reorder - accept a full priority order from the
     // 📖 client. Body shape: `{ order: ["provider/model", "provider/model"] }`.
     // 📖 The daemon re-derives the canonical `{ provider, model, priority }`
     // 📖 objects from the order, so the client never has to know the
@@ -2418,7 +2425,7 @@ class RouterRuntime {
           return
         }
       }
-      // 📖 Reject the request if the client omitted some keys — reordering
+      // 📖 Reject the request if the client omitted some keys - reordering
       // 📖 must be a permutation of the current set, not a partial edit.
       if (order.length !== currentModels.length) {
         sendError(res, 400, 'Order must include every model in the set', 'invalid_request_error', 'order_size_mismatch', requestId)
@@ -2439,7 +2446,7 @@ class RouterRuntime {
   }
 
   /**
-   * 📖 POST /sets/:name/sync — re-run the probe-based sync-set pipeline
+   * 📖 POST /sets/:name/sync - re-run the probe-based sync-set pipeline
    * 📖 against the named set. The pipeline probes up to `maxProbes` model
    * 📖 candidates with the user's actual API keys and rebuilds the set
    * 📖 with only the ones that come back 2xx. Returns the new set + a
@@ -2670,7 +2677,7 @@ class RouterRuntime {
         return
       }
       // 📖 Stub endpoints for the web dashboard's hooks (useToolMode, useFavorites,
-      // 📖 useUpdateChecker). These were 404 before — minimal shapes that match
+      // 📖 useUpdateChecker). These were 404 before - minimal shapes that match
       // 📖 what the dashboard hooks expect. See PR #108 for context.
       if (req.method === 'GET' && (url.pathname === '/api/tool-mode')) {
         sendJson(res, 200, { mode: 'opencode', tools: ['opencode', 'openclaw', 'opencode-desktop', 'opencode-web'] }, { 'x-request-id': requestId })
@@ -2685,7 +2692,7 @@ class RouterRuntime {
         sendJson(res, 200, { local: LOCAL_VERSION, latest: null, lastReleaseDate: null, error: null }, { 'x-request-id': requestId })
         return
       }
-      // 📖 /api/router/catalog — lightweight catalog of routeable models for
+      // 📖 /api/router/catalog - lightweight catalog of routeable models for
       // 📖 the Web Router Dashboard's "Add model" picker. Returns one row
       // 📖 per (provider, model) with `key`, label, tier, ctx. We filter to
       // 📖 routeable providers only so the picker never offers a model the
@@ -2869,7 +2876,7 @@ class RouterRuntime {
         }
       }
       if (req.method === 'POST' && url.pathname === '/api/settings') {
-        // 📖 Writes API keys + provider toggles — same-origin only to block
+        // 📖 Writes API keys + provider toggles - same-origin only to block
         // 📖 CSRF-style writes from malicious browser tabs.
         if (!isSameOriginOrLocal(req)) {
           sendError(res, 403, 'Forbidden cross-origin request', 'invalid_request_error', 'forbidden_origin', requestId)
@@ -3028,7 +3035,7 @@ class RouterRuntime {
 }
 
 // 📖 Pinned picks: only used as a *tie-breaker* when multiple models have
-// 📖 identical (tier, sweScore, latency) — never a hard requirement, so
+// 📖 identical (tier, sweScore, latency) - never a hard requirement, so
 // 📖 a user whose NVIDIA key is dead still gets a working set.
 const PREFERRED_DEFAULT_MODELS = [
   { provider: 'groq',     model: 'llama-3.3-70b-versatile' },
@@ -3213,7 +3220,7 @@ export function createRouterRuntimeForTest({ config, port = 0, logger = null, to
 }
 
 /**
- * 📖 createDefaultProbeFn — used by buildDefaultRouterSet to find models
+ * 📖 createDefaultProbeFn - used by buildDefaultRouterSet to find models
  * 📖 that actually work with the user's API keys. Returns an async probe
  * 📖 `(entry) => { ok, latencyMs, code }` that posts a 1-token chat-
  * 📖 completion to the provider's URL and treats 2xx as "working".
@@ -3242,7 +3249,7 @@ function createDefaultProbeFn(apiKeys) {
     })
     const headers = { 'Content-Type': 'application/json' }
     if (provider === 'cloudflare') {
-      // 📖 Cloudflare uses account_id in the URL — resolveCloudflareUrl is
+      // 📖 Cloudflare uses account_id in the URL - resolveCloudflareUrl is
       // 📖 already imported. We just need the standard Bearer header.
       headers.Authorization = `Bearer ${apiKey}`
     } else if (provider === 'replicate') {

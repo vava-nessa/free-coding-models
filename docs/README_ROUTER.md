@@ -58,6 +58,7 @@ Press **I** in the Router Dashboard to cycle through health check speeds:
 - Quota and rate-limit failures include retry headers in the final router `503` payload when providers expose them.
 - If a coding tool disconnects mid-request, the daemon aborts the upstream request without counting it as a provider failure.
 - Streaming requests retry before the first byte; after partial output starts, the daemon records the failure and lets the current stream finish as safely as possible.
+- **Per-provider schema normalization.** Before forwarding to a provider, the router runs a small normalizer keyed on the provider. Today, `zai` (GLM) and `mistral` / `codestral` are normalized: unsupported parameters (`parallel_tool_calls`, `n`, `top_k`, `logprobs`, `echo`, `user`, `metadata`, `store`) are stripped, orphan `tool` role messages that lack a matching assistant `tool_calls` entry are dropped, and `temperature` is clamped to the provider's accepted range. This dramatically reduces the 400/422 surface that ZCode, Claude Code, and Cline hit when their tool-call flow is enabled. Other OpenAI-compatible providers (Groq, Cerebras, NVIDIA, …) pass through unchanged.
 
 ## Endpoints
 

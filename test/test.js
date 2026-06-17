@@ -553,6 +553,170 @@ describe('router pre-prompt injection', () => {
   })
 })
 
+describe('router schema normalizer (GLM, Mistral, Codestral)', () => {
+  it('returns the body unchanged for providers without a normalizer', async () => {
+    const { normalizeRequestBody } = await import('../src/core/schema-normalizer.js')
+    const body = { model: 'gpt-oss-120b', messages: [{ role: 'user', content: 'hi' }], parallel_tool_calls: true }
+    const out = normalizeRequestBody(body, 'groq')
+    assert.equal(out, body, 'unknown provider must return the same body reference')
+  })
+
+  it('returns the body unchanged for null/undefined/non-object input', async () => {
+    const { normalizeRequestBody } = await import('../src/core/schema-normalizer.js')
+    assert.equal(normalizeRequestBody(null, 'zai'), null)
+    assert.equal(normalizeRequestBody(undefined, 'zai'), undefined)
+    assert.equal(normalizeRequestBody('garbage', 'zai'), 'garbage')
+  })
+
+  it('zai: strips parallel_tool_calls, n, top_k, logprobs, echo, user, metadata, store', async () => {
+    const { normalizeZai } = await import('../src/core/schema-normalizer.js')
+    const body = {
+      model: 'glm-4.7',
+      messages: [{ role: 'user', content: 'hi' }],
+      parallel_tool_calls: true,
+      n: 3,
+      top_k: 40,
+      logprobs: true,
+      echo: true,
+      user: 'alice',
+      metadata: { foo: 'bar' },
+      store: true,
+      temperature: 0.7,
+    }
+    const out = normalizeZai(body)
+    assert.equal(out.model, 'glm-4.7')
+    assert.equal(out.temperature, 0.7)
+    assert.equal(out.messages.length, 1)
+    assert.ok(!('parallel_tool_calls' in out), 'parallel_tool_calls must be stripped')
+    assert.ok(!('n' in out), 'n must be stripped')
+    assert.ok(!('top_k' in out), 'top_k must be stripped')
+    assert.ok(!('logprobs' in out), 'logprobs must be stripped')
+    assert.ok(!('echo' in out), 'echo must be stripped')
+    assert.ok(!('user' in out), 'user must be stripped')
+    assert.ok(!('metadata' in out), 'metadata must be stripped')
+    assert.ok(!('store' in out), 'store must be stripped')
+  })
+
+  it('zai: removes orphan tool messages that lack a matching assistant tool_call', async () => {
+    const { normalizeZai } = await import('../src/core/schema-normalizer.js')
+    const body = {
+      model: 'glm-4.7',
+      messages: [
+        { role: 'user', content: 'what is the weather?' },
+        { role: 'assistant', tool_calls: [{ id: 'call_1', type: 'function', function: { name: 'get_weather', arguments: '{}' } }] },
+        { role: 'tool', tool_call_id: 'call_1', content: 'sunny' },
+        // 📖 orphan: tool message without a preceding assistant tool_call with id 'call_2'
+        { role: 'tool', tool_call_id: 'call_2', content: 'orphaned' },
+        { role: 'assistant', content: 'It is sunny.' },
+      ],
+    }
+    const out = normalizeZai(body)
+    assert.equal(out.messages.length, 4, 'orphan tool message must be dropped')
+    assert.equal(out.messages[2].tool_call_id, 'call_1')
+    assert.equal(out.messages[3].content, 'It is sunny.')
+  })
+
+  it('zai: removes tool messages whose tool_call_id has no matching assistant tool_call', async () => {
+    const { normalizeZai } = await import('../src/core/schema-normalizer.js')
+    const body = {
+      model: 'glm-4.7',
+      messages: [
+        { role: 'user', content: 'hi' },
+        // 📖 the assistant message lost its tool_calls (ZCode quirk),
+        // 📖 but the tool result was kept — GLM rejects this with 422
+        { role: 'tool', tool_call_id: 'call_xyz', content: 'result' },
+        { role: 'assistant', content: 'done' },
+      ],
+    }
+    const out = normalizeZai(body)
+    assert.equal(out.messages.length, 2)
+    assert.equal(out.messages[0].role, 'user')
+    assert.equal(out.messages[1].content, 'done')
+  })
+
+  it('zai: removes tool messages with no tool_call_id field', async () => {
+    const { normalizeZai } = await import('../src/core/schema-normalizer.js')
+    const body = {
+      model: 'glm-4.7',
+      messages: [
+        { role: 'user', content: 'hi' },
+        { role: 'tool', content: 'result with no id' },
+      ],
+    }
+    const out = normalizeZai(body)
+    assert.equal(out.messages.length, 1)
+    assert.equal(out.messages[0].role, 'user')
+  })
+
+  it('zai: strips stream_options when not streaming', async () => {
+    const { normalizeZai } = await import('../src/core/schema-normalizer.js')
+    const body = { model: 'glm-4.7', stream: false, stream_options: { include_usage: true } }
+    const out = normalizeZai(body)
+    assert.ok(!('stream_options' in out), 'stream_options must be stripped when stream=false')
+  })
+
+  it('zai: keeps stream_options when streaming', async () => {
+    const { normalizeZai } = await import('../src/core/schema-normalizer.js')
+    const body = { model: 'glm-4.7', stream: true, stream_options: { include_usage: true } }
+    const out = normalizeZai(body)
+    assert.deepEqual(out.stream_options, { include_usage: true })
+  })
+
+  it('mistral: clamps temperature > 1 down to 1', async () => {
+    const { normalizeMistral } = await import('../src/core/schema-normalizer.js')
+    const out = normalizeMistral({ model: 'mistral-large', temperature: 1.7 })
+    assert.equal(out.temperature, 1)
+  })
+
+  it('mistral: clamps temperature < 0 up to 0', async () => {
+    const { normalizeMistral } = await import('../src/core/schema-normalizer.js')
+    const out = normalizeMistral({ model: 'mistral-large', temperature: -0.5 })
+    assert.equal(out.temperature, 0)
+  })
+
+  it('mistral: keeps temperature in [0, 1] unchanged', async () => {
+    const { normalizeMistral } = await import('../src/core/schema-normalizer.js')
+    const out = normalizeMistral({ model: 'mistral-large', temperature: 0.3 })
+    assert.equal(out.temperature, 0.3)
+  })
+
+  it('codestral: uses the mistral normalizer (clamp + orphan tool drop)', async () => {
+    const { normalizeRequestBody } = await import('../src/core/schema-normalizer.js')
+    const body = {
+      model: 'codestral-2508',
+      temperature: 2.5,
+      parallel_tool_calls: true,
+      messages: [
+        { role: 'user', content: 'q' },
+        { role: 'tool', tool_call_id: 'orphan', content: 'r' },
+      ],
+    }
+    const out = normalizeRequestBody(body, 'codestral')
+    assert.equal(out.temperature, 1)
+    assert.ok(!('parallel_tool_calls' in out))
+    assert.equal(out.messages.length, 1)
+  })
+
+  it('zai: dispatcher entry point works (normalizeRequestBody + "zai")', async () => {
+    const { normalizeRequestBody } = await import('../src/core/schema-normalizer.js')
+    const body = { model: 'glm-4.7', parallel_tool_calls: true, messages: [{ role: 'user', content: 'hi' }] }
+    const out = normalizeRequestBody(body, 'zai')
+    assert.ok(!('parallel_tool_calls' in out))
+  })
+
+  it('does not mutate the input body object', async () => {
+    const { normalizeZai } = await import('../src/core/schema-normalizer.js')
+    const body = {
+      model: 'glm-4.7',
+      messages: [{ role: 'user', content: 'hi' }],
+      parallel_tool_calls: true,
+    }
+    const snapshot = JSON.parse(JSON.stringify(body))
+    normalizeZai(body)
+    assert.deepEqual(body, snapshot, 'input body must not be mutated')
+  })
+})
+
 describe('router friendly labels + how-the-router-works help', () => {
   it('translates CLOSED/OPEN/HALF_OPEN/AUTH_ERROR/STALE to plain English', () => {
     // 📖 The CircuitBadge in RouterView should never show the raw jargon
@@ -2713,6 +2877,58 @@ describe('router daemon integration hardening', () => {
     assert.equal(actual['content-type'], undefined)
     assert.equal(actual.Authorization, 'Bearer router-test-key')
     assert.equal(actual.accept, 'application/json')
+  })
+
+  it('applies the per-provider schema normalizer before forwarding upstream (zai strips parallel_tool_calls)', async () => {
+    await withMockProvider(() => ({
+      body: { id: 'chatcmpl-zai', choices: [{ message: { role: 'assistant', content: 'ok' } }] },
+    }), async (zaiProvider) => {
+      await withSourceUrls({ zai: zaiProvider.url }, async () => {
+        const config = buildRouterTestConfig([
+          { provider: 'zai', model: 'zai/glm-4.7-flash', priority: 1 },
+        ], { maxRetries: 1 })
+        config.apiKeys.zai = 'zai-test-key'
+        await withRouterTestServer(config, async ({ baseUrl }) => {
+          // 📖 Client (ZCode, Claude Code, Cline…) sends a body with
+          // 📖 parallel_tool_calls=true. GLM rejects this with 422. The
+          // 📖 router must strip it before forwarding.
+          const response = await postRouterChat(baseUrl, { parallel_tool_calls: true })
+          await response.json()
+
+          assert.equal(response.status, 200)
+          assert.equal(zaiProvider.requests.length, 1)
+          const sentBody = zaiProvider.requests[0].body
+          assert.ok(!('parallel_tool_calls' in sentBody), 'parallel_tool_calls must be stripped for zai')
+          assert.equal(sentBody.model, 'glm-4.7-flash', 'zai/ prefix is stripped for upstream')
+        })
+      })
+    })
+  })
+
+  it('normalizer clamps Mistral temperature > 1 to 1 before forwarding', async () => {
+    await withMockProvider(() => ({
+      body: { id: 'chatcmpl-mistral', choices: [{ message: { role: 'assistant', content: 'ok' } }] },
+    }), async (mistralProvider) => {
+      await withSourceUrls({ mistral: mistralProvider.url }, async () => {
+        // 📖 'mistral-large-2512' is a real catalog model — the router only
+        // 📖 routes to models it can find in sources.js (anything else is
+        // 📖 marked stale by definition and never picked).
+        const config = buildRouterTestConfig([
+          { provider: 'mistral', model: 'mistral-large-2512', priority: 1 },
+        ], { maxRetries: 1 })
+        config.apiKeys.mistral = 'mistral-test-key'
+        await withRouterTestServer(config, async ({ baseUrl }) => {
+          // 📖 Some clients send temperature=2.0 (Anthropic range). Mistral's
+          // 📖 chat API only accepts [0, 1]. Router clamps to 1.
+          const response = await postRouterChat(baseUrl, { temperature: 2.0 })
+          await response.json()
+
+          assert.equal(response.status, 200)
+          const sentBody = mistralProvider.requests[0].body
+          assert.equal(sentBody.temperature, 1, 'Mistral temperature must be clamped to 1')
+        })
+      })
+    })
   })
 
   it('routes non-streaming chat completions through the highest-priority healthy model', async () => {
