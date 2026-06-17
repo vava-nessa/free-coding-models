@@ -315,6 +315,17 @@ export const TOOL_BOOTSTRAP_METADATA = {
       },
     },
   },
+  zcode: {
+    // 📖 ZCode is a desktop IDE from z.ai (智谱) — there is no CLI binary to bootstrap.
+    // 📖 We launch it with `open -a ZCode` on macOS and print manual setup steps on other platforms.
+    binary: null,
+    docsUrl: 'https://zcode.z.ai/download',
+    installUnsupported: {
+      default: 'ZCode is a desktop application. Download it from zcode.z.ai/download for macOS or Windows, then FCM will auto-launch it via `open -a ZCode`.',
+      win32: 'Download the Windows installer from zcode.z.ai/download. FCM will print the custom-provider setup steps after launch.',
+      linux: 'ZCode does not currently ship an official Linux build.',
+    },
+  },
 }
 
 export function getToolBootstrapMeta(mode) {

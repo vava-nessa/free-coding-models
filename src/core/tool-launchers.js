@@ -828,6 +828,22 @@ export function prepareExternalToolLaunch(mode, model, config, options = {}) {
     }
   }
 
+  if (mode === 'zcode') {
+    // 📖 ZCode is a desktop app from z.ai. Launch via `open -a ZCode` on macOS.
+    // 📖 On other platforms the user is expected to have ZCode already running — the
+    // 📖 startExternalTool hook below prints manual setup steps and skips spawning.
+    const isMac = process.platform === 'darwin'
+    return {
+      command: isMac ? 'open' : 'true', // no-op on non-mac
+      args: isMac ? ['-a', 'ZCode'] : [],
+      env,
+      apiKey,
+      baseUrl,
+      meta,
+      configArtifacts: [],
+    }
+  }
+
   if (mode === 'caveman') {
     const cavemanEnv = buildCavemanEnv(model, config, { includeProviderEnv: options.includeProviderEnv })
     console.log(chalk.dim(`  📖 Caveman Code will use model: ${model.modelId}`))
@@ -965,6 +981,24 @@ export async function startExternalTool(mode, model, config) {
     console.log(chalk.white(`  4. Click Add, then select `) + chalk.bold(model.modelId) + chalk.white(` from the list.\n`))
     console.log(chalk.dim(`  📖 Attempting to launch Xcode...`))
   }
+  if (mode === 'zcode') {
+    // 📖 ZCode has UI-based config (Settings -> Model Settings / 模型设置). We point
+    // 📖 the user at the FCM router (OpenAI-compatible) so they get free failover +
+    // 📖 the per-provider normalizer on top of any FCM-tracked model.
+    const routerBase = 'http://localhost:19280/v1'
+    console.log(chalk.bold.cyan('\n  🧊  ZCode Setup Instructions:'))
+    console.log(chalk.white('  1. Open ZCode and click the model selector in the chat input.'))
+    console.log(chalk.white('  2. At the bottom of the list, click ') + chalk.bold('Manage Models') + chalk.white(' (管理模型)'))
+    console.log(chalk.white('  3. Click ') + chalk.bold('Add Provider') + chalk.white(' (添加供应商) in the left sidebar.'))
+    console.log(chalk.white('  4. Fill in the following details:'))
+    console.log(chalk.dim('     Name: ') + chalk.green(`FCM Router`))
+    console.log(chalk.dim('     Base URL: ') + chalk.green(routerBase))
+    console.log(chalk.dim('     API Key: ') + chalk.green('fcm-local'))
+    console.log(chalk.dim('     Protocol: ') + chalk.green('OpenAI-compatible'))
+    console.log(chalk.white('  5. Save, then pick ') + chalk.bold(`fcm`) + chalk.white(' from the model list. FCM picks the best live model.'))
+    console.log(chalk.dim(`  📖 If you prefer a direct provider, use the URL/key for ${chalk.bold(sources[model.providerKey]?.name || model.providerKey)} shown above.\n`))
+    console.log(chalk.dim(`  📖 Attempting to launch ZCode...`))
+  }
   if (mode === 'crush') console.log(chalk.dim('  📖 Crush will use the provider directly for this launch.'))
 
   // 📖 Tool-specific info messages (only for modes that have no prepare-step message)
@@ -978,10 +1012,11 @@ export async function startExternalTool(mode, model, config) {
     jcode:     '  📖 Launching jcode...',
     copilot:   `  📖 Copilot CLI configured with model: ${model.modelId}`,
     forgecode: `  📖 ForgeCode configured with model: ${model.modelId}`,
+    zcode:     `  📖 ZCode is a desktop app — setup instructions printed below.`,
   }
   if (infoMessages[mode]) console.log(chalk.dim(infoMessages[mode]))
 
-  // 📖 xcode uses raw command ("open"), everything else resolves via tool-bootstrap
-  const command = mode === 'xcode' ? launchPlan.command : resolveLaunchCommand(mode, launchPlan.command)
+  // 📖 xcode and zcode use raw command ("open"), everything else resolves via tool-bootstrap
+  const command = (mode === 'xcode' || mode === 'zcode') ? launchPlan.command : resolveLaunchCommand(mode, launchPlan.command)
   return spawnCommand(command, launchPlan.args, launchPlan.env)
 }

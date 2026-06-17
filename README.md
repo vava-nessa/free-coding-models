@@ -8,7 +8,7 @@
   <strong>Find the fastest free coding model in seconds</strong><br>
   Track ~191 models across 20 trusted free or free-limited AI providers in real time<br><br>
   <strong>Install Free API endpoints to your favorite AI coding tools:</strong><br>
-  OpenCode CLI / Desktop / WebUI, OpenClaw, Crush, Goose, Aider, Kilo CLI, Qwen Code, OpenHands, Amp, Hermes, Continue, Cline, Xcode, Pi and more...<br><br>
+  OpenCode CLI / Desktop / WebUI, OpenClaw, Crush, Goose, Aider, Kilo CLI, Qwen Code, OpenHands, Amp, Hermes, Continue, Cline, Xcode, Pi, ZCode and more...<br><br>
   <strong>Use Kimi K2, DeepSeek V3, GPT-OSS, Qwen3, MiniMax M3, GLM, Llama 4, Gemma 4, Devstral and more — for free</strong>
 </p>
 
@@ -431,6 +431,7 @@ Routing behavior:
 | `--pi` | π Pi |
 | `--copilot` | 🤖 Copilot CLI |
 | `--forgecode` | 🔥 ForgeCode |
+| `--zcode` | 🧊 ZCode |
 
 Press **`Z`** in the TUI to cycle between tools without restarting.
 

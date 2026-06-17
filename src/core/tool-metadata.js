@@ -48,6 +48,7 @@ export const TOOL_METADATA = {
   fcm_router:        { label: 'FCM Router',        emoji: '🧭', flag: '--fcm-router',        color: [80, 200, 120] },
   copilot:           { label: 'Copilot CLI',       emoji: '🤖', flag: '--copilot',          color: [200, 220, 255] },
   forgecode:         { label: 'ForgeCode',         emoji: '🔥', flag: '--forgecode',        color: [255, 120, 50] },
+  zcode:             { label: 'ZCode',              emoji: '🧊', flag: '--zcode',             color: [60, 160, 230] },
 }
 
 // 📖 Deduplicated emoji order for the "Compatible with" column.
@@ -74,6 +75,7 @@ export const COMPAT_COLUMN_SLOTS = [
   { emoji: '🛠️', toolKeys: ['xcode'],                        color: [20, 126, 251] },
   { emoji: '🤖', toolKeys: ['copilot'],                      color: [200, 220, 255] },
   { emoji: '🔥', toolKeys: ['forgecode'],                    color: [255, 120, 50] },
+  { emoji: '🧊', toolKeys: ['zcode'],                        color: [60, 160, 230]  },
 ]
 
 export const TOOL_MODE_ORDER = [
@@ -99,6 +101,7 @@ export const TOOL_MODE_ORDER = [
   'caveman',
   'copilot',
   'forgecode',
+  'zcode',
 ]
 
 export function getToolMeta(mode) {

@@ -4028,6 +4028,21 @@ describe('tool launch preparation', () => {
       assert.deepEqual(piPlan.args, ['--provider', 'nvidia', '--model', 'deepseek-ai/deepseek-v4-flash', '--api-key', piPlan.apiKey])
       assert.equal(piModels.providers.nvidia.models[0].id, 'deepseek-ai/deepseek-v4-flash')
       assert.equal(piSettings.defaultModel, 'deepseek-ai/deepseek-v4-flash')
+
+      // 📖 ZCode is launch-only (desktop app with UI config). It must NOT write any
+      // 📖 config file, and the command on macOS is `open -a ZCode`. On non-mac
+      // 📖 platforms the launcher should be a safe no-op (command: 'true').
+      const zcodePlan = prepareExternalToolLaunch('zcode', model, config, { paths, inheritedEnv: { PATH: process.env.PATH || '' } })
+      assert.equal(zcodePlan.meta.label, 'ZCode')
+      assert.equal(zcodePlan.meta.emoji, '🧊')
+      assert.deepEqual(zcodePlan.configArtifacts, [], 'ZCode must not write any config artifact')
+      if (process.platform === 'darwin') {
+        assert.equal(zcodePlan.command, 'open')
+        assert.deepEqual(zcodePlan.args, ['-a', 'ZCode'])
+      } else {
+        assert.equal(zcodePlan.command, 'true')
+        assert.deepEqual(zcodePlan.args, [])
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
