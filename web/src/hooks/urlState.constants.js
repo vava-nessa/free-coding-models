@@ -14,7 +14,7 @@ const SORT_VALUES = new Set([
   'latestPing', 'avg', 'condition', 'verdict', 'stability', 'uptime',
   'aiLatency', 'tps', 'trend',
 ])
-const VIEW_VALUES = new Set(['dashboard', 'settings', 'analytics', 'recommend', 'router', 'help', 'changelog'])
+const VIEW_VALUES = new Set(['dashboard', 'settings', 'analytics', 'recommend', 'router', 'help', 'changelog', 'playground', 'install-endpoints', 'installed-models'])
 const DIR_VALUES = new Set(['asc', 'desc'])
 const TOOL_MODE_VALUES = new Set(TOOL_MODE_ORDER)
 

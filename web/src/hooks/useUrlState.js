@@ -31,7 +31,17 @@ function parseUrlParams() {
   if (typeof window === 'undefined') return null
   const params = new URLSearchParams(window.location.search)
   const out = {}
-  if (params.has('view') && VALID_VIEWS.has(params.get('view'))) out.view = params.get('view')
+  
+  // 📖 Read pathname as the view slug
+  const pathname = window.location.pathname.replace(/^\/|\/$/g, '')
+  if (pathname && VALID_VIEWS.has(pathname)) {
+    out.view = pathname
+  } else if (params.has('view') && VALID_VIEWS.has(params.get('view'))) {
+    out.view = params.get('view')
+  } else {
+    out.view = 'dashboard'
+  }
+
   if (params.has('tier') && VALID_TIERS.has(params.get('tier'))) out.tier = params.get('tier')
   if (params.has('status') && VALID_STATUS.has(params.get('status'))) out.status = params.get('status')
   if (params.has('provider')) out.provider = params.get('provider')
@@ -71,10 +81,16 @@ export function buildUrlParams(state) {
 function writeUrl(state) {
   if (typeof window === 'undefined') return
   const params = buildUrlParams(state)
+  
+  // 📖 Extract view from the search params so it becomes the pathname slug instead of a search param!
+  const view = params.get('view') || 'dashboard'
+  params.delete('view')
+
   const search = params.toString()
+  const path = view !== 'dashboard' ? `/${view}` : '/'
   const newUrl = search
-    ? `${window.location.pathname}?${search}${window.location.hash}`
-    : `${window.location.pathname}${window.location.hash}`
+    ? `${path}?${search}${window.location.hash}`
+    : `${path}${window.location.hash}`
   // 📖 replaceState (not pushState) so back/forward don't fill up with
   // 📖 every keystroke. The current URL still updates visibly.
   window.history.replaceState({}, '', newUrl)

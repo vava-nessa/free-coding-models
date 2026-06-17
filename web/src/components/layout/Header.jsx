@@ -169,7 +169,7 @@ export default function Header({
           {/* Overflow menu (kebab) — hidden features & occasional flows */}
           <div className={styles.menuWrap} ref={menuRef}>
             <button
-              className={`${styles.navBtn} ${styles.menuTrigger}`}
+              className={`${styles.navBtn} ${styles.menuTrigger} ${MENU_ITEMS.some((m) => m.id === currentView) ? styles.navBtnActive : ''}`}
               onClick={() => setMenuOpen((o) => !o)}
               title="More features"
               aria-label="More features"
@@ -182,12 +182,14 @@ export default function Header({
               <div className={styles.menuPopover} role="menu">
                 {MENU_ITEMS.map((item) => {
                   const Icon = item.icon
+                  const isActive = currentView === item.id
                   return (
                     <button
                       key={item.id}
-                      className={styles.menuItem}
+                      className={`${styles.menuItem} ${isActive ? styles.menuItemActive : ''}`}
                       onClick={() => handleMenuClick(item)}
                       role="menuitem"
+                      aria-current={isActive ? 'page' : undefined}
                     >
                       <Icon size={14} stroke={1.5} />
                       <span>{item.label}</span>

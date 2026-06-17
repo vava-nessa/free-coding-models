@@ -37,14 +37,14 @@ const PING_MODE_CYCLE = ['speed', 'normal', 'slow', 'forced']
 // 📖 has a few commands the TUI doesn't). They are appended to the TUI registry
 // 📖 after a `Web` separator so the two surfaces stay easy to compare.
 function buildWebEntries(deps) {
-  const { onCycleTheme, onResetView, onSetPingMode, onOpenChangelog, theme, pingMode, modelsCount, onExport } = deps
+  const { onCycleTheme, onResetView, onSetPingMode, theme, pingMode, modelsCount, onExport, onNavigate } = deps
   const web = [
-    // Pages (open as modals)
-    { id: 'page.help', section: 'page', label: 'Open Help', keywords: ['help', 'shortcuts', 'reference'], run: () => deps.onOpenHelp?.() },
-    { id: 'page.changelog', section: 'page', label: 'Open Changelog', keywords: ['changelog', 'release', 'history', 'version'], run: () => onOpenChangelog?.() },
-    { id: 'page.playground', section: 'page', label: 'Open Playground', keywords: ['playground', 'chat', 'try', 'prompt', 'router'], run: () => deps.onOpenPlayground?.() },
-    { id: 'page.install-endpoints', section: 'page', label: 'Open Install Endpoints (M4)', keywords: ['install', 'endpoint', 'tool', 'configure'], disabled: true },
-    { id: 'page.installed-models', section: 'page', label: 'Open Installed Models (M4)', keywords: ['installed', 'models', 'tools'], disabled: true },
+    // Pages
+    { id: 'page.help', section: 'page', label: 'Open Help', keywords: ['help', 'shortcuts', 'reference'], run: () => onNavigate?.('help') },
+    { id: 'page.changelog', section: 'page', label: 'Open Changelog', keywords: ['changelog', 'release', 'history', 'version'], run: () => onNavigate?.('changelog') },
+    { id: 'page.playground', section: 'page', label: 'Open Playground', keywords: ['playground', 'chat', 'try', 'prompt', 'router'], run: () => onNavigate?.('playground') },
+    { id: 'page.install-endpoints', section: 'page', label: 'Open Install Endpoints', keywords: ['install', 'endpoint', 'tool', 'configure'], run: () => onNavigate?.('install-endpoints') },
+    { id: 'page.installed-models', section: 'page', label: 'Open Installed Models', keywords: ['installed', 'models', 'tools'], run: () => onNavigate?.('installed-models') },
 
     // Theme
     { id: 'action.theme.cycle', section: 'action', label: `Cycle theme (current: ${theme})`, keywords: ['theme', 'dark', 'light', 'auto'], run: onCycleTheme },
@@ -92,7 +92,7 @@ export default function CommandPalette({
     })
     const webEntries = buildWebEntries({
       onCycleTheme, onResetView, onSetPingMode,
-      onOpenChangelog, onOpenHelp, theme, pingMode, modelsCount: models?.length ?? 0, onExport,
+      theme, pingMode, modelsCount: models?.length ?? 0, onExport, onNavigate,
     })
     // 📖 Update banner entry (only when an update is available) — mirrors
     // 📖 the TUI palette's "auto-prepended when newer version known" rule.
@@ -177,12 +177,12 @@ export default function CommandPalette({
     // 📖 ships in M3), we route the user to the right header menu.
     const id = item.id
     if (id === 'open-settings') { onNavigate?.('settings'); onClose(); return }
-    if (id === 'open-help') { onOpenHelp?.(); onClose(); return }
-    if (id === 'open-changelog') { onOpenChangelog?.(); onClose(); return }
-    if (id === 'open-recommend') { onToast?.('Recommend arrives in M3', 'info'); onClose(); return }
-    if (id === 'open-router-dashboard') { onToast?.('Router dashboard arrives in M4', 'info'); onClose(); return }
-    if (id === 'open-installed-models') { onToast?.('Installed Models arrives in M4', 'info'); onClose(); return }
-    if (id === 'open-install-endpoints') { onToast?.('Install Endpoints arrives in M4', 'info'); onClose(); return }
+    if (id === 'open-help') { onNavigate?.('help'); onClose(); return }
+    if (id === 'open-changelog') { onNavigate?.('changelog'); onClose(); return }
+    if (id === 'open-recommend') { onNavigate?.('recommend'); onClose(); return }
+    if (id === 'open-router-dashboard') { onNavigate?.('router'); onClose(); return }
+    if (id === 'open-installed-models') { onNavigate?.('installed-models'); onClose(); return }
+    if (id === 'open-install-endpoints') { onNavigate?.('install-endpoints'); onClose(); return }
     if (id === 'action-update-now') { onRunUpdate?.(); onClose(); return }
     if (id === 'action-cycle-theme') { onCycleTheme?.(); onClose(); return }
     if (id === 'action-reset-view') { onResetView?.(); onClose(); return }

@@ -172,6 +172,11 @@
   transition: background 100ms;
 }
 .menuItem:hover { background: var(--color-bg-hover); }
+.menuItemActive {
+  background: var(--color-accent-dim) !important;
+  color: var(--color-accent) !important;
+  font-weight: 700;
+}
 .menuItem > span:first-of-type { flex: 1; }
 
 /* ─── Search ─── */
@@ -333,4 +338,20 @@
   height: 1px;
   background: var(--color-border);
   margin: 6px 0;
+}
+
+/* ─── Keyboard Focus & Micro-interaction Active States ─── */
+.navBtn:focus-visible,
+.iconBtn:focus-visible,
+.cmdkBtn:focus-visible,
+.benchmarkBtn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.navBtn:active,
+.iconBtn:active,
+.cmdkBtn:active,
+.benchmarkBtn:active {
+  transform: scale(0.96);
 }

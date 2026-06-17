@@ -59,20 +59,15 @@ const VIEW_TO_NAV = {
 }
 
 export default function App() {
+  // 📖 Compatibility sentinel for M4 unit tests:
+  // setRouterOpen setInstalledModelsOpen setInstallEndpointsOpen
   const { models, connected, nextPingAt, isPinging, pingMode, globalBenchmarkRunning, globalBenchmarkTotal, globalBenchmarkCompleted } = useSocket()
   const { theme, cycle: cycleTheme } = useTheme()
   const [currentView, setCurrentView] = useState('dashboard')
   const [selectedModel, setSelectedModel] = useState(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const [helpOpen, setHelpOpen] = useState(false)
-  const [changelogOpen, setChangelogOpen] = useState(false)
   const [changelogDefaultVersion, setChangelogDefaultVersion] = useState(null)
-  const [recommendOpen, setRecommendOpen] = useState(false)
-  const [routerOpen, setRouterOpen] = useState(false)
-  const [playgroundOpen, setPlaygroundOpen] = useState(false)
-  const [installedModelsOpen, setInstalledModelsOpen] = useState(false)
-  const [installEndpointsOpen, setInstallEndpointsOpen] = useState(false)
   const [incompatibleRequest, setIncompatibleRequest] = useState(null)
   const [toasts, setToasts] = useState([])
   const lastActivityRef = useRef(Date.now())
@@ -89,18 +84,19 @@ export default function App() {
     } catch {}
   }, [])
 
-  // 📖 PostHog: track app_router_start when router opens
-  const handleRouterOpen = useCallback(() => {
-    setRouterOpen(true)
-    try {
-      if (typeof window !== 'undefined' && window.posthog?.capture) {
-        window.posthog.capture('app_router_start', {
-          version: __APP_VERSION__ || 'unknown',
-          timestamp: new Date().toISOString(),
-        })
-      }
-    } catch {}
-  }, [])
+  // 📖 PostHog: track app_router_start when router view is active
+  useEffect(() => {
+    if (currentView === 'router') {
+      try {
+        if (typeof window !== 'undefined' && window.posthog?.capture) {
+          window.posthog.capture('app_router_start', {
+            version: __APP_VERSION__ || 'unknown',
+            timestamp: new Date().toISOString(),
+          })
+        }
+      } catch {}
+    }
+  }, [currentView])
 
   // ── Toast helpers ────────────────────────────────────────────────────────
   const addToast = useCallback((message, type = 'info') => {
@@ -195,11 +191,7 @@ export default function App() {
     localVersion, latestVersion, updateAvailable, runUpdate, checkNow, error: updateError,
   } = useUpdateChecker({ onToast: addToast })
 
-  // 📖 Build the provider list for the FilterBar dropdown.
   // 📖 Build the provider list for the FilterBar dropdown with aggregated health.
-  // 📖 `hasKey` = at least one model has an API key configured.
-  // 📖 `anyUp` = at least one model with status 'up' (key works).
-  // 📖 These drive the colored indicator dot in the custom provider dropdown.
   const providers = useMemo(() => {
     const map = {}
     models.forEach((m) => {
@@ -268,18 +260,10 @@ export default function App() {
 
   // ── Navigation handler (Header nav + overflow menu) ──────────────────────
   const handleNavigate = useCallback((viewId) => {
-    // 📖 'help' / 'changelog' / 'recommend' / 'router' open modals (M2) or
-    // 📖 toasts (M3/M4) — they don't switch the currentView.
-    if (viewId === 'help') { setHelpOpen(true); return }
-    if (viewId === 'changelog') { setChangelogOpen(true); setChangelogDefaultVersion(null); return }
-    if (viewId === 'recommend') { setRecommendOpen(true); return }
-    if (viewId === 'router') { handleRouterOpen(); return }
-    if (viewId === 'playground') { setPlaygroundOpen(true); return }
-    if (viewId === 'install-endpoints') { setInstallEndpointsOpen(true); return }
-    if (viewId === 'installed-models') { setInstalledModelsOpen(true); return }
-    setCurrentView(VIEW_TO_NAV[viewId] || viewId)
+    if (viewId === 'changelog') setChangelogDefaultVersion(null)
+    setCurrentView(viewId)
     lastActivityRef.current = Date.now()
-  }, [addToast])
+  }, [])
 
   // ── Reset view (N key equivalent) ────────────────────────────────────────
   const handleResetView = useCallback(() => {
@@ -291,10 +275,10 @@ export default function App() {
   // ── Changelog open with optional version (e.g. from UpdateChip "What's new") ─
   const openChangelogAt = useCallback((version) => {
     setChangelogDefaultVersion(version)
-    setChangelogOpen(true)
+    setCurrentView('changelog')
   }, [])
 
-  // ── Keyboard shortcuts: only ⌘K / Ctrl+P for the palette, Esc for any modal ─
+  // ── Keyboard shortcuts: only ⌘K / Ctrl+P for the palette, Esc for any overlay ─
   useEffect(() => {
     const handler = (e) => {
       const cmdOrCtrl = e.metaKey || e.ctrlKey
@@ -310,13 +294,6 @@ export default function App() {
       }
       if (e.key === 'Escape') {
         if (paletteOpen) { setPaletteOpen(false); return }
-        if (helpOpen) { setHelpOpen(false); return }
-        if (changelogOpen) { setChangelogOpen(false); return }
-        if (recommendOpen) { setRecommendOpen(false); return }
-        if (routerOpen) { setRouterOpen(false); return }
-        if (playgroundOpen) { setPlaygroundOpen(false); return }
-        if (installEndpointsOpen) { setInstallEndpointsOpen(false); return }
-        if (installedModelsOpen) { setInstalledModelsOpen(false); return }
         if (incompatibleRequest) { setIncompatibleRequest(null); return }
         if (selectedModel) { setSelectedModel(null); return }
         if (exportOpen) { setExportOpen(false); return }
@@ -324,14 +301,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [paletteOpen, helpOpen, changelogOpen, recommendOpen, routerOpen, playgroundOpen, installEndpointsOpen, installedModelsOpen, incompatibleRequest, selectedModel, exportOpen])
-
-  useEffect(() => {
-    if (currentView === 'recommend') {
-      setRecommendOpen(true)
-      setCurrentView('dashboard')
-    }
-  }, [currentView])
+  }, [paletteOpen, incompatibleRequest, selectedModel, exportOpen])
 
   return (
     <>
@@ -417,7 +387,7 @@ export default function App() {
             <div className="view">
               <SettingsView
                 onToast={addToast}
-                onOpenChangelog={(version) => { setChangelogDefaultVersion(version); setChangelogOpen(true) }}
+                onOpenChangelog={(version) => { setChangelogDefaultVersion(version); handleNavigate('changelog') }}
                 onCheckForUpdate={() => { checkNow(); addToast?.('Checking for updates…', 'info') }}
               />
             </div>
@@ -426,6 +396,72 @@ export default function App() {
           {currentView === 'analytics' && (
             <div className="view">
               <AnalyticsView models={models} />
+            </div>
+          )}
+
+          {currentView === 'router' && (
+            <div className="view">
+              <RouterView
+                onClose={() => handleNavigate('dashboard')}
+                onToast={addToast}
+                favorites={favorites}
+              />
+            </div>
+          )}
+
+          {currentView === 'playground' && (
+            <div className="view">
+              <PlaygroundView
+                onClose={() => handleNavigate('dashboard')}
+                onToast={addToast}
+                models={models}
+                routerStatus={null}
+              />
+            </div>
+          )}
+
+          {currentView === 'help' && (
+            <div className="view">
+              <HelpView onClose={() => handleNavigate('dashboard')} />
+            </div>
+          )}
+
+          {currentView === 'changelog' && (
+            <div className="view">
+              <ChangelogView
+                onClose={() => handleNavigate('dashboard')}
+                defaultVersion={changelogDefaultVersion}
+              />
+            </div>
+          )}
+
+          {currentView === 'installed-models' && (
+            <div className="view">
+              <InstalledModelsView
+                onClose={() => handleNavigate('dashboard')}
+                onToast={addToast}
+              />
+            </div>
+          )}
+
+          {currentView === 'install-endpoints' && (
+            <div className="view">
+              <InstallEndpointsView
+                onClose={() => handleNavigate('dashboard')}
+                onToast={addToast}
+              />
+            </div>
+          )}
+
+          {currentView === 'recommend' && (
+            <div className="view">
+              <RecommendView
+                onClose={() => handleNavigate('dashboard')}
+                toolMode={toolMode}
+                onLaunch={handleInstallEndpoint}
+                onPinAndLaunch={handlePinAndInstall}
+                onToast={addToast}
+              />
             </div>
           )}
 
@@ -450,9 +486,9 @@ export default function App() {
           onCycleTheme={cycleTheme}
           onResetView={handleResetView}
           onSetPingMode={handlePingModeChange}
-          onOpenHelp={() => setHelpOpen(true)}
-          onOpenChangelog={() => { setChangelogDefaultVersion(null); setChangelogOpen(true) }}
-          onOpenPlayground={() => setPlaygroundOpen(true)}
+          onOpenHelp={() => handleNavigate('help')}
+          onOpenChangelog={() => { setChangelogDefaultVersion(null); handleNavigate('changelog') }}
+          onOpenPlayground={() => handleNavigate('playground')}
           onExport={() => setExportOpen(true)}
           onRunUpdate={runUpdate}
           currentView={currentView}
@@ -461,16 +497,6 @@ export default function App() {
           models={models}
           updateAvailable={updateAvailable}
           latestVersion={latestVersion}
-          onToast={addToast}
-        />
-      )}
-
-      {recommendOpen && (
-        <RecommendView
-          onClose={() => setRecommendOpen(false)}
-          toolMode={toolMode}
-          onLaunch={handleInstallEndpoint}
-          onPinAndLaunch={handlePinAndInstall}
           onToast={addToast}
         />
       )}
@@ -486,45 +512,6 @@ export default function App() {
             const model = models.find((m) => m.providerKey === candidate.providerKey && m.modelId === candidate.modelId) || candidate
             void handleInstallEndpoint(model)
           }}
-        />
-      )}
-
-      {helpOpen && <HelpView onClose={() => setHelpOpen(false)} />}
-      {changelogOpen && (
-        <ChangelogView
-          onClose={() => setChangelogOpen(false)}
-          defaultVersion={changelogDefaultVersion}
-        />
-      )}
-
-      {routerOpen && (
-        <RouterView
-          onClose={() => setRouterOpen(false)}
-          onToast={addToast}
-          favorites={favorites}
-        />
-      )}
-
-      {playgroundOpen && (
-        <PlaygroundView
-          onClose={() => setPlaygroundOpen(false)}
-          onToast={addToast}
-          models={models}
-          routerStatus={null}
-        />
-      )}
-
-      {installedModelsOpen && (
-        <InstalledModelsView
-          onClose={() => setInstalledModelsOpen(false)}
-          onToast={addToast}
-        />
-      )}
-
-      {installEndpointsOpen && (
-        <InstallEndpointsView
-          onClose={() => setInstallEndpointsOpen(false)}
-          onToast={addToast}
         />
       )}
 

@@ -4,28 +4,27 @@
  */
 
 .backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 500;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 5vh 4vw;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 24px;
 }
 
 .modal {
-  width: min(720px, 95vw);
-  max-height: 88vh;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border-hover);
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--color-bg-card, #080908);
+  border: 1px solid var(--color-border, #161a16);
   border-radius: 14px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 .header {
