@@ -1149,15 +1149,27 @@ class RouterRuntime {
       const hasData = stats.total > 0
       const latencyScore = stats.p95 === null ? 0.5 : Math.max(0, 1 - (stats.p95 / maxP95))
       const uptimeScore = stats.uptime === null ? 0.5 : stats.uptime
+      // 📖 priorityBonus - kept as a separate field for dashboards/legacy UIs
+      // 📖 that previously rendered a single composite "score". Priority is
+      // 📖 NOT folded into `score` anymore (issue #120): the routing comparator
+      // 📖 in getRoutingCandidates sorts by explicit priority authoritatively,
+      // 📖 so mixing priority into the score only confused tiebreakers.
       const priorityBonus = 1 - ((entry.priority - 1) / setSize)
+      // 📖 score - pure latency+uptime composite. Used only as the FINAL
+      // 📖 tiebreaker between candidates that share the same priority AND
+      // 📖 same circuit state (see getRoutingCandidates). A model with no
+      // 📖 probe data yet scores neutral (0.5) - we deliberately do NOT use
+      // 📖 priorityBonus as a cold-start fallback, because that would re-
+      // 📖 introduce the priority-in-score confusion this refactor removes.
       const score = hasData
-        ? (weights.latencyWeight * latencyScore) + (weights.uptimeWeight * uptimeScore) + (weights.priorityWeight * priorityBonus)
-        : priorityBonus
+        ? (weights.latencyWeight * latencyScore) + (weights.uptimeWeight * uptimeScore)
+        : 0.5
       const state = this.updateCircuitForCooldown(key) || {}
       return {
         ...entry,
         key,
         score,
+        priorityBonus,
         stats,
         circuit: state,
         catalog: this.modelCatalog.get(key) || null,

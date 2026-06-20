@@ -3119,6 +3119,108 @@ describe('router daemon integration hardening', () => {
     })
   })
 
+  // 📖 Regression for issue #120 — HALF_OPEN recovery must NOT be skipped.
+  // 📖 The screenshot from the user showed a HALF_OPEN priority-#1 model
+  // 📖 being skipped for a CLOSED priority-#20 model. The priority-first
+  // 📖 comparator in getRoutingCandidates now guarantees explicit priority
+  // 📖 wins over circuit state, so a high-priority model mid-recovery is
+  // 📖 still tried before any lower-priority CLOSED fallback.
+  it('keeps a higher-priority HALF_OPEN model above a lower-priority CLOSED one (issue #120)', async () => {
+    await withMockProvider(() => ({
+      body: { id: 'chatcmpl-halfopen', choices: [{ message: { role: 'assistant', content: 'from-halfopen' } }] },
+    }), async (groqProvider) => {
+      await withMockProvider(() => ({
+        body: { id: 'chatcmpl-closed', choices: [{ message: { role: 'assistant', content: 'from-closed' } }] },
+      }), async (nvidiaProvider) => {
+        await withSourceUrls({ groq: groqProvider.url, nvidia: nvidiaProvider.url }, async () => {
+          const config = buildRouterTestConfig([
+            { provider: 'groq', model: ROUTER_TEST_MODELS.groqFast, priority: 1 },
+            { provider: 'nvidia', model: ROUTER_TEST_MODELS.nvidiaFast, priority: 5 },
+          ])
+          await withRouterTestServer(config, async ({ baseUrl, runtime }) => {
+            // 📖 Force groq (priority #1) into HALF_OPEN recovery. nvidia
+            // 📖 (priority #5) stays CLOSED. The OLD code would have sorted
+            // 📖 HALF_OPEN AFTER CLOSED regardless of priority; the NEW
+            // 📖 comparator must keep groq at the top.
+            const groqKey = `groq/${ROUTER_TEST_MODELS.groqFast}`
+            const groqCircuit = runtime.circuit.get(groqKey)
+            assert.ok(groqCircuit, 'groq circuit entry must exist')
+            groqCircuit.state = 'HALF_OPEN'
+            groqCircuit.openedAt = Date.now() - 60_000
+
+            // 📖 routingOrder surface: groq (HALF_OPEN, priority 1) MUST be
+            // 📖 before nvidia (CLOSED, priority 5) — issue #120's exact case.
+            const stats = await (await fetch(`${baseUrl}/stats`)).json()
+            assert.equal(stats.routingOrder[0].key, groqKey,
+              'priority-#1 HALF_OPEN must come before priority-#5 CLOSED')
+            assert.equal(stats.routingOrder[0].state, 'HALF_OPEN')
+            assert.equal(stats.routingOrder[1].key, `nvidia/${ROUTER_TEST_MODELS.nvidiaFast}`)
+            assert.equal(stats.routingOrder[1].state, 'CLOSED')
+
+            // 📖 End-to-end check: a real chat-completions request hits groq
+            // 📖 (the HALF_OPEN priority-#1), NOT nvidia (the CLOSED priority-#5).
+            const response = await postRouterChat(baseUrl)
+            assert.equal(response.status, 200)
+            assert.equal(response.headers.get('x-fcm-router-model'), groqKey)
+            assert.equal(groqProvider.requests.length, 1)
+            assert.equal(nvidiaProvider.requests.length, 0)
+          })
+        })
+      })
+    })
+  })
+
+  // 📖 Regression for issue #120 — score tiebreaker determinism.
+  // 📖 When two candidates share the same explicit priority AND the same
+  // 📖 circuit state, the comparator falls back to score. With the v0.5.37
+  // 📖 refactor, score is pure latency+uptime (no priorityWeight) so the
+  // 📖 tiebreaker is deterministic and reflects actual model quality.
+  it('breaks score ties deterministically by latency/uptime, not priority (issue #120)', async () => {
+    await withMockProvider(() => ({
+      body: { id: 'chatcmpl-winner', choices: [{ message: { role: 'assistant', content: 'high-score' } }] },
+    }), async (groqProvider) => {
+      await withMockProvider(() => ({
+        body: { id: 'chatcmpl-loser', choices: [{ message: { role: 'assistant', content: 'low-score' } }] },
+      }), async (nvidiaProvider) => {
+        await withSourceUrls({ groq: groqProvider.url, nvidia: nvidiaProvider.url }, async () => {
+          // 📖 Two models deliberately at the SAME priority (rare but
+          // 📖 possible via direct API or auto-heal). Tiebreaker must fall
+          // 📖 back to score (latency+uptime), not priority (they're equal),
+          // 📖 not random Map iteration order.
+          const config = buildRouterTestConfig([
+            { provider: 'groq', model: ROUTER_TEST_MODELS.groqFast, priority: 1 },
+            { provider: 'nvidia', model: ROUTER_TEST_MODELS.nvidiaFast, priority: 1 },
+          ])
+          await withRouterTestServer(config, async ({ baseUrl, runtime }) => {
+            // 📖 Build a clear asymmetry: groq has fast probes (high score),
+            // 📖 nvidia has slow probes (low score). Same priority, same state.
+            const groqKey = `groq/${ROUTER_TEST_MODELS.groqFast}`
+            const nvidiaKey = `nvidia/${ROUTER_TEST_MODELS.nvidiaFast}`
+            for (let i = 0; i < 6; i++) runtime.recordProbeResult(groqKey, { ok: true, latencyMs: 80, code: 200 })
+            for (let i = 0; i < 6; i++) runtime.recordProbeResult(nvidiaKey, { ok: true, latencyMs: 2000, code: 200 })
+
+            const stats = await (await fetch(`${baseUrl}/stats`)).json()
+            assert.equal(stats.routingOrder[0].key, groqKey,
+              'higher-score model must win same-priority same-state tiebreaker')
+            assert.equal(stats.routingOrder[1].key, nvidiaKey)
+
+            // 📖 priorityBonus is still exposed separately for back-compat
+            // 📖 dashboards, but is NOT mixed into the routing score.
+            const groqHealth = stats.models.find((m) => m.key === groqKey)
+            const nvidiaHealth = stats.models.find((m) => m.key === nvidiaKey)
+            assert.ok(groqHealth.score > nvidiaHealth.score,
+              `groq score (${groqHealth.score}) must exceed nvidia (${nvidiaHealth.score})`)
+
+            // 📖 End-to-end: the chat-completions request hits the high-
+            // 📖 score groq model.
+            const response = await postRouterChat(baseUrl)
+            assert.equal(response.headers.get('x-fcm-router-model'), groqKey)
+          })
+        })
+      })
+    })
+  })
+
   it('returns precise quota metadata when every routed model is exhausted', async () => {
     await withMockProvider(() => ({
       status: 429,

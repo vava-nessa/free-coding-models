@@ -167,8 +167,15 @@ export const DEFAULT_ROUTER_SETTINGS = Object.freeze({
     requestTimeoutMs: 15000,
   }),
   scoring: Object.freeze({
-    latencyWeight: 0.4,
-    uptimeWeight: 0.4,
+    latencyWeight: 0.5,
+    uptimeWeight: 0.5,
+    // 📖 priorityWeight is preserved for back-compat with user configs that
+    // 📖 set a custom value, but is no longer mixed into the routing score
+    // 📖 (issue #120 fix, v0.5.37). Priority is now enforced authoritatively
+    // 📖 by the comparator in getRoutingCandidates; folding it into score
+    // 📖 could only mislead tiebreakers and dashboards. The remaining
+    // 📖 latency+uptime weights are rebalanced to 0.5/0.5 so the score stays
+    // 📖 in [0, 1] after priority is removed (previously 0.4/0.4/0.2).
     priorityWeight: 0.2,
   }),
   logLevel: 'info',
@@ -377,6 +384,10 @@ function normalizeRouterScoring(scoring) {
     const numeric = Number(value)
     return Number.isFinite(numeric) && numeric >= 0 ? numeric : fallback
   }
+  // 📖 priorityWeight is normalized but currently IGNORED by the runtime
+  // 📖 scoreCandidates() (issue #120, v0.5.37). Kept here so existing user
+  // 📖 configs that customize this field round-trip cleanly and don't lose
+  // 📖 their setting on next save. Will be removed in a future major bump.
   return {
     latencyWeight: numberOrDefault(safeScoring.latencyWeight, DEFAULT_ROUTER_SETTINGS.scoring.latencyWeight),
     uptimeWeight: numberOrDefault(safeScoring.uptimeWeight, DEFAULT_ROUTER_SETTINGS.scoring.uptimeWeight),
