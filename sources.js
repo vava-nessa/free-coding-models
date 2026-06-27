@@ -86,6 +86,7 @@ export const groq = [
   ['openai/gpt-oss-120b',                  'GPT OSS 120B',       'S',  '60.0%', '131k'],
   ['openai/gpt-oss-20b',                   'GPT OSS 20B',        'A',  '42.0%', '131k'],
   ['qwen/qwen3-32b',                       'Qwen3 32B',          'A+', '50.0%', '131k'],
+  ['qwen/qwen3.6-27b',                     'Qwen3.6 27B',        'A',  '-',     '131k'],
   ['groq/compound',                        'Groq Compound',      'A',  '45.0%', '131k'],
   ['groq/compound-mini',                   'Groq Compound Mini', 'B+', '32.0%', '131k'],
 ]
@@ -270,7 +271,9 @@ export const cloudflare = [
   ['@cf/zai-org/glm-4.7-flash',               'GLM-4.7-Flash',     'S',  '59.2%', '131k'],
   ['@cf/openai/gpt-oss-120b',                 'GPT OSS 120B',      'S',  '60.0%', '128k'],
   // ── A+ tier ──
-  ['@cf/nvidia/nemotron-3-120b-a12b',         'Nemotron 3 Super',  'A+', '56.0%', '32k'],
+  ['@cf/nvidia/nemotron-3-120b-a12b',         'Nemotron 3 Super',  'A+', '56.0%', '128k'],
+  ['@cf/zai-org/glm-5.2',                  'GLM-5.2',            'S+', '-',     '262k'],
+  ['@cf/moonshotai/kimi-k2.5',             'Kimi K2.5',          'S+', '-',     '256k'],
   // ── A tier ──
   ['@cf/meta/llama-4-scout-17b-16e-instruct', 'Llama 4 Scout',     'A',  '44.0%', '131k'],
   ['@cf/mistralai/mistral-7b-instruct-v0.2',   'Mistral 7B v0.2',   'A',  '38.0%', '128k'],
@@ -303,6 +306,10 @@ export const ovhcloud = [
   ['Mistral-7B-Instruct-v0.3',                  'Mistral 7B Instruct',  'B',  '25.0%', '127k'],
   ['Mistral-Nemo-Instruct-2407',                'Mistral Nemo',         'B+', '30.0%', '118k'],
   ['Qwen3.5-9B',                                'Qwen3.5 9B',           'B+', '30.0%', '262k'],
+  // ── Embeddings ──
+  ['Qwen3-Embedding-8B',                        'Qwen3 Embedding 8B',   'B',  '-',     '-'],
+  ['bge-m3',                                    'BGE M3',               'B',  '-',     '-'],
+  ['bge-multilingual-gemma2',                   'BGE Multilingual Gemma2','B','-',     '-'],
   // Fix (2026-05-26): Qwen3.5-9B ctx 128k→262k, Mistral-Small ctx 131k→128k, Mistral-Nemo ctx 128k→118k, Mistral-7B ctx 32k→127k
 ]
 
