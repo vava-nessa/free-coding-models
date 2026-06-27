@@ -56,17 +56,19 @@ const BACKUP_PATH = join(homedir(), '.free-coding-models-backups.json')
  * 📖 Get tool config paths
  */
 function getToolConfigPaths(homeDir = homedir()) {
-  return {
-    goose: join(homeDir, '.config', 'goose', 'config.yaml'),
-    crush: join(homeDir, '.config', 'crush', 'crush.json'),
-    aider: join(homeDir, '.aider.conf.yml'),
-    kilo: join(homeDir, '.config', 'kilo', 'opencode.json'),
-    qwen: join(homeDir, '.qwen', 'settings.json'),
-    piModels: join(homeDir, '.pi', 'agent', 'models.json'),
-    piSettings: join(homeDir, '.pi', 'agent', 'settings.json'),
-    openHands: join(homeDir, '.fcm-openhands-env'),
-    amp: join(homeDir, '.config', 'amp', 'settings.json'),
-  }
+	return {
+	    goose: join(homeDir, '.config', 'goose', 'config.yaml'),
+	    crush: join(homeDir, '.config', 'crush', 'crush.json'),
+	    aider: join(homeDir, '.aider.conf.yml'),
+	    kilo: join(homeDir, '.config', 'kilo', 'opencode.json'),
+	    qwen: join(homeDir, '.qwen', 'settings.json'),
+	    piModels: join(homeDir, '.pi', 'agent', 'models.json'),
+	    piSettings: join(homeDir, '.pi', 'agent', 'settings.json'),
+	    openHands: join(homeDir, '.fcm-openhands-env'),
+	    amp: join(homeDir, '.config', 'amp', 'settings.json'),
+	    zcodeConfig: join(homeDir, '.zcode', 'v2', 'config.json'),
+	    zcodeCache: join(homeDir, '.zcode', 'v2', 'bots-model-cache.v2.json'),
+	  }
 }
 
 /**
@@ -464,6 +466,111 @@ function parseAmpConfig(paths = getToolConfigPaths()) {
 }
 
 /**
+ * 📖 Parse ZCode config.json + bots-model-cache.v2.json for installed models.
+ * 📖 Uses a Map keyed by "providerId::modelId" to deduplicate across both files.
+ */
+function parseZCodeConfig(paths = getToolConfigPaths()) {
+  const configPath = paths.zcodeConfig
+  const cachePath = paths.zcodeCache
+
+  if (!existsSync(configPath)) {
+    return { isValid: false, models: [], configPath }
+  }
+
+  try {
+    /** @type {Map<string, object>} */
+    const modelMap = new Map()
+
+    const configContent = readFileSync(configPath, 'utf8')
+    const config = JSON.parse(configContent)
+
+    // ── 1. Source of truth: config.json provider.models ─────────────────────
+    if (config.provider && typeof config.provider === 'object') {
+      for (const [providerId, provider] of Object.entries(config.provider)) {
+        if (!provider.models || typeof provider.models !== 'object') continue
+
+        const isManaged = providerId.startsWith('fcm-')
+        const sourceKey = isManaged ? providerId.replace('fcm-', '') : providerId
+
+        for (const [modelId, modelConfig] of Object.entries(provider.models)) {
+          const ctx = modelConfig?.limit?.context || 0
+          const key = `${providerId}::${modelId}`
+          modelMap.set(key, {
+            modelId,
+            label: modelId,
+            tier: '-',
+            sweScore: '-',
+            providerKey: sourceKey,
+            isExternal: !isManaged,
+            canLaunch: true,
+            contextWindow: ctx,
+            enabled: provider.enabled !== false,
+            zcodeProviderId: providerId,
+          })
+        }
+      }
+    }
+
+    // ── 2. Cache enrichment: use cache names only (no duplicates) ────────────
+    if (existsSync(cachePath)) {
+      try {
+        const cacheContent = readFileSync(cachePath, 'utf8')
+        const cache = JSON.parse(cacheContent)
+
+        if (Array.isArray(cache.providers)) {
+          for (const cachedProvider of cache.providers) {
+            if (!cachedProvider?.models) continue
+            const providerId = cachedProvider.id || 'unknown'
+
+            for (const cachedModel of cachedProvider.models) {
+              const key = `${providerId}::${cachedModel.id}`
+              const existing = modelMap.get(key)
+
+              if (existing) {
+                // 📖 Upgrade label from cache (prettier name) + fill context if missing
+                if (cachedModel.name) existing.label = cachedModel.name
+                if (cachedModel.contextWindow && !existing.contextWindow) {
+                  existing.contextWindow = cachedModel.contextWindow
+                }
+              } else {
+                // 📖 Model only in cache (edge case — provider.models missing it)
+                const isManaged = providerId.startsWith('fcm-')
+                const sourceKey = isManaged ? providerId.replace('fcm-', '') : providerId
+                modelMap.set(key, {
+                  modelId: cachedModel.id,
+                  label: cachedModel.name || cachedModel.id,
+                  tier: '-',
+                  sweScore: '-',
+                  providerKey: sourceKey,
+                  isExternal: !isManaged,
+                  canLaunch: true,
+                  contextWindow: cachedModel.contextWindow || 0,
+                  enabled: cachedProvider.enabled !== false,
+                  zcodeProviderId: providerId,
+                })
+              }
+            }
+          }
+        }
+      } catch {
+        // 📖 Cache file is optional — silently ignore errors
+      }
+    }
+
+    const models = Array.from(modelMap.values())
+
+    return {
+      isValid: models.length > 0,
+      hasManagedMarker: Object.keys(config.provider || {}).some((id) => id.startsWith('fcm-')),
+      models,
+      configPath,
+    }
+  } catch (err) {
+    return { isValid: false, models: [], configPath }
+  }
+}
+
+/**
  * 📖 Enhance model with metadata from sources.js
  */
 function enhanceModelMetadata(model) {
@@ -507,9 +614,11 @@ export function parseToolConfig(toolMode, paths = getToolConfigPaths()) {
       return parsePiConfig(paths)
     case 'openhands':
       return parseOpenHandsConfig(paths)
-    case 'amp':
-      return parseAmpConfig(paths)
-    default:
+	    case 'zcode':
+	      return parseZCodeConfig(paths)
+	    case 'amp':
+	      return parseAmpConfig(paths)
+	    default:
       return { isValid: false, models: [], configPath: '' }
   }
 }
@@ -518,7 +627,7 @@ export function parseToolConfig(toolMode, paths = getToolConfigPaths()) {
  * 📖 Scan all tool configs and return structured results
  */
 export function scanAllToolConfigs(paths = getToolConfigPaths()) {
-  const toolModes = ['goose', 'crush', 'aider', 'kilo', 'qwen', 'pi', 'openhands', 'amp']
+	  const toolModes = ['goose', 'crush', 'aider', 'kilo', 'qwen', 'pi', 'openhands', 'amp', 'zcode']
 
   return toolModes.map((toolMode) => {
     const result = parseToolConfig(toolMode, paths)
@@ -537,17 +646,18 @@ export function scanAllToolConfigs(paths = getToolConfigPaths()) {
  * 📖 Get tool emoji
  */
 function getToolEmoji(toolMode) {
-  const emojis = {
-    goose: '🪿',
-    crush: '💘',
-    aider: '🛠',
-    kilo: '⚡️',
-    qwen: '🐉',
-    pi: 'π',
-    openhands: '🤲',
-    amp: '⚡',
-  }
-  return emojis[toolMode] || '🧰'
+	  const emojis = {
+	    goose: '🪿',
+	    crush: '💘',
+	    aider: '🛠',
+	    kilo: '⚡️',
+	    qwen: '🐉',
+	    pi: 'π',
+	    openhands: '🤲',
+	    amp: '⚡',
+	    zcode: '🧊',
+	  }
+	  return emojis[toolMode] || '🧰'
 }
 
 /**
@@ -580,7 +690,10 @@ function saveBackups(backups) {
  * 📖 Soft-delete a model from tool config with backup
  */
 export function softDeleteModel(toolMode, modelId, paths = getToolConfigPaths()) {
-  const configPath = paths[toolMode === 'pi' ? 'piSettings' : toolMode]
+	  const pathKey = toolMode === 'pi' ? 'piSettings'
+	    : toolMode === 'zcode' ? 'zcodeConfig'
+	    : toolMode
+	  const configPath = paths[pathKey]
   if (!existsSync(configPath)) {
     return { success: false, error: 'Config file not found' }
   }
@@ -653,15 +766,58 @@ export function softDeleteModel(toolMode, modelId, paths = getToolConfigPaths())
         }
         break
 
-      case 'amp':
-        const ampConfig = JSON.parse(originalContent)
-        if (ampConfig['amp.model'] === modelId) {
-          delete ampConfig['amp.model']
-          newContent = JSON.stringify(ampConfig, null, 2)
-          modified = true
-        }
-        break
-    }
+	      case 'zcode': {
+	        const zconfig = JSON.parse(originalContent)
+	        // 📖 Find the provider entry that contains this modelId
+	        let foundProviderId = null
+	        if (zconfig.provider && typeof zconfig.provider === 'object') {
+	          for (const [provId, prov] of Object.entries(zconfig.provider)) {
+	            if (prov.models && typeof prov.models === 'object' && modelId in prov.models) {
+	              foundProviderId = provId
+	              break
+	            }
+	          }
+	        }
+	        if (foundProviderId) {
+	          delete zconfig.provider[foundProviderId].models[modelId]
+	          // 📖 If no models left, keep the empty provider (don't remove it — user may want to re-add)
+	          newContent = JSON.stringify(zconfig, null, 2)
+	          modified = true
+
+	          // 📖 Also remove from cache file if it exists
+	          const cachePath = paths.zcodeCache
+	          if (existsSync(cachePath)) {
+	            try {
+	              const cacheContent = readFileSync(cachePath, 'utf8')
+	              const cache = JSON.parse(cacheContent)
+	              if (Array.isArray(cache.providers)) {
+	                const cacheProv = cache.providers.find((p) => p.id === foundProviderId)
+	                if (cacheProv && Array.isArray(cacheProv.models)) {
+	                  const before = cacheProv.models.length
+	                  cacheProv.models = cacheProv.models.filter((m) => m.id !== modelId)
+	                  if (cacheProv.models.length !== before) {
+	                    cacheProv.updatedAt = Date.now()
+	                    writeFileSync(cachePath, JSON.stringify(cache, null, 2))
+	                  }
+	                }
+	              }
+	            } catch {
+	              // 📖 Cache file is optional
+	            }
+	          }
+	        }
+	        break
+	      }
+
+	      case 'amp':
+	        const ampConfig = JSON.parse(originalContent)
+	        if (ampConfig['amp.model'] === modelId) {
+	          delete ampConfig['amp.model']
+	          newContent = JSON.stringify(ampConfig, null, 2)
+	          modified = true
+	        }
+	        break
+	    }
 
     if (!modified) {
       return { success: false, error: 'Model not found in config' }

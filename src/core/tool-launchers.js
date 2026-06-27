@@ -90,6 +90,8 @@ function getDefaultToolPaths(homeDir = homedir()) {
     continueConfigPath: join(homeDir, '.continue', 'config.yaml'),
     clineConfigPath: join(homeDir, '.cline', 'globalState.json'),
     forgeCodeConfigPath: join(homeDir, '.forge', '.forge.toml'),
+    zcodeConfigPath: join(homeDir, '.zcode', 'v2', 'config.json'),
+    zcodeModelCachePath: join(homeDir, '.zcode', 'v2', 'bots-model-cache.v2.json'),
   }
 }
 
@@ -560,6 +562,137 @@ function writeForgeCodeConfig(model, apiKey, baseUrl, providerKey, paths = getDe
   return { filePath, backupPath }
 }
 
+// 📖 writeZCodeConfig: Writes provider + model into ZCode's config.json and
+// 📖 bots-model-cache.v2.json so the selected model appears in ZCode's model picker.
+// 📖 Uses a deterministic provider ID (fcm-{providerKey}) and merges models so
+// 📖 re-running on the same provider/model is idempotent — no duplicates.
+export function writeZCodeConfig(model, config, paths = getDefaultToolPaths()) {
+  const configPath = paths.zcodeConfigPath
+  const cachePath = paths.zcodeModelCachePath
+
+  const providerKey = model.providerKey || 'nvidia'
+  const apiKey = getApiKey(config, providerKey)
+  const baseUrl = sources[providerKey]?.url
+    ? sources[providerKey].url.replace(/\/chat\/completions$/i, '').replace(/\/responses$/i, '').replace(/\/predictions$/i, '')
+    : null
+  const providerId = `fcm-${providerKey}`
+  const providerLabel = `FCM ${sources[providerKey]?.name || providerKey}`
+
+  if (!baseUrl) {
+    throw new Error(`Cannot resolve base URL for ${sources[providerKey]?.name || providerKey}`)
+  }
+
+  const ctx = parseCtxToTokens(model.ctx) || 200000
+  const maxOutput = Math.max(4096, Math.min(ctx, 32768))
+
+  // ── 1. Write to config.json ───────────────────────────────────────────────
+  const cfg = readJson(configPath, { $schema: 'https://opencode.ai/config.json' })
+  if (!cfg.provider || typeof cfg.provider !== 'object') cfg.provider = {}
+
+  const existingProvider = cfg.provider[providerId]
+  let configModified = false
+
+  // 📖 If the provider already exists with this model — skip (idempotent)
+  if (existingProvider && existingProvider.models?.[model.modelId]) {
+    // Model already configured — skip config write, but still check cache
+  } else if (existingProvider) {
+    // 📖 Provider exists but model is new — add model to existing provider
+    existingProvider.models[model.modelId] = {
+      limit: { context: ctx },
+      modalities: { input: ['text'], output: ['text'] },
+    }
+    if (ctx > 8192) {
+      existingProvider.models[model.modelId].limit.output = maxOutput
+    }
+    configModified = true
+  } else {
+    // 📖 New provider — create it
+    cfg.provider[providerId] = {
+      name: providerLabel,
+      kind: 'openai-compatible',
+      options: {
+        apiKey: apiKey || '',
+        baseURL: baseUrl.replace(/\/v1\/chat\/completions$/, '').replace(/\/v1$/, '') + '/v1',
+        apiKeyRequired: true,
+      },
+      enabled: true,
+      source: 'custom',
+      models: {
+        [model.modelId]: {
+          limit: { context: ctx },
+          modalities: { input: ['text'], output: ['text'] },
+        },
+      },
+    }
+    if (ctx > 8192) {
+      cfg.provider[providerId].models[model.modelId].limit.output = maxOutput
+    }
+    configModified = true
+  }
+
+  const configBackupPath = configModified ? writeJson(configPath, cfg) : null
+
+  // ── 2. Write to bots-model-cache.v2.json ──────────────────────────────────
+  const cache = readJson(cachePath, { version: 2, updatedAt: Date.now(), providers: [] })
+  if (!Array.isArray(cache.providers)) cache.providers = []
+
+  const existingCacheIdx = cache.providers.findIndex((p) => p?.id === providerId)
+  const modelAlreadyCached = existingCacheIdx >= 0
+    && cache.providers[existingCacheIdx].models?.some((m) => m?.id === model.modelId)
+
+  let cacheModified = false
+
+  if (!modelAlreadyCached) {
+    const modelEntry = {
+      id: model.modelId,
+      name: model.label || model.modelId,
+      kinds: ['openai-compatible'],
+      defaultKind: 'openai-compatible',
+      modalities: { input: ['text'], output: ['text'] },
+      contextWindow: ctx,
+      ...(ctx > 8192 ? { maxOutputTokens: maxOutput } : {}),
+    }
+
+    if (existingCacheIdx >= 0) {
+      // 📖 Provider exists in cache — add model to existing entry
+      cache.providers[existingCacheIdx].models.push(modelEntry)
+      cache.providers[existingCacheIdx].updatedAt = Date.now()
+    } else {
+      // 📖 New provider in cache
+      cache.providers.push({
+        id: providerId,
+        name: providerLabel,
+        enabled: true,
+        endpoints: {
+          baseURL: baseUrl.replace(/\/v1\/chat\/completions$/, '').replace(/\/v1$/, '') + '/v1',
+          paths: { 'openai-compatible': '/chat/completions' },
+        },
+        apiFormat: 'openai-chat-completions',
+        source: 'custom',
+        apiKeyRequired: true,
+        apiKey: apiKey ? '__zcode_cached_api_key_present__' : '',
+        defaultKind: 'openai-compatible',
+        models: [modelEntry],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    }
+    cache.updatedAt = Date.now()
+    cacheModified = true
+  }
+
+  const cacheBackupPath = cacheModified ? writeJson(cachePath, cache) : null
+
+  return {
+    filePath: configPath,
+    backupPath: configBackupPath,
+    providerId,
+    cachePath,
+    cacheBackupPath,
+    skipped: !configModified && !cacheModified,
+  }
+}
+
 // 📖 restartHermesGateway — restart the Hermes messaging gateway after config changes.
 // 📖 Non-blocking: if gateway is not running, this is a no-op.
 function restartHermesGateway() {
@@ -829,18 +962,21 @@ export function prepareExternalToolLaunch(mode, model, config, options = {}) {
   }
 
   if (mode === 'zcode') {
-    // 📖 ZCode is a desktop app from z.ai. Launch via `open -a ZCode` on macOS.
-    // 📖 On other platforms the user is expected to have ZCode already running — the
-    // 📖 startExternalTool hook below prints manual setup steps and skips spawning.
+    // 📖 Write provider + model into ZCode config so it appears in ZCode's model picker.
+    const result = writeZCodeConfig(model, config, paths)
     const isMac = process.platform === 'darwin'
+
     return {
-      command: isMac ? 'open' : 'true', // no-op on non-mac
-      args: isMac ? ['-a', 'ZCode'] : [],
+      command: isMac ? 'open' : 'node',
+      args: isMac ? ['-a', 'ZCode'] : ['-e', 'process.exit(0)'],
       env,
       apiKey,
       baseUrl,
       meta,
-      configArtifacts: [],
+      configArtifacts: [
+        { path: result.filePath, backupPath: result.backupPath, label: 'config' },
+        ...(result.cachePath ? [{ path: result.cachePath, backupPath: result.cacheBackupPath, label: 'model cache' }] : []),
+      ],
     }
   }
 
@@ -982,22 +1118,10 @@ export async function startExternalTool(mode, model, config) {
     console.log(chalk.dim(`  📖 Attempting to launch Xcode...`))
   }
   if (mode === 'zcode') {
-    // 📖 ZCode has UI-based config (Settings -> Model Settings / 模型设置). We point
-    // 📖 the user at the FCM router (OpenAI-compatible) so they get free failover +
-    // 📖 the per-provider normalizer on top of any FCM-tracked model.
-    const routerBase = 'http://localhost:19280/v1'
-    console.log(chalk.bold.cyan('\n  🧊  ZCode Setup Instructions:'))
-    console.log(chalk.white('  1. Open ZCode and click the model selector in the chat input.'))
-    console.log(chalk.white('  2. At the bottom of the list, click ') + chalk.bold('Manage Models') + chalk.white(' (管理模型)'))
-    console.log(chalk.white('  3. Click ') + chalk.bold('Add Provider') + chalk.white(' (添加供应商) in the left sidebar.'))
-    console.log(chalk.white('  4. Fill in the following details:'))
-    console.log(chalk.dim('     Name: ') + chalk.green(`FCM Router`))
-    console.log(chalk.dim('     Base URL: ') + chalk.green(routerBase))
-    console.log(chalk.dim('     API Key: ') + chalk.green('fcm-local'))
-    console.log(chalk.dim('     Protocol: ') + chalk.green('OpenAI-compatible'))
-    console.log(chalk.white('  5. Save, then pick ') + chalk.bold(`fcm`) + chalk.white(' from the model list. FCM picks the best live model.'))
-    console.log(chalk.dim(`  📖 If you prefer a direct provider, use the URL/key for ${chalk.bold(sources[model.providerKey]?.name || model.providerKey)} shown above.\n`))
-    console.log(chalk.dim(`  📖 Attempting to launch ZCode...`))
+    // 📖 ZCode is a desktop app — config was already written by prepareExternalToolLaunch.
+    // 📖 No process to spawn; the TUI stays open.
+    console.log(chalk.dim(`  📖 ZCode config updated with model: ${model.modelId}. Open ZCode and select the model from the picker.`))
+    return 0
   }
   if (mode === 'crush') console.log(chalk.dim('  📖 Crush will use the provider directly for this launch.'))
 
@@ -1012,11 +1136,10 @@ export async function startExternalTool(mode, model, config) {
     jcode:     '  📖 Launching jcode...',
     copilot:   `  📖 Copilot CLI configured with model: ${model.modelId}`,
     forgecode: `  📖 ForgeCode configured with model: ${model.modelId}`,
-    zcode:     `  📖 ZCode is a desktop app — setup instructions printed below.`,
   }
   if (infoMessages[mode]) console.log(chalk.dim(infoMessages[mode]))
 
-  // 📖 xcode and zcode use raw command ("open"), everything else resolves via tool-bootstrap
-  const command = (mode === 'xcode' || mode === 'zcode') ? launchPlan.command : resolveLaunchCommand(mode, launchPlan.command)
+	  // 📖 xcode uses raw command ("open"), everything else resolves via tool-bootstrap
+	  const command = (mode === 'xcode') ? launchPlan.command : resolveLaunchCommand(mode, launchPlan.command)
   return spawnCommand(command, launchPlan.args, launchPlan.env)
 }

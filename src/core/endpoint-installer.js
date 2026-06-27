@@ -54,7 +54,7 @@ import { ensureDir, readJson as sharedReadJson } from './shared-helpers.js'
 const DIRECT_INSTALL_UNSUPPORTED_PROVIDERS = new Set(['replicate'])
 // 📖 Install Endpoints only lists tools whose persisted config shape is actually supported here.
 // 📖 Launch-only tools stay out: the Web dashboard configures endpoints, it never starts CLIs.
-const INSTALL_TARGET_MODES = ['opencode', 'opencode-desktop', 'opencode-web', 'openclaw', 'crush', 'goose', 'pi', 'aider', 'qwen', 'openhands', 'amp', 'forgecode', 'fcm_router']
+const INSTALL_TARGET_MODES = ['opencode', 'opencode-desktop', 'opencode-web', 'openclaw', 'crush', 'goose', 'pi', 'aider', 'qwen', 'openhands', 'amp', 'forgecode', 'fcm_router', 'zcode']
 
 function getDefaultPaths() {
   const home = homedir()
@@ -70,6 +70,8 @@ function getDefaultPaths() {
     ampConfigPath: join(home, '.config', 'amp', 'settings.json'),
     qwenConfigPath: join(home, '.qwen', 'settings.json'),
     forgeCodeConfigPath: join(home, '.forge', '.forge.toml'),
+    zcodeConfigPath: join(home, '.zcode', 'v2', 'config.json'),
+    zcodeModelCachePath: join(home, '.zcode', 'v2', 'bots-model-cache.v2.json'),
   }
 }
 
@@ -625,6 +627,183 @@ function installIntoFcmRouter(providerKey, models, apiKey) {
   return { path: `FCM Router (${baseUrl})`, backupPath: null, providerId: providerKey, modelCount: models.length }
 }
 
+// 📖 installIntoZCode: Writes provider + models into ZCode's config.json and updates
+// 📖 bots-model-cache.v2.json so the models appear immediately in ZCode's model picker.
+// 📖 Uses deterministic provider ID (fcm-{providerKey}) so re-running replaces/merges
+// 📖 without duplicating the provider entry.
+// 📖 When scope === 'selected' — merges models with existing ones.
+// 📖 When scope === 'all' — replaces all models (full sync).
+function installIntoZCode(providerKey, models, apiKey, paths, scope) {
+  const configPath = paths.zcodeConfigPath
+  const cachePath = paths.zcodeModelCachePath
+  const providerId = `fcm-${providerKey}`
+  const baseUrl = resolveProviderBaseUrl(providerKey)
+  const providerLabel = getManagedProviderLabel(providerKey)
+
+  if (!baseUrl) {
+    throw new Error(`Cannot resolve base URL for ${getProviderLabel(providerKey)}`)
+  }
+
+  function buildModelEntry(model) {
+    const ctx = parseContextWindow(model.ctx)
+    const entry = {
+      id: model.modelId,
+      name: model.label || model.modelId,
+      kinds: ['openai-compatible'],
+      defaultKind: 'openai-compatible',
+      modalities: { input: ['text'], output: ['text'] },
+      contextWindow: ctx,
+    }
+    if (ctx > 8192) {
+      entry.maxOutputTokens = getDefaultMaxTokens(ctx)
+    }
+    return entry
+  }
+
+  function buildConfigModelEntry(model) {
+    const ctx = parseContextWindow(model.ctx)
+    const entry = {
+      limit: { context: ctx },
+      modalities: { input: ['text'], output: ['text'] },
+    }
+    if (ctx > 8192) {
+      entry.limit.output = getDefaultMaxTokens(ctx)
+    }
+    return entry
+  }
+
+  const newModelIds = new Set(models.map((m) => m.modelId))
+  let configModified = false
+  let cacheModified = false
+
+  // ── 1. Write to config.json ───────────────────────────────────────────────
+  const config = readJson(configPath, { $schema: 'https://opencode.ai/config.json' })
+  if (!config.provider || typeof config.provider !== 'object') config.provider = {}
+
+  const existingProvider = config.provider[providerId]
+
+  if (scope === 'selected' && existingProvider) {
+    // 📖 Merge mode: add/update selected models, keep existing ones
+    for (const model of models) {
+      existingProvider.models[model.modelId] = buildConfigModelEntry(model)
+    }
+    configModified = true
+  } else if (scope === 'selected' && !existingProvider) {
+    // 📖 No existing provider, but scope is selected — create with only selected models
+    config.provider[providerId] = {
+      name: providerLabel,
+      kind: 'openai-compatible',
+      options: { apiKey, baseURL: baseUrl, apiKeyRequired: true },
+      enabled: true,
+      source: 'custom',
+      models: Object.fromEntries(models.map((m) => [m.modelId, buildConfigModelEntry(m)])),
+    }
+    configModified = true
+  } else {
+    // 📖 scope === 'all' — replace all models (full sync), skip if identical
+    const existingModelIds = existingProvider ? Object.keys(existingProvider.models || {}) : []
+    const modelsUnchanged = existingProvider
+      && existingModelIds.length === models.length
+      && models.every((m) => existingModelIds.includes(m.modelId))
+
+    if (!modelsUnchanged) {
+      config.provider[providerId] = {
+        name: providerLabel,
+        kind: 'openai-compatible',
+        options: { apiKey, baseURL: baseUrl, apiKeyRequired: true },
+        enabled: true,
+        source: 'custom',
+        models: Object.fromEntries(models.map((m) => [m.modelId, buildConfigModelEntry(m)])),
+      }
+      configModified = true
+    }
+  }
+
+  const configBackupPath = configModified ? writeJson(configPath, config) : null
+
+  // ── 2. Write to bots-model-cache.v2.json ──────────────────────────────────
+  const cache = readJson(cachePath, { version: 2, updatedAt: Date.now(), providers: [] })
+  if (!Array.isArray(cache.providers)) cache.providers = []
+
+  const existingCacheIdx = cache.providers.findIndex((p) => p?.id === providerId)
+
+  if (scope === 'selected') {
+    // 📖 Merge mode: add/update selected models in cache, keep existing ones
+    if (existingCacheIdx >= 0) {
+      const existingModels = cache.providers[existingCacheIdx].models || []
+      for (const model of models) {
+        const modelIdx = existingModels.findIndex((m) => m.id === model.modelId)
+        if (modelIdx >= 0) {
+          existingModels[modelIdx] = buildModelEntry(model)
+        } else {
+          existingModels.push(buildModelEntry(model))
+        }
+      }
+      cache.providers[existingCacheIdx].updatedAt = Date.now()
+      cacheModified = true
+    } else {
+      cache.providers.push({
+        id: providerId,
+        name: providerLabel,
+        enabled: true,
+        endpoints: { baseURL: baseUrl, paths: { 'openai-compatible': '/chat/completions' } },
+        apiFormat: 'openai-chat-completions',
+        source: 'custom',
+        apiKeyRequired: true,
+        apiKey: '__zcode_cached_api_key_present__',
+        defaultKind: 'openai-compatible',
+        models: models.map(buildModelEntry),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      cacheModified = true
+    }
+  } else {
+    // 📖 scope === 'all' — replace all models, skip if identical
+    const cachedModelIds = existingCacheIdx >= 0
+      ? (cache.providers[existingCacheIdx].models || []).map((m) => m.id)
+      : []
+    const cacheUnchanged = existingCacheIdx >= 0
+      && cachedModelIds.length === models.length
+      && models.every((m) => cachedModelIds.includes(m.modelId))
+
+    if (!cacheUnchanged) {
+      if (existingCacheIdx >= 0) {
+        cache.providers[existingCacheIdx].models = models.map(buildModelEntry)
+        cache.providers[existingCacheIdx].updatedAt = Date.now()
+      } else {
+        cache.providers.push({
+          id: providerId,
+          name: providerLabel,
+          enabled: true,
+          endpoints: { baseURL: baseUrl, paths: { 'openai-compatible': '/chat/completions' } },
+          apiFormat: 'openai-chat-completions',
+          source: 'custom',
+          apiKeyRequired: true,
+          apiKey: '__zcode_cached_api_key_present__',
+          defaultKind: 'openai-compatible',
+          models: models.map(buildModelEntry),
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        })
+      }
+      cache.updatedAt = Date.now()
+      cacheModified = true
+    }
+  }
+
+  const cacheBackupPath = cacheModified ? writeJson(cachePath, cache) : null
+
+  return {
+    path: configPath,
+    backupPath: configBackupPath,
+    providerId,
+    modelCount: models.length,
+    extraPath: cachePath,
+    extraBackupPath: cacheBackupPath,
+  }
+}
+
 export function installProviderEndpoints(config, providerKey, toolMode, options = {}) {
   const canonicalToolMode = canonicalizeToolMode(toolMode)
   const support = getDirectInstallSupport(providerKey)
@@ -664,6 +843,8 @@ export function installProviderEndpoints(config, providerKey, toolMode, options 
     installResult = installIntoFcmRouter(providerKey, models, apiKey)
   } else if (canonicalToolMode === 'forgecode') {
     installResult = installIntoForgeCode(providerKey, models, apiKey, paths)
+  } else if (canonicalToolMode === 'zcode') {
+    installResult = installIntoZCode(providerKey, models, apiKey, paths, scope)
   } else {
     throw new Error(`Unsupported install target: ${toolMode}`)
   }

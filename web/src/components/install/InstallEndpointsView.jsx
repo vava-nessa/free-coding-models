@@ -39,6 +39,7 @@ export default function InstallEndpointsView({ onClose, onToast }) {
     { id: 'openhands', label: 'OpenHands', emoji: '🤲' },
     { id: 'amp', label: 'Amp', emoji: '⚡' },
     { id: 'forgecode', label: 'ForgeCode', emoji: '🔥' },
+    { id: 'zcode', label: 'ZCode', emoji: '🧊' },
     { id: 'fcm_router', label: 'FCM Router', emoji: '🔄' },
   ]
 

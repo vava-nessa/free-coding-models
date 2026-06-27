@@ -250,10 +250,11 @@ export async function runApp(cliArgs, config, startupOptions = {}) {
       cline: cliArgs.clineMode,
       xcode: cliArgs.xcodeMode,
       pi: cliArgs.piMode,
-      caveman: cliArgs.cavemanMode,
-      copilot: cliArgs.copilotMode,
-      forgecode: cliArgs.forgecodeMode,
-    }
+	      caveman: cliArgs.cavemanMode,
+	      copilot: cliArgs.copilotMode,
+	      forgecode: cliArgs.forgecodeMode,
+	      zcode: cliArgs.zcodeMode,
+	    }
     return flagByMode[toolMode] === true
   })
   if (requestedMode) mode = requestedMode
