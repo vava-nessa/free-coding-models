@@ -447,7 +447,7 @@ export function findBestModel(results) {
 //   - Boolean flags: --best, --fiable, --opencode, --opencode-desktop, --opencode-web, --openclaw,
 //     --aider, --crush, --goose, --qwen, --kilo,
 //     --openhands, --amp, --pi, --hermes, --continue, --cline,
-//     --xcode, --jcode, --copilot, --forgecode,
+//     --xcode, --jcode, --copilot, --forgecode, --zcode,
 //     --daemon, --daemon-bg, --daemon-stop,
 //     --daemon-status, --no-telemetry, --json, --help/-h (case-insensitive)
 //     --playground / playground subcommand (open the in-TUI chat playground)
@@ -456,7 +456,7 @@ export function findBestModel(results) {
 // Returns:
 //   { apiKey, bestMode, fiableMode, openCodeMode, openCodeDesktopMode, openCodeWebMode, openClawMode,
 //     aiderMode, crushMode, gooseMode, qwenMode, openHandsMode, ampMode,
-//     piMode, jcodeMode, copilotMode, forgecodeMode, noTelemetry, jsonMode, helpMode, tierFilter }
+//     piMode, jcodeMode, copilotMode, forgecodeMode, zcodeMode, noTelemetry, jsonMode, helpMode, tierFilter }
 //
 // 📖 Note: apiKey may be null here — the main CLI falls back to env vars and saved config.
 export function parseArgs(argv) {
@@ -534,6 +534,7 @@ export function parseArgs(argv) {
   const jcodeMode = flags.includes('--jcode')
   const copilotMode = flags.includes('--copilot')
   const forgecodeMode = flags.includes('--forgecode')
+  const zcodeMode = flags.includes('--zcode')
   const noTelemetry = flags.includes('--no-telemetry')
   const devMode = flags.includes('--dev')
   const jsonMode = flags.includes('--json')
@@ -597,6 +598,7 @@ export function parseArgs(argv) {
     jcodeMode,
     copilotMode,
     forgecodeMode,
+    zcodeMode,
     noTelemetry,
     jsonMode,
     helpMode,

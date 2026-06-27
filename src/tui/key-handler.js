@@ -181,12 +181,13 @@ export function createKeyHandler(ctx) {
     state.toolInstallPromptErrorMsg = null
   }
 
-  function shouldCheckMissingTool(mode) {
-    // 📖 opencode-desktop doesn't have a binary check (it uses 'open -a').
-    // 📖 opencode-web, opencode, and kilo manage their own ENOENT errors in spawn handlers.
-    // 📖 xcode uses 'open -a Xcode' which doesn't need a binary path resolution.
-    return !['opencode-desktop', 'opencode-web', 'opencode', 'kilo', 'xcode'].includes(mode)
-  }
+	  function shouldCheckMissingTool(mode) {
+	    // 📖 opencode-desktop doesn't have a binary check (it uses 'open -a').
+	    // 📖 opencode-web, opencode, and kilo manage their own ENOENT errors in spawn handlers.
+	    // 📖 xcode uses 'open -a Xcode' which doesn't need a binary path resolution.
+	    // 📖 zcode is a desktop app with no CLI binary — the launch handler prints setup instructions.
+	    return !['opencode-desktop', 'opencode-web', 'opencode', 'kilo', 'xcode', 'zcode'].includes(mode)
+	  }
 
   function getModelTelemetryFamily(providerKey) {
     if (providerKey === 'opencode-zen') return providerKey

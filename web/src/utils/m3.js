@@ -23,6 +23,7 @@ export const INSTALL_ENDPOINT_TOOL_MODES = [
   'amp',
   'forgecode',
   'fcm_router',
+  'zcode',
 ]
 
 export function recommendScoreShape(payload) {
