@@ -126,38 +126,27 @@ export const sambanova = [
 // 📖 • Free-tier popular models may be additionally rate-limited by the provider itself during peak hours.
 // 📖 API keys at https://openrouter.ai/keys
 export const openrouter = [
-  // ── S+ tier — live :free chat/coding models ──
-  ['qwen/qwen3-coder:free',                     'Qwen3 Coder 480B',   'S+', '70.6%', '1M'],
-  ['z-ai/glm-4.5-air:free',                     'GLM 4.5 Air',        'S+', '72.0%', '131k'],
+  // ── S+ tier — confirmed :free on openrouter.ai/collections/free-models ──
+  ['nvidia/nemotron-3-ultra-550b-a55b:free',    'Nemotron 3 Ultra',   'S+', '-',     '1M'],
   ['poolside/laguna-m.1:free',                  'Poolside Laguna M.1', 'S+', '-',     '262k'],
-  ['poolside/laguna-xs.2:free',                 'Poolside Laguna XS.2','S+', '-',     '131k'],
-  ['moonshotai/kimi-k2.6:free',                 'Kimi K2.6',          'S+', '76.8%', '262k'],
-  // ── S tier — live :free chat/coding models ──
-  ['qwen/qwen3-next-80b-a3b-instruct:free',     'Qwen3 80B Instruct', 'S',  '65.0%', '262k'],
+  ['poolside/laguna-xs.2:free',                 'Poolside Laguna XS.2','S+', '-',     '262k'],
+  // ── S tier ──
   ['openai/gpt-oss-120b:free',                  'GPT OSS 120B',       'S',  '60.0%', '131k'],
-  ['arcee-ai/trinity-large-thinking:free',      'Arcee Trinity Large', 'A',  '-',     '262k'],
-  ['nvidia/nemotron-3-super-120b-a12b:free',    'Nemotron 3 Super',   'A+', '56.0%', '262k'],
-  // ── A+ tier — live :free chat/coding models ──
+  ['cohere/north-mini-code:free',               'North Mini Code',    'S',  '-',     '256k'],
+  // ── A+ tier ──
+  ['nvidia/nemotron-3-super-120b-a12b:free',    'Nemotron 3 Super',   'A+', '56.0%', '1M'],
   ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', 'Nemotron 3 Omni', 'A+', '52.0%', '256k'],
-  ['nvidia/nemotron-nano-12b-v2-vl:free',       'Nemotron Nano 12B VL','A',  '20.0%', '128k'],
   ['openrouter/owl-alpha',                      'Owl Alpha',          'A+', '-',     '1M'],
-  // ── A tier — live :free chat/coding models ──
-  ['nousresearch/hermes-3-llama-3.1-405b:free', 'Hermes 3 405B',      'A',  '44.0%', '131k'],
+  // ── A tier ──
   ['openai/gpt-oss-20b:free',                   'GPT OSS 20B',        'A',  '42.0%', '131k'],
   ['nvidia/nemotron-nano-30b-a3b:free',         'Nemotron Nano 30B',  'A',  '43.0%', '256k'],
-  ['cognitivecomputations/dolphin-mistral-24b-venice-edition:free', 'Dolphin Mistral 24B', 'B+', '30.0%', '33k'],
-  ['google/gemma-4-31b-it:free',                'Gemma 4 31B',        'A',  '45.0%', '256k'],
-  ['google/gemma-4-26b-a4b-it:free',            'Gemma 4 26B MoE',    'A-', '38.0%', '256k'],
-  // ── A- tier — confirmed free ──
-  ['meta-llama/llama-3.3-70b-instruct:free',    'Llama 3.3 70B',      'A-', '39.5%', '131k'],
-  ['meta-llama/llama-3.2-3b-instruct:free',     'Llama 3.2 3B',       'B',  '20.0%', '128k'],
+  ['nvidia/nemotron-nano-12b-v2-vl:free',       'Nemotron Nano 12B VL','A', '20.0%', '128k'],
+  ['google/gemma-4-31b-it:free',                'Gemma 4 31B',        'A',  '45.0%', '262k'],
+  ['google/gemma-4-26b-a4b-it:free',            'Gemma 4 26B MoE',    'A',  '38.0%', '262k'],
   // ── B+ tier ──
   ['nvidia/nemotron-nano-9b-v2:free',           'Nemotron Nano 9B',   'B+', '18.0%', '128k'],
   // ── B tier ──
   ['openrouter/free',                           'OpenRouter Free',    'B',  '-',     '200k'],
-  // ── C tier ──
-  ['liquid/lfm-2.5-1.2b-instruct:free',         'LFM 2.5 1.2B',       'C',  '-',     '32k'],
-  ['liquid/lfm-2.5-1.2b-thinking:free',         'LFM 2.5 Thinking',   'C',  '-',     '32k'],
 ]
 
 // 📖 GitHub Models source - https://models.github.ai
