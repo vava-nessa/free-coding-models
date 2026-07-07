@@ -1,5 +1,7 @@
 # FCM-Pi — Pi Extension for free-coding-models
 
+> ⚠️ **BETA** — This extension is under active development. Install via local path only (see below). It is not yet published to npm.
+
 A native JavaScript extension for the **[Pi coding agent](https://pi.dev)** that wires **free-coding-models** directly into your Pi session. It pings ~30 candidate models in parallel, benchmarks the top 5, auto-selects the best one on startup, and displays a real-time animated progress scan in the Pi status bar.
 
 ---
@@ -33,25 +35,33 @@ A native JavaScript extension for the **[Pi coding agent](https://pi.dev)** that
 
 2. **Pi coding agent (pi.dev)** must be installed on your system.
 
-### Installation (local path)
+### Installation
 
-Add the extension to `~/.pi/agent/settings.json`:
+The extension is **not yet published to npm** — install directly via local path.
+
+Add the extension path to `~/.pi/agent/settings.json`:
 
 ```json
 {
   "packages": [
-    "../../Documents/GitHub/free-coding-models/pi-extension"
+    "/absolute/path/to/free-coding-models/pi-extension"
   ]
 }
 ```
 
-Adjust the path to match where you cloned `free-coding-models` on your machine.
+Example on macOS:
 
-### Installation (npm — when published)
-
-```bash
-pi install npm:fcm-pi
+```json
+{
+  "packages": [
+    "/Users/yourname/Documents/GitHub/free-coding-models/pi-extension"
+  ]
+}
 ```
+
+> 💡 You can also use a relative path from `~/.pi/agent/` — e.g. `"../../Documents/GitHub/free-coding-models/pi-extension"`
+
+After editing `settings.json`, restart Pi. The extension loads automatically — no extra command needed.
 
 ---
 

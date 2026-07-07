@@ -466,28 +466,27 @@ When a tool mode is active (via `Z`), models incompatible with that tool are hig
 
 ---
 
-## π Pi Extension — FCM-Pi
+## π Pi Extension — FCM-Pi ⚠️ BETA
 
 **FCM-Pi** is a native [Pi coding agent](https://pi.dev) extension that integrates `free-coding-models` directly into your Pi session. It auto-selects the best free model on startup, shows a live animated scan in the Pi status bar, and lets you hot-swap models mid-session.
 
+> **BETA** — The extension is under active development and not yet published to npm. Install via local path only.
+>
 > **Requires**: Pi coding agent (pi.dev) + free-coding-models installed and configured with at least one API key.
 
 ### Installation
 
-Add the extension to your Pi settings (`~/.pi/agent/settings.json`):
+Add the extension path to `~/.pi/agent/settings.json` (the extension is **not yet on npm** — local path only for now):
 
 ```json
 {
   "packages": [
-    "../../Documents/GitHub/free-coding-models/pi-extension"
+    "/Users/yourname/Documents/GitHub/free-coding-models/pi-extension"
   ]
 }
 ```
 
-Or install directly from the Pi shell once published to npm:
-```bash
-pi install npm:fcm-pi
-```
+Then restart Pi. The extension loads automatically.
 
 ### What it does
 
