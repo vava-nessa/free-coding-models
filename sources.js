@@ -94,8 +94,8 @@ export const groq = [
 // 📖 Cerebras source - https://cloud.cerebras.ai
 // 📖 Free API keys available at https://cloud.cerebras.ai
 export const cerebras = [
-  ['gpt-oss-120b',                         'GPT OSS 120B',       'S',  '60.0%', '131k'],
-  ['zai-glm-4.7',                          'GLM 4.7',            'S+', '73.8%', '131k'],
+  ['gpt-oss-120b',                         'GPT OSS 120B',       'S',  '60.0%', '8k'],
+  ['zai-glm-4.7',                          'GLM 4.7',            'S+', '73.8%', '8k'],
 ]
 
 // 📖 SambaNova source - https://cloud.sambanova.ai
