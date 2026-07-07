@@ -134,7 +134,7 @@ export async function handleModelSelection(model, options = {}) {
       api: 'openai-completions',
       models: [{
         id: model.modelId,
-        name: `${model.label} [FCM ${model.tier}]`,
+        name: `${model.label} (${model.providerName}) [FCM ${model.tier}]`,
         contextWindow,
         maxTokens: 8192,
         reasoning: model.tier === 'S+' || model.tier === 'S',

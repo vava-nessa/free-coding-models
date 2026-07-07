@@ -14,6 +14,7 @@ import { ping } from 'free-coding-models/src/core/ping.js'
 import { benchmarkModel } from 'free-coding-models/src/core/benchmark.js'
 import { loadAllApiKeys } from './api-keys.js'
 import { parseSweScore } from './model-ranker.js'
+import chalk from 'chalk'
 
 /**
  * @typedef {object} ScannedModel
@@ -81,15 +82,42 @@ export async function directScan(options = {}) {
   const totalPings = sortedCandidates.length
   let completedPings = 0
 
-  if (options.onProgress) {
-    options.onProgress(`📡 Pinging models: 0% (0/${totalPings})`)
+  const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+  let spinnerIndex = 0
+  let currentAction = 'Probing'
+  let currentTargets = []
+  let pct = 0
+  let completed = 0
+  let total = totalPings
+
+  const updateProgress = () => {
+    if (!options.onProgress) return
+    const spinner = chalk.bold.magenta(spinnerFrames[spinnerIndex])
+    const actionStr = chalk.bold.yellow(`${currentAction}:`)
+    const targetStr = currentTargets.length > 0 
+      ? chalk.cyan(currentTargets.slice(-2).join(', ')) 
+      : chalk.gray('...')
+    const pctStr = chalk.bold.cyan(`${pct}%`)
+    const counterStr = chalk.gray(`(${completed}/${total})`)
+    
+    options.onProgress(`${spinner} ${actionStr} ${targetStr} — ${pctStr} ${counterStr}`)
   }
+
+  const intervalId = setInterval(() => {
+    spinnerIndex = (spinnerIndex + 1) % spinnerFrames.length
+    updateProgress()
+  }, 80)
 
   // 📖 Step 3: Ping candidate models in parallel (15s timeout inside ping.js)
   const pingPromises = sortedCandidates.map(async (candidate) => {
-    const { modelId, providerKey, sourceInfo } = candidate
+    const { modelId, providerKey, sourceInfo, label } = candidate
     const apiKey = keys.get(providerKey) || null
     const url = sourceInfo.url
+    const providerName = sourceInfo.name || providerKey
+    const targetDesc = `${label} [${providerName}]`
+
+    currentTargets.push(targetDesc)
+    updateProgress()
 
     try {
       const res = await ping(apiKey, modelId, providerKey, url)
@@ -105,7 +133,7 @@ export async function directScan(options = {}) {
       return {
         ...candidate,
         apiKey,
-        providerName: sourceInfo.name || providerKey,
+        providerName,
         providerUrl: url,
         status,
         latencyMs: typeof res.ms === 'number' ? res.ms : null,
@@ -117,7 +145,7 @@ export async function directScan(options = {}) {
       return {
         ...candidate,
         apiKey,
-        providerName: sourceInfo.name || providerKey,
+        providerName,
         providerUrl: url,
         status: 'down',
         latencyMs: null,
@@ -127,10 +155,10 @@ export async function directScan(options = {}) {
       }
     } finally {
       completedPings++
-      const pct = Math.round((completedPings / totalPings) * 100)
-      if (options.onProgress) {
-        options.onProgress(`📡 Pinging models: ${pct}% (${completedPings}/${totalPings})`)
-      }
+      pct = Math.round((completedPings / totalPings) * 100)
+      completed = completedPings
+      currentTargets = currentTargets.filter(t => t !== targetDesc)
+      updateProgress()
     }
   })
 
@@ -147,24 +175,31 @@ export async function directScan(options = {}) {
   const usableAlive = aliveModels.filter(m => m.status === 'up')
   
   if (usableAlive.length === 0) {
+    clearInterval(intervalId)
     return aliveModels // 📖 Return what we have (mostly timeouts/auth_errors)
   }
 
   // 📖 Step 4: Run AI Latency + TPS Benchmark on top 5 alive candidates
-  // 📖 Sort them again by SWE-bench to benchmark the smartest ones
   const benchmarkCandidates = usableAlive
     .sort((a, b) => parseSweScore(b.sweScore) - parseSweScore(a.sweScore))
     .slice(0, 5)
 
+  currentAction = 'Benchmarking'
+  completed = 0
+  pct = 0
+  total = benchmarkCandidates.length
+  currentTargets = []
+  updateProgress()
+
   const totalBenchmarks = benchmarkCandidates.length
   let completedBenchmarks = 0
 
-  if (options.onProgress && totalBenchmarks > 0) {
-    options.onProgress(`⚡ AI latency bench: 0% (0/${totalBenchmarks})`)
-  }
-
   const benchmarkPromises = benchmarkCandidates.map(async (model) => {
-    const { modelId, providerKey, providerUrl, apiKey } = model
+    const { modelId, providerKey, providerUrl, apiKey, label, providerName } = model
+    const targetDesc = `${label} [${providerName}]`
+    currentTargets.push(targetDesc)
+    updateProgress()
+
     try {
       // 📖 Limit benchmark retries to 1 with a short delay for speed
       const res = await benchmarkModel({
@@ -187,15 +222,17 @@ export async function directScan(options = {}) {
       // 📖 Catch benchmark errors gracefully
     } finally {
       completedBenchmarks++
-      const pct = Math.round((completedBenchmarks / totalBenchmarks) * 100)
-      if (options.onProgress) {
-        options.onProgress(`⚡ AI latency bench: ${pct}% (${completedBenchmarks}/${totalBenchmarks})`)
-      }
+      pct = Math.round((completedBenchmarks / totalBenchmarks) * 100)
+      completed = completedBenchmarks
+      currentTargets = currentTargets.filter(t => t !== targetDesc)
+      updateProgress()
     }
     return { modelId, tps: null, totalMs: null }
   })
 
   const benchmarkResults = await Promise.allSettled(benchmarkPromises)
+  clearInterval(intervalId)
+
   const benchMap = new Map()
 
   for (const res of benchmarkResults) {
