@@ -1,0 +1,21 @@
+{
+  "name": "fcm-pi",
+  "version": "0.1.0",
+  "description": "Pi extension for free-coding-models — scan, benchmark, and auto-select the best free AI coding model before every session",
+  "type": "module",
+  "keywords": ["pi-package", "free-coding-models", "ai", "benchmark", "coding", "llm"],
+  "main": "extensions/index.js",
+  "author": "vava",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vava-nessa/free-coding-models.git",
+    "directory": "pi-extension"
+  },
+  "peerDependencies": {
+    "free-coding-models": ">=0.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -4292,6 +4292,8 @@ describe('tool launch preparation', () => {
       piModelsPath: join(dir, 'pi', 'models.json'),
       piSettingsPath: join(dir, 'pi', 'settings.json'),
       openHandsEnvPath: join(dir, '.fcm-openhands-env'),
+      zcodeConfigPath: join(dir, 'zcode', 'config.json'),
+      zcodeModelCachePath: join(dir, 'zcode', 'bots-model-cache.v2.json'),
     }
   }
 
@@ -4347,19 +4349,20 @@ describe('tool launch preparation', () => {
       assert.equal(piModels.providers.nvidia.models[0].id, 'deepseek-ai/deepseek-v4-flash')
       assert.equal(piSettings.defaultModel, 'deepseek-ai/deepseek-v4-flash')
 
-      // 📖 ZCode is launch-only (desktop app with UI config). It must NOT write any
-      // 📖 config file, and the command on macOS is `open -a ZCode`. On non-mac
-      // 📖 platforms the launcher should be a safe no-op (command: 'true').
+      // 📖 ZCode writes provider + model configurations to its config.json and model cache.
       const zcodePlan = prepareExternalToolLaunch('zcode', model, config, { paths, inheritedEnv: { PATH: process.env.PATH || '' } })
       assert.equal(zcodePlan.meta.label, 'ZCode')
       assert.equal(zcodePlan.meta.emoji, '🧊')
-      assert.deepEqual(zcodePlan.configArtifacts, [], 'ZCode must not write any config artifact')
+      assert.deepEqual(zcodePlan.configArtifacts, [
+        { path: paths.zcodeConfigPath, backupPath: undefined, label: 'config' },
+        { path: paths.zcodeModelCachePath, backupPath: undefined, label: 'model cache' }
+      ])
       if (process.platform === 'darwin') {
         assert.equal(zcodePlan.command, 'open')
         assert.deepEqual(zcodePlan.args, ['-a', 'ZCode'])
       } else {
-        assert.equal(zcodePlan.command, 'true')
-        assert.deepEqual(zcodePlan.args, [])
+        assert.equal(zcodePlan.command, 'node')
+        assert.deepEqual(zcodePlan.args, ['-e', 'process.exit(0)'])
       }
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -4397,7 +4400,7 @@ describe('openclaw selected model persistence', () => {
 describe('endpoint install tracking', () => {
   it('exposes only persisted-config install targets in the Y install list', () => {
     const installTargets = getInstallTargetModes()
-    assert.deepEqual(installTargets, ['opencode', 'opencode-desktop', 'opencode-web', 'openclaw', 'crush', 'goose', 'pi', 'aider', 'qwen', 'openhands', 'amp', 'forgecode', 'fcm_router'])
+    assert.deepEqual(installTargets, ['opencode', 'opencode-desktop', 'opencode-web', 'openclaw', 'crush', 'goose', 'pi', 'aider', 'qwen', 'openhands', 'amp', 'forgecode', 'fcm_router', 'zcode'])
   })
 
   it('normalizes tracked installs to canonical shape', () => {

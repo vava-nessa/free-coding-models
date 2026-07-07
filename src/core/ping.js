@@ -80,6 +80,7 @@ export function markDisabledThinkingUnsupported(providerKey) {
 // 📖 shouldUseDisabledThinkingForProvider: central policy for OpenAI-compatible
 // 📖 probes, shared by regular pings and router health probes.
 export function shouldUseDisabledThinkingForProvider(providerKey) {
+  if (providerKey === 'cerebras' || providerKey === 'mistral' || providerKey === 'groq' || providerKey === 'sambanova') return false
   return !disabledThinkingUnsupportedProviders.has(providerKey)
 }
 
