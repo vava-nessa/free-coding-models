@@ -466,6 +466,84 @@ When a tool mode is active (via `Z`), models incompatible with that tool are hig
 
 ---
 
+## π Pi Extension — FCM-Pi
+
+**FCM-Pi** is a native [Pi coding agent](https://pi.dev) extension that integrates `free-coding-models` directly into your Pi session. It auto-selects the best free model on startup, shows a live animated scan in the Pi status bar, and lets you hot-swap models mid-session.
+
+> **Requires**: Pi coding agent (pi.dev) + free-coding-models installed and configured with at least one API key.
+
+### Installation
+
+Add the extension to your Pi settings (`~/.pi/agent/settings.json`):
+
+```json
+{
+  "packages": [
+    "../../Documents/GitHub/free-coding-models/pi-extension"
+  ]
+}
+```
+
+Or install directly from the Pi shell once published to npm:
+```bash
+pi install npm:fcm-pi
+```
+
+### What it does
+
+| Feature | Description |
+|---------|-------------|
+| **Auto-scan on startup** | On every Pi session start, FCM pings ~30 candidate models in parallel and selects the best one automatically |
+| **Animated progress scan** | While scanning, the Pi status bar shows a live magenta spinner with the model + provider being probed and a real-time % progress |
+| **Provider in status bar** | The active model is displayed as `GLM 4.7 (Cerebras) [FCM S+]` so you always know exactly what's running |
+| **10-minute disk cache** | Results are cached to `~/.pi/agent/fcm-cache.json` — subsequent session starts are instant |
+| **Auto-failover** | If a request fails (HTTP 4xx/5xx), FCM auto-triggers a fresh scan and switches to the next best model |
+| **Daemon integration** | If the FCM router daemon is running (`free-coding-models --daemon-bg`), scan results are fetched instantly from its cache |
+
+### Scan progress display
+
+During `/fcm` or on session start, the Pi footer status shows:
+
+```
+⠸ Probing: Kimi K2.6 [Nvidia], Step 3.5 Flash [Stepfun] — 47% (14/30)
+⠼ Benchmarking: GLM 4.7 [Cerebras] — 60% (3/5)
+```
+
+- **Spinner** — 10-frame Braille animation at 80ms
+- **Phase label** — `Probing` (ping phase) or `Benchmarking` (AI latency phase)
+- **Live model name + provider** — shows the last 2 models being probed, scrolling as results come in
+- **Progress %** and counter always visible
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/fcm` | Re-scan and pick a model interactively from the top 10 ranked |
+| `/fcm-list` | Display a ranked table of top 20 available models (SWE / Latency / TPS / Provider) |
+| `/fcm-router` | Connect Pi to the local FCM Smart Router daemon (auto-failover across providers) |
+| `/fcm-status` | Show diagnostics: active model, last scan source, daemon state |
+
+### Composite ranking
+
+Models are ranked using a composite score:
+
+| Weight | Metric | Description |
+|--------|--------|-------------|
+| **60%** | SWE-bench score | Coding capability |
+| **20%** | Latency | Network round-trip response time |
+| **10%** | TPS | Token throughput speed |
+| **10%** | Stability | Uptime + success rate |
+
+### Context window limits
+
+Cerebras free-tier API has a strict **8192 total token limit** (prompt + tools + completion). The FCM catalog reflects this accurately so Pi allocates the right budget and doesn't overflow the context silently.
+
+### Full documentation
+
+See [`pi-extension/README.md`](./pi-extension/README.md) for the complete architecture diagram, config format, and troubleshooting guide.
+
+---
+
 ## ⌨️ TUI Keys
 
 ### Keyboard
