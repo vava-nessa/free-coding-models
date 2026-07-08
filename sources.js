@@ -404,20 +404,10 @@ export const kilo = [
 // 📖 Free unauthenticated tier works with tight shared limits; optional free token at https://token.llm7.io
 // 📖 Pro-tagged models from /v1/models are intentionally excluded.
 export const llm7 = [
-  // ── S+ tier — SWE-bench Verified ≥70% ──
-  ['deepseek-v4-flash', 'DeepSeek V4 Flash', 'S+', '79.0%', '1M'],
-  ['kimi-k2.6', 'Kimi K2.6', 'S+', '80.2%', '240k'],
-  ['claude-opus-4-8', 'Claude Opus 4.8', 'S+', '88.6%', '1M'],
-  ['claude-sonnet-5', 'Claude Sonnet 5', 'S+', '-', '1M'],
-  ['claude-fable-5', 'Claude Fable 5', 'S+', '95.0%', '1M'],
-  ['gpt-5.5', 'GPT-5.5', 'S+', '88.7%', '1.05M'],
-  ['gpt-5.4', 'GPT-5.4', 'S+', '80.0%', '1.05M'],
-  ['glm-5.2', 'GLM 5.2', 'S+', '82.8%', '1M'],
-  // ── A tier — SWE-bench Verified 40–50% ──
+  // 📖 LLM7 live /v1/models: only `turbo` tier is free (noKeyNeeded). All `pro` models are usage-based paid.
+  // ── S tier — SWE-bench Verified 60–70% ──
   ['devstral-small-2:24b', 'Devstral Small 2', 'S', '68.0%', '255k'],
-  ['gpt-5.4-mini', 'GPT-5.4 mini', 'A', '-', '400k'],
-  ['minimax-m2.7', 'MiniMax M2.7', 'S+', '78.0%', '180k'],
-  // ── B+ tier — SWE-bench Verified 30–35% ──
+  // ── A tier — SWE-bench Verified 40–50% ──
   ['codestral-latest', 'Codestral Latest', 'A', '40.0%', '32k'],
 ]
 

@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "totalModels": 257,
+    "totalModels": 247,
     "lastFullAudit": "2026-07-08"
   },
   "nvidia": {
@@ -85,8 +85,8 @@
   },
   "llm7": {
     "lastAudited": "2026-07-08",
-    "modelCount": 12,
-    "fingerprint": "cea99f4304572742e80f464c980fa817"
+    "modelCount": 2,
+    "fingerprint": "68c5bb6f5af462edaefa684e4341a8e9"
   },
   "routeway": {
     "lastAudited": "2026-07-08",
