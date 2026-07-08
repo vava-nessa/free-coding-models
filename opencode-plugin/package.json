@@ -1,0 +1,19 @@
+{
+  "name": "fcm-opencode",
+  "version": "0.1.0",
+  "description": "OpenCode plugin for free-coding-models scans, routing, and provider injection.",
+  "type": "module",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "free-coding-models": "*"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

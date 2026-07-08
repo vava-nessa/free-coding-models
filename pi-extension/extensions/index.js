@@ -5,13 +5,14 @@
  * @details
  *   Integrates the free-coding-models catalog and latency measurements into
  *   the Pi coding agent (pi.dev) lifecycle. Uses session start hooks,
- *   TUI status displays, interactive selection menus, and custom slash commands.
- *   Programmatically switches active models at startup or on user select.
+ *   temporary TUI status displays, interactive selection menus, and custom slash commands.
+ *   Programmatically switches models only after an explicit user command/selection.
  */
 
 import { runFcmScan, handleModelSelection } from '../lib/scanner.js'
 import { formatModelLine } from '../lib/model-ranker.js'
 import { isDaemonRunning } from '../lib/daemon-client.js'
+import { isPiContextUsable } from '../lib/pi-model-config.js'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
@@ -30,7 +31,16 @@ function readCache() {
     const raw = readFileSync(CACHE_FILE, 'utf8')
     const cache = JSON.parse(raw)
     if (cache && typeof cache === 'object' && Date.now() - cache.timestamp < CACHE_TTL_MS) {
-      return cache.data
+      const data = cache.data
+      if (data && Array.isArray(data.ranked)) {
+        const ranked = data.ranked.filter(isPiContextUsable)
+        return {
+          ...data,
+          ranked,
+          bestModel: ranked[0] || null
+        }
+      }
+      return data
     }
   } catch (err) {
     // 📖 Catch file read/parse errors silently
@@ -56,109 +66,152 @@ function writeCache(data) {
 }
 
 /**
+ * 📖 Helper: Hide the FCM footer slot. FCM must stay silent unless a scan is
+ * 📖 actively running, so every command that probes models clears the status
+ * 📖 in a finally block.
+ *
+ * @param {object} ctx - Pi command or event context
+ */
+function clearFcmStatus(ctx) {
+  try {
+    ctx?.ui?.setStatus?.('fcm', undefined)
+  } catch (err) {
+    // 📖 UI cleanup should never break the agent lifecycle.
+  }
+}
+
+function normalizeProviderId(providerId) {
+  if (typeof providerId !== 'string') return ''
+  return providerId.startsWith('fcm-') ? providerId.slice('fcm-'.length) : providerId
+}
+
+function getActiveModelKey(ctx) {
+  const model = ctx?.model
+  if (!model || typeof model !== 'object') return null
+  const provider = model.provider || model.providerId || model.providerKey
+  const modelId = model.id || model.modelId
+  if (typeof provider === 'string' && typeof modelId === 'string') {
+    return `${provider}/${modelId}`
+  }
+  return null
+}
+
+function doesScanModelMatchKey(model, key) {
+  if (!model || typeof key !== 'string') return false
+  const slashIndex = key.indexOf('/')
+  if (slashIndex <= 0) return false
+  const provider = normalizeProviderId(key.slice(0, slashIndex))
+  const modelId = key.slice(slashIndex + 1)
+  return normalizeProviderId(model.providerKey) === provider && model.modelId === modelId
+}
+
+function isBuggedModel(model, buggedModelKeys) {
+  return [...buggedModelKeys].some((key) => doesScanModelMatchKey(model, key))
+}
+
+function formatSelectableModelLine(model, rank, buggedModelKeys) {
+  const line = formatModelLine(model, rank)
+  return isBuggedModel(model, buggedModelKeys) ? `🔴 BUGGED — ${line}` : line
+}
+
+function buildSelectionEntries(result, buggedModelKeys) {
+  const entries = result.ranked.slice(0, 10).map((model, index) => ({
+    label: formatSelectableModelLine(model, index + 1, buggedModelKeys),
+    model,
+  }))
+
+  const missingBugged = result.ranked.find((model) => {
+    return isBuggedModel(model, buggedModelKeys) && !entries.some((entry) => entry.model === model)
+  })
+  if (missingBugged) {
+    entries.push({
+      label: formatSelectableModelLine(missingBugged, entries.length + 1, buggedModelKeys),
+      model: missingBugged,
+    })
+  }
+
+  entries.push({ label: '── Skip (keep current model) ──', model: null })
+  return entries
+}
+
+async function showModelPicker(pi, ctx, result, buggedModelKeys, title = 'Pick a free coding model:') {
+  const entries = buildSelectionEntries(result, buggedModelKeys)
+  const choice = await ctx.ui.select(title, entries.map((entry) => entry.label))
+  const entry = entries.find((candidate) => candidate.label === choice)
+  if (!entry?.model) return
+
+  await handleModelSelection(entry.model, {
+    registerProvider: (config) => pi.registerProvider(config.id, config),
+    onNotify: (msg, type) => ctx.ui.notify(msg, type),
+    pi,
+    ctx
+  })
+
+  ctx.ui.notify(`✅ Switched to ${entry.model.label} (${entry.model.tier})`, 'info')
+  return entry.model
+}
+
+/**
  * 📖 Main factory function exported for the Pi extension loader.
  * 
  * @param {object} pi - Pi ExtensionAPI instance
  */
 export default async function fcmPiExtension(pi) {
-  // ─── Auto-failover / Error recovery logic ───────────────────────────────
+  // ─── Error-triggered explicit picker ─────────────────────────────────────
+  // 📖 FCM never switches models automatically. If the active provider fails,
+  // 📖 it re-opens the picker and marks the failed model in red so vava can
+  // 📖 choose another model herself.
   let lastRequestFailed = false
+  let lastFailedModelKey = null
+  let lastSelectedFcmModelKey = null
+  const buggedModelKeys = new Set()
 
-  pi.on('before_provider_request', () => {
+  pi.on('before_provider_request', (_event, ctx) => {
     lastRequestFailed = false
+    lastFailedModelKey = getActiveModelKey(ctx) || lastSelectedFcmModelKey
   })
 
   pi.on('after_provider_response', async (event, ctx) => {
     if (event.status >= 400) {
       lastRequestFailed = true
+      lastFailedModelKey = getActiveModelKey(ctx) || lastFailedModelKey
+      if (lastFailedModelKey) buggedModelKeys.add(lastFailedModelKey)
     }
   })
 
-  pi.on('agent_end', async (event, ctx) => {
-    if (lastRequestFailed) {
-      lastRequestFailed = false // Reset to avoid recursion/loops
-      
-      ctx.ui.notify('⚠️ Le modèle actif a renvoyé une erreur. Recherche d\'une alternative fonctionnelle...', 'warning')
-      ctx.ui.setStatus('fcm', '🔍 Scan de secours en cours...')
-      
-      try {
-        const result = await runFcmScan({
-          onStatus: (msg) => ctx.ui.setStatus('fcm', msg),
-          onNotify: (msg, type) => ctx.ui.notify(msg, type),
-          registerProvider: (config) => pi.registerProvider(config.id, config)
-        })
+  pi.on('agent_end', async (_event, ctx) => {
+    if (!lastRequestFailed) return
+    lastRequestFailed = false
+    if (lastFailedModelKey) buggedModelKeys.add(lastFailedModelKey)
 
-        if (result.bestModel) {
-          writeCache(result)
-          
-          await handleModelSelection(result.bestModel, {
-            registerProvider: (config) => pi.registerProvider(config.id, config),
-            onNotify: (msg, type) => ctx.ui.notify(msg, type),
-            pi,
-            ctx
-          })
-          
-          ctx.ui.notify(`🔄 FCM a basculé automatiquement sur ${result.bestModel.label} (${result.bestModel.tier})`, 'info')
-          showResult(ctx, result)
-        } else {
-          ctx.ui.notify('❌ Aucun modèle de secours disponible.', 'error')
-          ctx.ui.setStatus('fcm', '⚠️ Aucun modèle disponible')
-        }
-      } catch (err) {
-        ctx.ui.notify(`FCM auto-recovery error: ${err.message}`, 'error')
-        ctx.ui.setStatus('fcm', '❌ Auto-recovery failed')
+    try {
+      ctx.ui.notify('⚠️ Modèle en erreur. Je réouvre FCM pour choisir.', 'warning')
+      const result = await runFcmScan({
+        onStatus: (msg) => ctx.ui.setStatus('fcm', msg),
+        onNotify: (msg, type) => ctx.ui.notify(msg, type),
+        interactive: true,
+        registerProvider: (config) => pi.registerProvider(config.id, config)
+      })
+
+      if (!result.ranked.length) {
+        ctx.ui.notify('No usable free models found.', 'warning')
+        return
       }
+
+      writeCache(result)
+      const selected = await showModelPicker(pi, ctx, result, buggedModelKeys, 'Model failed 🔴 — pick a replacement:')
+      if (selected) lastSelectedFcmModelKey = `fcm-${selected.providerKey}/${selected.modelId}`
+    } catch (err) {
+      ctx.ui.notify(`FCM recovery menu error: ${err.message}`, 'error')
+    } finally {
+      clearFcmStatus(ctx)
     }
   })
 
   // ─── Startup Hook: session_start ──────────────────────────────────────────
   pi.on('session_start', async (_event, ctx) => {
-    // 📖 Check for a valid, fresh scan in cache to avoid delay
-    const cachedResult = readCache()
-    if (cachedResult && cachedResult.bestModel) {
-      // 📖 Apply cached provider config to runtime and select model
-      try {
-        await handleModelSelection(cachedResult.bestModel, {
-          registerProvider: (config) => pi.registerProvider(config.id, config),
-          onNotify: (msg, type) => ctx.ui.notify(msg, type),
-          pi,
-          ctx
-        })
-      } catch (err) {}
-      
-      setTimeout(() => showResult(ctx, cachedResult), 1500)
-      return
-    }
-
-    // 📖 Cache expired or missing -> run full scan
-    try {
-      const result = await runFcmScan({
-        onStatus: (msg) => ctx.ui.setStatus('fcm', msg),
-        onNotify: (msg, type) => ctx.ui.notify(msg, type),
-        registerProvider: (config) => pi.registerProvider(config.id, config)
-      })
-
-      if (result.bestModel) {
-        // 📖 Cache the results on disk
-        writeCache(result)
-
-        // 📖 Install, register, and programmatically switch to the best model
-        await handleModelSelection(result.bestModel, {
-          registerProvider: (config) => pi.registerProvider(config.id, config),
-          onNotify: (msg, type) => ctx.ui.notify(msg, type),
-          pi,
-          ctx
-        })
-
-        setTimeout(() => showResult(ctx, result), 1500)
-      } else {
-        ctx.ui.setStatus('fcm', '⚠️ No free models available')
-        ctx.ui.notify('No usable free models found. Run `free-coding-models` to configure API keys.', 'warn')
-      }
-    } catch (err) {
-      ctx.ui.setStatus('fcm', '❌ FCM scan failed')
-      ctx.ui.notify(`FCM scan error: ${err.message}`, 'error')
-    }
+    // 📖 Silent by default: no startup scan, no cached auto-selection, no footer.
+    clearFcmStatus(ctx)
   })
 
   // ─── Command: /fcm (Interactive Select) ──────────────────────────────────
@@ -174,37 +227,19 @@ export default async function fcmPiExtension(pi) {
         })
 
         if (!result.ranked.length) {
-          ctx.ui.notify('No usable free models found.', 'warn')
+          ctx.ui.notify('No usable free models found.', 'warning')
           return
         }
 
         // 📖 Cache results
         writeCache(result)
 
-        // 📖 Display top 10 models for user selection
-        const options = result.ranked.slice(0, 10).map((m, i) => formatModelLine(m, i + 1))
-        options.push('── Skip (keep current model) ──')
-
-        const choice = await ctx.ui.select('Pick a free coding model:', options)
-        if (choice && !choice.includes('Skip')) {
-          const idx = options.indexOf(choice)
-          if (idx >= 0 && idx < result.ranked.length) {
-            const selected = result.ranked[idx]
-            await handleModelSelection(selected, {
-              registerProvider: (config) => pi.registerProvider(config.id, config),
-              onNotify: (msg, type) => ctx.ui.notify(msg, type),
-              pi,
-              ctx
-            })
-            
-            ctx.ui.notify(`✅ Switched to ${selected.label} (${selected.tier})`, 'info')
-            
-            const latStr = selected.latencyMs ? `${selected.latencyMs}ms` : '?'
-            ctx.ui.setStatus('fcm', `✅ ${selected.label} (${selected.tier}) — ${latStr}`)
-          }
-        }
+        const selected = await showModelPicker(pi, ctx, result, buggedModelKeys)
+        if (selected) lastSelectedFcmModelKey = `fcm-${selected.providerKey}/${selected.modelId}`
       } catch (err) {
         ctx.ui.notify(`FCM execution error: ${err.message}`, 'error')
+      } finally {
+        clearFcmStatus(ctx)
       }
     }
   })
@@ -213,20 +248,25 @@ export default async function fcmPiExtension(pi) {
   pi.registerCommand('fcm-list', {
     description: 'List all available free coding models with latency and SWE scores',
     handler: async (args, ctx) => {
-      // 📖 Reuse cache if fresh, otherwise trigger a quick scan
+      // 📖 Reuse cache if fresh, otherwise trigger a quick scan.
+      // 📖 The footer indicator is shown only during the live scan window.
       let result = readCache()
       if (!result) {
-        result = await runFcmScan({
-          onStatus: (msg) => ctx.ui.setStatus('fcm', msg),
-          onNotify: (msg, type) => ctx.ui.notify(msg, type)
-        })
-        if (result && result.ranked.length) {
-          writeCache(result)
+        try {
+          result = await runFcmScan({
+            onStatus: (msg) => ctx.ui.setStatus('fcm', msg),
+            onNotify: (msg, type) => ctx.ui.notify(msg, type)
+          })
+          if (result && result.ranked.length) {
+            writeCache(result)
+          }
+        } finally {
+          clearFcmStatus(ctx)
         }
       }
 
       if (!result || !result.ranked.length) {
-        ctx.ui.notify('No models available.', 'warn')
+        ctx.ui.notify('No models available.', 'warning')
         return
       }
 
@@ -259,7 +299,7 @@ export default async function fcmPiExtension(pi) {
       const running = await isDaemonRunning()
       
       if (!running) {
-        ctx.ui.notify('FCM daemon is not running. Start it with: free-coding-models --daemon-bg', 'warn')
+        ctx.ui.notify('FCM daemon is not running. Start it with: free-coding-models --daemon-bg', 'warning')
         return
       }
 
@@ -284,16 +324,17 @@ export default async function fcmPiExtension(pi) {
         }]
       })
 
-      // 📖 Switch active model of running session to the router
+      // 📖 Switch active model of running session to the router.
+      // 📖 Pi expects a registry Model object, not a plain provider/model tuple.
       try {
-        await pi.setModel({
-          provider: 'fcm-router',
-          modelId: 'fcm'
-        })
+        const routerModel = ctx.modelRegistry?.find?.('fcm-router', 'fcm')
+        if (routerModel) {
+          await pi.setModel(routerModel)
+        }
       } catch (err) {}
 
       ctx.ui.notify('✅ Pi is now using FCM Smart Router with auto-failover!', 'info')
-      ctx.ui.setStatus('fcm', '🔄 FCM Router active')
+      clearFcmStatus(ctx)
     }
   })
 
@@ -325,19 +366,14 @@ export default async function fcmPiExtension(pi) {
 }
 
 /**
- * 📖 Helper: Display scan result summary in Pi status bar.
+ * 📖 Helper: Display a transient scan summary without occupying the Pi footer.
  * 
  * @param {object} ctx - Pi UIContext
  * @param {object} result - The scan results object
  */
 function showResult(ctx, result) {
   if (!result.bestModel) return
-  const m = result.bestModel
-  const latStr = m.latencyMs ? `${m.latencyMs}ms` : '?'
-  const tpsStr = m.tps ? `${Math.round(m.tps)} TPS` : ''
-  const parts = [`${m.label} (${m.tier})`, latStr, tpsStr].filter(Boolean).join(' — ')
-  
-  ctx.ui.setStatus('fcm', `✅ ${parts}`)
+  clearFcmStatus(ctx)
 
   const top3 = result.ranked.slice(0, 3)
   if (top3.length > 1) {

@@ -16,6 +16,13 @@ import { loadAllApiKeys } from './api-keys.js'
 import { parseSweScore } from './model-ranker.js'
 import chalk from 'chalk'
 
+// 📖 Brand logo colours — mirror the main FCM TUI header (dark theme palette)
+// 📖 so the scan status badge looks identical to the `> free-coding-models_`
+// 📖 header logo. Same green/white on black, bold.
+const HEADER_BG = [0, 0, 0]
+const HEADER_GREEN = [118, 185, 0]
+const HEADER_WHITE = [255, 255, 255]
+
 /**
  * @typedef {object} ScannedModel
  * @property {string} modelId
@@ -94,9 +101,10 @@ export async function directScan(options = {}) {
     if (!options.onProgress) return
     const spinner = chalk.bold.magenta(spinnerFrames[spinnerIndex])
     const actionStr = chalk.bold.yellow(`${currentAction}:`)
-    const targetStr = currentTargets.length > 0 
-      ? chalk.cyan(currentTargets.slice(-2).join(', ')) 
-      : chalk.gray('...')
+    // 📖 Brand badge — replace live model names with the `> free-coding-models`
+    // 📖 header logo, exact same green/white-on-black colours as the TUI header.
+    const hBold = (color, text) => chalk.rgb(...color).bgRgb(...HEADER_BG).bold(text)
+    const targetStr = `${hBold(HEADER_GREEN, '> ')}${hBold(HEADER_GREEN, 'free')}${hBold(HEADER_WHITE, '-coding-models')}`
     const pctStr = chalk.bold.cyan(`${pct}%`)
     const counterStr = chalk.gray(`(${completed}/${total})`)
     
@@ -214,9 +222,16 @@ export async function directScan(options = {}) {
       if (res.ok) {
         return {
           modelId,
+          ok: true,
           tps: res.tokensPerSecond || null,
           totalMs: res.totalMs || null
         }
+      }
+      return {
+        modelId,
+        ok: false,
+        code: res.code || 'ERR',
+        totalMs: res.totalMs || null
       }
     } catch (err) {
       // 📖 Catch benchmark errors gracefully
@@ -227,13 +242,14 @@ export async function directScan(options = {}) {
       currentTargets = currentTargets.filter(t => t !== targetDesc)
       updateProgress()
     }
-    return { modelId, tps: null, totalMs: null }
+    return { modelId, ok: false, code: 'ERR', totalMs: null }
   })
 
   const benchmarkResults = await Promise.allSettled(benchmarkPromises)
   clearInterval(intervalId)
 
   const benchMap = new Map()
+  const benchmarkedIds = new Set(benchmarkCandidates.map((model) => model.modelId))
 
   for (const res of benchmarkResults) {
     if (res.status === 'fulfilled') {
@@ -241,14 +257,26 @@ export async function directScan(options = {}) {
     }
   }
 
-  // 📖 Step 5: Merge benchmark stats back into the model objects
+  // 📖 Step 5: Merge benchmark stats back into the model objects. If a model
+  // 📖 was chosen for the real AI latency test and failed there, mark it down:
+  // 📖 a tiny ping is not enough for Pi if the actual completion endpoint fails.
   const finalModels = aliveModels.map(model => {
     const bench = benchMap.get(model.modelId)
-    if (bench) {
+    if (bench?.ok) {
       return {
         ...model,
         tps: bench.tps,
-        totalBenchMs: bench.totalMs
+        totalBenchMs: bench.totalMs,
+        benchmarkStatus: 'up'
+      }
+    }
+    if (benchmarkedIds.has(model.modelId)) {
+      return {
+        ...model,
+        status: 'down',
+        tps: null,
+        totalBenchMs: bench?.totalMs || null,
+        benchmarkStatus: bench?.code || 'ERR'
       }
     }
     return model

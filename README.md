@@ -468,7 +468,7 @@ When a tool mode is active (via `Z`), models incompatible with that tool are hig
 
 ## π Pi Extension — FCM-Pi ⚠️ BETA
 
-**FCM-Pi** is a native [Pi coding agent](https://pi.dev) extension that integrates `free-coding-models` directly into your Pi session. It auto-selects the best free model on startup, shows a live animated scan in the Pi status bar, and lets you hot-swap models mid-session.
+**FCM-Pi** is a native [Pi coding agent](https://pi.dev) extension that integrates `free-coding-models` directly into your Pi session. It stays silent by default, scans only when you run `/fcm`, and lets you explicitly hot-swap models mid-session.
 
 > **BETA** — The extension is under active development and not yet published to npm. Install via local path only.
 >
@@ -492,16 +492,16 @@ Then restart Pi. The extension loads automatically.
 
 | Feature | Description |
 |---------|-------------|
-| **Auto-scan on startup** | On every Pi session start, FCM pings ~30 candidate models in parallel and selects the best one automatically |
-| **Animated progress scan** | While scanning, the Pi status bar shows a live magenta spinner with the model + provider being probed and a real-time % progress |
-| **Provider in status bar** | The active model is displayed as `GLM 4.7 (Cerebras) [FCM S+]` so you always know exactly what's running |
-| **10-minute disk cache** | Results are cached to `~/.pi/agent/fcm-cache.json` — subsequent session starts are instant |
-| **Auto-failover** | If a request fails (HTTP 4xx/5xx), FCM auto-triggers a fresh scan and switches to the next best model |
+| **Silent startup** | No scan, no footer noise, and no automatic model switch on Pi boot or `/resume` |
+| **Manual scan** | `/fcm` pings ~30 candidate models in parallel and waits for your explicit selection |
+| **Temporary progress scan** | The Pi status bar shows live scan progress only while probing/benchmarking, then hides again |
+| **10-minute disk cache** | Results are cached to `~/.pi/agent/fcm-cache.json` for faster diagnostics and lists |
+| **Error-triggered picker** | If a request fails (HTTP 4xx/5xx), FCM reopens the picker and marks the failed model `🔴 BUGGED` |
 | **Daemon integration** | If the FCM router daemon is running (`free-coding-models --daemon-bg`), scan results are fetched instantly from its cache |
 
 ### Scan progress display
 
-During `/fcm` or on session start, the Pi footer status shows:
+During `/fcm`, the Pi footer status shows:
 
 ```
 ⠸ Probing: Kimi K2.6 [Nvidia], Step 3.5 Flash [Stepfun] — 47% (14/30)
@@ -519,7 +519,7 @@ During `/fcm` or on session start, the Pi footer status shows:
 |---------|-------------|
 | `/fcm` | Re-scan and pick a model interactively from the top 10 ranked |
 | `/fcm-list` | Display a ranked table of top 20 available models (SWE / Latency / TPS / Provider) |
-| `/fcm-router` | Connect Pi to the local FCM Smart Router daemon (auto-failover across providers) |
+| `/fcm-router` | Explicitly connect Pi to the local FCM Smart Router daemon |
 | `/fcm-status` | Show diagnostics: active model, last scan source, daemon state |
 
 ### Composite ranking
@@ -535,11 +535,40 @@ Models are ranked using a composite score:
 
 ### Context window limits
 
-Cerebras free-tier API has a strict **8192 total token limit** (prompt + tools + completion). The FCM catalog reflects this accurately so Pi allocates the right budget and doesn't overflow the context silently.
+Cerebras free-tier API has a strict **~8k total token limit** (prompt + tools + completion). Tiny-context models can pass a `hi` probe but fail real agent prompts, so FCM hides 8k Cerebras models from Pi/OpenCode pickers.
 
 ### Full documentation
 
 See [`pi-extension/README.md`](./pi-extension/README.md) for the complete architecture diagram, config format, and troubleshooting guide.
+
+---
+
+## OpenCode Plugin — fcm-opencode ⚠️ BETA
+
+`fcm-opencode` is the OpenCode adapter for the same FCM scanner/ranker used by FCM-Pi.
+
+### Local install
+
+```bash
+mkdir -p ~/.config/opencode/plugins
+ln -sf /Users/vava/Documents/GitHub/free-coding-models/opencode-plugin/index.js \
+  ~/.config/opencode/plugins/fcm-opencode.js
+```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/fcm` | Run an explicit scan and list ranked choices without switching |
+| `/fcm 1` | Switch OpenCode config to ranked model #1 |
+| `/fcm best` | Switch OpenCode config to the best ranked model |
+| `/fcm rescan` | Force a fresh scan |
+| `/fcm status` or `/fcm-status` | Show plugin diagnostics |
+| `/fcm router` or `/fcm-router` | Switch OpenCode config to the local FCM Smart Router daemon |
+
+Startup is intentionally light: fresh cache first, daemon second, **no direct scan** unless you run `/fcm`.
+
+See [`opencode-plugin/README.md`](./opencode-plugin/README.md) for details and limitations.
 
 ---
 

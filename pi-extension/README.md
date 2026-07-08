@@ -2,7 +2,7 @@
 
 > ⚠️ **BETA** — This extension is under active development. Install via local path only (see below). It is not yet published to npm.
 
-A native JavaScript extension for the **[Pi coding agent](https://pi.dev)** that wires **free-coding-models** directly into your Pi session. It pings ~30 candidate models in parallel, benchmarks the top 5, auto-selects the best one on startup, and displays a real-time animated progress scan in the Pi status bar.
+A native JavaScript extension for the **[Pi coding agent](https://pi.dev)** that wires **free-coding-models** directly into your Pi session. It stays silent by default, then `/fcm` pings ~30 candidate models in parallel, benchmarks the top 5, and lets you explicitly pick the model to use.
 
 ---
 
@@ -10,12 +10,13 @@ A native JavaScript extension for the **[Pi coding agent](https://pi.dev)** that
 
 | Feature | Description |
 |---------|-------------|
-| **Auto-scan on session start** | Pings ~30 models in parallel on every Pi boot. Selects and activates the best one before your first prompt |
-| **Animated status bar** | Live magenta Braille spinner with scrolling model + provider names and real-time % progress |
-| **Provider visible in Pi TUI** | Active model shown as `GLM 4.7 (Cerebras) [FCM S+]` — model, provider, tier, all at a glance |
+| **Silent by default** | No startup scan, no footer noise, and no automatic model switch on Pi boot or `/resume` |
+| **Manual scan with `/fcm`** | Pings ~30 models in parallel only when you ask, then waits for your explicit selection |
+| **Temporary animated status bar** | Live scan progress appears only while FCM is actively probing/benchmarking, then hides again |
 | **Smart composite ranking** | Scores models on SWE-bench (60%), latency (20%), TPS (10%), stability (10%) |
-| **10-minute disk cache** | Results cached to `~/.pi/agent/fcm-cache.json`. Subsequent session starts are instant (< 100ms) |
-| **Auto-failover on error** | When a request fails (4xx/5xx), FCM automatically re-scans and switches to the next best working model |
+| **10-minute disk cache** | Results cached to `~/.pi/agent/fcm-cache.json` for faster `/fcm-list` and repeated scans |
+| **Error-triggered picker** | When a request fails (4xx/5xx), FCM reopens the menu and marks the failed model with `🔴 BUGGED` instead of switching automatically |
+| **Pi context safety filter** | Tiny-context models such as 8k Cerebras probes can pass AI latency but still fail Pi; FCM hides them from the picker |
 | **Daemon integration** | If the FCM daemon is running (`free-coding-models --daemon-bg`), fetches pre-cached stats in < 1s instead of scanning |
 | **Interactive model picker** | `/fcm` re-scans live and presents an interactive selection of the top 10 models |
 
@@ -67,30 +68,26 @@ After editing `settings.json`, restart Pi. The extension loads automatically —
 
 ## 📊 Scan Progress Display
 
-While scanning during `/fcm` or session start, the Pi footer status bar shows a live animated readout:
+While scanning during `/fcm`, the Pi footer status bar shows a live animated readout:
 
 ```
-⠸ Probing: Kimi K2.6 [Nvidia], Step 3.5 Flash [Stepfun] — 47% (14/30)
-⠼ Benchmarking: GLM 4.7 [Cerebras] — 60% (3/5)
+⠸ Probing: > free-coding-models — 47% (14/30)
+⠼ Benchmarking: > free-coding-models — 60% (3/5)
 ```
 
 - **Magenta Braille spinner** — 10-frame animation at 80ms refresh rate
 - **Yellow phase label** — `Probing` during the ping phase, `Benchmarking` during the AI latency phase
-- **Cyan model + provider** — the last 2 actively probed models scroll in real time
+- **Brand badge** — the `> free-coding-models` header logo, in the exact same green/white-on-black colours as the main FCM TUI header (instead of scrolling live model names)
 - **Progress %** and `(completed/total)` counter always shown
 
-Once complete, the status bar settles on:
-
-```
-✅ GLM 4.7 (Cerebras) [FCM S+] — 340ms
-```
+Once complete, the status bar is cleared again. Results are shown in the picker, not kept permanently in the footer.
 
 ---
 
 ## 🏗️ Architecture & Scan Strategies
 
 ```
-               [Pi Session Starting]
+                 [User runs /fcm]
                          │
                          ▼
              Check: Is FCM Daemon active?
@@ -105,10 +102,10 @@ Once complete, the status bar settles on:
               \                    /
              Filter: status === 'up'
              Rank: Compute composite scores
-             Select: Write Pi config + switch session
+             Show picker, wait for user choice
                          │
                          ▼
-             [Pi Session Ready to Code!]
+             [Selected model is registered + switched]
 ```
 
 ### Daemon Mode (fast path)
@@ -122,7 +119,7 @@ If the daemon is not running, the extension:
 4. Pings all 30 in parallel (15s timeout each)
 5. Filters to models that returned HTTP 200
 6. Benchmarks top 5 by SWE score (measures real AI output latency + TPS)
-7. Ranks and selects the winner
+7. Ranks candidates and shows the picker; no model changes until the user selects one
 
 ---
 
@@ -161,26 +158,26 @@ If the daemon is not running, the extension:
 ## ⚠️ Provider-Specific Notes
 
 ### Cerebras
-Cerebras free-tier has a **strict 8192 total token limit** (prompt + tools + completion combined). The FCM catalog reflects this accurately — Pi allocates a smaller context budget when using Cerebras models, preventing silent overflow errors.
+Cerebras free-tier has a **strict ~8k total token limit** for its FCM-listed models (prompt + tools + completion combined). A tiny `hi` ping or AI latency benchmark can pass, while a real Pi agent request still fails because Pi includes system prompts and tool schemas. FCM therefore hides 8k Cerebras models from the Pi picker.
 
-Cerebras also enforces **5 RPM** on the free tier. FCM uses a single ping per model scan (no thinking parameters that trigger double-requests) to stay within quota.
+Cerebras also enforces **5 RPM** on the free tier. FCM uses small probes and disables Pi reasoning flags for FCM-managed OpenAI-compatible providers to avoid incompatible thinking controls.
 
 ### NVIDIA NIM
 NIM has ~40 RPM on the no-credit-card tier. The parallel ping scan may exhaust this temporarily on the first scan; subsequent scans use the cache.
 
 ---
 
-## 🔄 Auto-Failover
+## 🔄 Error-triggered picker
 
-When the active model returns an HTTP 4xx or 5xx error, FCM automatically:
+When the active model returns an HTTP 4xx or 5xx error, FCM:
 
-1. Detects the failure via the `agent_end` hook
-2. Notifies you with a banner: `⚠️ Le modèle actif a renvoyé une erreur. Recherche d'une alternative...`
-3. Triggers a fresh full scan
-4. Switches to the next best working model
-5. Shows a confirmation notification
+1. Detects the failure via provider response hooks.
+2. Marks the failed model as `🔴 BUGGED` in the next picker.
+3. Runs a fresh scan so the alternatives are current.
+4. Reopens the model picker.
+5. Waits for the user to explicitly select a replacement.
 
-This runs silently — you don't need to manually `/fcm` when a model goes down.
+FCM never switches models automatically after an error.
 
 ---
 

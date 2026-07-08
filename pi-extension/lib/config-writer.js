@@ -7,8 +7,8 @@
  *   - ~/.pi/agent/models.json (endpoints & credentials)
  *   - ~/.pi/agent/settings.json (defaults selection)
  *   - ~/.pi/agent/auth.json (credentials store for boot authentication)
- *   Overrides Pi's default providers directly (e.g. `nvidia`, `groq`)
- *   to ensure seamless integration and avoid "no-model" issues.
+ *   Writes FCM-managed providers under `fcm-*` namespaces so built-in Pi
+ *   providers stay untouched and stale scan winners can be cleaned safely.
  *   Cleans the base URL by stripping trailing completions paths to prevent 404s.
  *   Ensures all required model properties (like input: ['text']) are written
  *   to models.json and credentials are saved in auth.json so Pi doesn't reject
@@ -19,6 +19,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { homedir } from 'os'
+import { getPiMaxTokens, getPiReasoningFlag, parseContextWindow } from './pi-model-config.js'
 
 const PI_DIR = join(homedir(), '.pi', 'agent')
 const MODELS_FILE = join(PI_DIR, 'models.json')
@@ -90,7 +91,7 @@ export function installModel(model) {
   const settingsBackup = backupIfExists(SETTINGS_FILE)
   const authBackup = backupIfExists(AUTH_FILE)
 
-  const providerId = model.providerKey
+  const providerId = model.providerKey.startsWith('fcm-') ? model.providerKey : `fcm-${model.providerKey}`
 
   // 📖 Clean the base URL by stripping trailing chat/completions suffix
   let baseUrl = model.providerUrl || ''
@@ -100,14 +101,8 @@ export function installModel(model) {
     baseUrl = baseUrl.slice(0, -'/completions'.length)
   }
 
-  // 📖 Parse context window (e.g. '128k' -> 128000)
-  let contextWindow = 128000
-  if (model.ctxWindow) {
-    const val = parseInt(model.ctxWindow)
-    if (!isNaN(val)) {
-      contextWindow = model.ctxWindow.toLowerCase().endsWith('k') ? val * 1000 : val
-    }
-  }
+  const contextWindow = parseContextWindow(model.ctxWindow)
+  const maxTokens = getPiMaxTokens(contextWindow)
 
   // ── 1. Update ~/.pi/agent/models.json ────────────────────────────────────
   const modelsConfig = readJson(MODELS_FILE, { providers: {} })
@@ -117,15 +112,16 @@ export function installModel(model) {
 
   // 📖 Write the provider config with all details required by Pi's model schema
   modelsConfig.providers[providerId] = {
+    name: `FCM ${model.providerName || model.providerKey}`,
     baseUrl,
     api: 'openai-completions',
     apiKey: model.apiKey || '',
     models: [{
       id: model.modelId,
-      name: model.label,
+      name: `${model.label} (${model.providerName || model.providerKey}) [FCM ${model.tier || '?'}]`,
       contextWindow,
-      maxTokens: 8192,
-      reasoning: model.tier === 'S+' || model.tier === 'S',
+      maxTokens,
+      reasoning: getPiReasoningFlag(),
       input: ['text'], // 📖 Critical fix: ensures Pi recognizes the model as text-capable on startup
       cost: {
         input: 0,
@@ -167,11 +163,16 @@ export function installModel(model) {
     settingsConfig.enabledModels = []
   }
 
-  // 📖 Format is "providerId/modelId" in settings.json's enabledModels
+  // 📖 Format is "providerId/modelId" in settings.json's enabledModels.
+  // 📖 Keep only the currently managed FCM model for this provider so Pi never
+  // 📖 tries to restore stale scan winners that disappeared from models.json.
   const enabledKey = `${providerId}/${model.modelId}`
-  if (!settingsConfig.enabledModels.includes(enabledKey)) {
-    settingsConfig.enabledModels.push(enabledKey)
-  }
+  settingsConfig.enabledModels = settingsConfig.enabledModels.filter((entry) => {
+    return typeof entry === 'string' &&
+      !entry.startsWith(`${providerId}/`) &&
+      entry !== `${model.providerKey}/${model.modelId}`
+  })
+  settingsConfig.enabledModels.push(enabledKey)
 
   writeJson(SETTINGS_FILE, settingsConfig)
 

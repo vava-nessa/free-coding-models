@@ -12,6 +12,7 @@ import { queryDaemon } from './daemon-client.js'
 import { directScan } from './direct-scanner.js'
 import { rankModels } from './model-ranker.js'
 import { installModel } from './config-writer.js'
+import { getPiMaxTokens, getPiReasoningFlag, isPiContextUsable, parseContextWindow } from './pi-model-config.js'
 import { sources } from 'free-coding-models/sources.js'
 import { getKeyForProvider } from './api-keys.js'
 
@@ -21,67 +22,89 @@ import { getKeyForProvider } from './api-keys.js'
  * 📖 Tries to use the daemon for speed (~1s), then falls back to direct scan.
  * 
  * @param {object} options - Progress & notification hooks
+ * @param {'auto'|'daemon'|'direct'} [options.mode='auto'] - Scan strategy. OpenCode uses `daemon` at startup so direct probes never block boot.
  * @param {function} options.onStatus - UI status updater
  * @param {function} [options.onNotify] - Transient notification helper
  * @returns {Promise<object>} `{ ranked: Array, bestModel: object|null, source: string }`
  */
 export async function runFcmScan(options = {}) {
-  options.onStatus('🔍 Checking FCM daemon...')
+  const mode = options.mode || 'auto'
+  const onStatus = typeof options.onStatus === 'function' ? options.onStatus : () => {}
 
-  try {
-    const daemonData = await queryDaemon()
-    if (daemonData && Array.isArray(daemonData.models)) {
-      options.onStatus('📡 Mapping daemon models...')
-      
-      const mapped = daemonData.models.map(m => {
-        const providerKey = m.providerKey
-        const sourceUrl = sources[providerKey]?.url || ''
-        const apiKey = getKeyForProvider(providerKey)
+  if (mode !== 'direct') {
+    onStatus('🔍 Checking FCM daemon...')
 
-        // 📖 Map daemon status values ('up', 'down', 'pending')
-        let status = m.status
-        if (status === 'pending') status = 'down'
+    try {
+      const daemonData = await queryDaemon()
+      if (daemonData && Array.isArray(daemonData.models)) {
+        onStatus('📡 Mapping daemon models...')
+        
+        const mapped = daemonData.models.map(m => {
+          const providerKey = m.providerKey
+          const sourceUrl = sources[providerKey]?.url || ''
+          const apiKey = getKeyForProvider(providerKey)
 
+          // 📖 Map daemon status values ('up', 'down', 'pending')
+          let status = m.status
+          if (status === 'pending') status = 'down'
+
+          return {
+            modelId: m.modelId,
+            label: m.label,
+            tier: m.tier,
+            sweScore: m.sweScore,
+            ctxWindow: m.ctx,
+            providerKey,
+            providerName: m.origin || providerKey,
+            providerUrl: sourceUrl,
+            apiKey,
+            status,
+            latencyMs: typeof m.avg === 'number' ? m.avg : null,
+            tps: m.benchmark?.tokensPerSecond || null,
+            totalBenchMs: m.benchmark?.totalMs || null,
+            stabilityScore: typeof m.stability === 'number' ? Math.round(m.stability * 100) : 100,
+            hasKey: m.hasApiKey
+          }
+        })
+
+        const ranked = rankModels(mapped.filter(isPiContextUsable))
         return {
-          modelId: m.modelId,
-          label: m.label,
-          tier: m.tier,
-          sweScore: m.sweScore,
-          ctxWindow: m.ctx,
-          providerKey,
-          providerName: m.origin || providerKey,
-          providerUrl: sourceUrl,
-          apiKey,
-          status,
-          latencyMs: typeof m.avg === 'number' ? m.avg : null,
-          tps: m.benchmark?.tokensPerSecond || null,
-          totalBenchMs: m.benchmark?.totalMs || null,
-          stabilityScore: typeof m.stability === 'number' ? Math.round(m.stability * 100) : 100,
-          hasKey: m.hasApiKey
+          ranked,
+          bestModel: ranked[0] || null,
+          source: 'daemon'
         }
-      })
-
-      const ranked = rankModels(mapped)
-      return {
-        ranked,
-        bestModel: ranked[0] || null,
-        source: 'daemon'
+      }
+    } catch (err) {
+      if (options.onNotify) {
+        options.onNotify(`Daemon query failed: ${err.message}`, 'warning')
+      }
+      if (mode === 'daemon') {
+        return {
+          ranked: [],
+          bestModel: null,
+          source: 'daemon',
+          error: err.message
+        }
       }
     }
-  } catch (err) {
-    if (options.onNotify) {
-      options.onNotify(`Daemon query failed: ${err.message}`, 'warn')
+  }
+
+  if (mode === 'daemon') {
+    return {
+      ranked: [],
+      bestModel: null,
+      source: 'daemon'
     }
   }
 
   // ── Direct Scan Fallback ───────────────────────────────────────────────────
-  options.onStatus('🔌 Direct scan starting...')
+  onStatus('🔌 Direct scan starting...')
   
   const results = await directScan({
-    onProgress: (msg) => options.onStatus(msg)
+    onProgress: (msg) => onStatus(msg)
   })
 
-  const ranked = rankModels(results)
+  const ranked = rankModels(results.filter(isPiContextUsable))
   return {
     ranked,
     bestModel: ranked[0] || null,
@@ -103,9 +126,9 @@ export async function runFcmScan(options = {}) {
  * @returns {Promise<object>} Config installation result
  */
 export async function handleModelSelection(model, options = {}) {
-  const result = installModel(model)
+  const result = options.persist === false ? { skipped: true } : installModel(model)
 
-  const providerId = model.providerKey
+  const providerId = model.providerKey.startsWith('fcm-') ? model.providerKey : `fcm-${model.providerKey}`
 
   // 📖 Clean the base URL by stripping trailing completions path
   let baseUrl = model.providerUrl || ''
@@ -115,29 +138,23 @@ export async function handleModelSelection(model, options = {}) {
     baseUrl = baseUrl.slice(0, -'/completions'.length)
   }
 
-  // 📖 Parse context window (e.g. '128k' -> 128000)
-  let contextWindow = 128000
-  if (model.ctxWindow) {
-    const val = parseInt(model.ctxWindow)
-    if (!isNaN(val)) {
-      contextWindow = model.ctxWindow.toLowerCase().endsWith('k') ? val * 1000 : val
-    }
-  }
+  const contextWindow = parseContextWindow(model.ctxWindow)
+  const maxTokens = getPiMaxTokens(contextWindow)
 
   // ── 1. Register the provider in Pi runtime if not already present
   if (typeof options.registerProvider === 'function') {
     options.registerProvider({
       id: providerId,
-      name: `FCM ${model.providerName}`,
+      name: `FCM ${model.providerName || model.providerKey}`,
       baseUrl,
       apiKey: model.apiKey || '',
       api: 'openai-completions',
       models: [{
         id: model.modelId,
-        name: `${model.label} (${model.providerName}) [FCM ${model.tier}]`,
+        name: `${model.label} (${model.providerName || model.providerKey}) [FCM ${model.tier}]`,
         contextWindow,
-        maxTokens: 8192,
-        reasoning: model.tier === 'S+' || model.tier === 'S',
+        maxTokens,
+        reasoning: getPiReasoningFlag(),
         input: ['text'], // 📖 Critical fix: prevents Pi from throwing "Cannot read properties of undefined (reading 'includes')"
         cost: {
           input: 0,
@@ -159,11 +176,11 @@ export async function handleModelSelection(model, options = {}) {
         if (piModel) {
           const success = await options.pi.setModel(piModel)
           if (!success && typeof options.onNotify === 'function') {
-            options.onNotify(`Failed to switch active session model to ${model.label}`, 'warn')
+            options.onNotify(`Failed to switch active session model to ${model.label}`, 'warning')
           }
         } else {
           if (typeof options.onNotify === 'function') {
-            options.onNotify(`Model ${model.modelId} not found in Pi registry`, 'warn')
+            options.onNotify(`Model ${model.modelId} not found in Pi registry`, 'warning')
           }
         }
       }
