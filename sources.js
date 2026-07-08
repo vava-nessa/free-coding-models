@@ -41,40 +41,44 @@
 // 📖 NIM source - https://build.nvidia.com
 export const nvidiaNim = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
-  ['minimaxai/minimax-m2.7',                       'MiniMax M2.7',        'S+', '80.2%', '200k'],
-  ['z-ai/glm-5.1',                                 'GLM 5.1',             'S+', '77.8%', '128k'],
-  ['moonshotai/kimi-k2.6',                         'Kimi K2.6',           'S+', '76.8%', '256k'],
-  ['deepseek-ai/deepseek-v4-pro',                  'DeepSeek V4 Pro',     'S+', '73.1%', '1M'],
-  ['deepseek-ai/deepseek-v4-flash',                'DeepSeek V4 Flash',   'S+', '72.0%', '1M'],
-  ['stepfun-ai/step-3.5-flash',                    'Step 3.5 Flash',      'S+', '74.4%', '256k'],
-  ['stepfun-ai/step-3.7-flash',                    'Step 3.7 Flash',      'S+', '74.4%', '256k'],
+  ['minimaxai/minimax-m2.7', 'MiniMax M2.7', 'S+', '80.2%', '200k'],
+  ['z-ai/glm-5.2', 'GLM 5.1', 'S+', '77.8%', '128k'],
+  ['moonshotai/kimi-k2.6', 'Kimi K2.6', 'S+', '76.8%', '262k'],
+  ['deepseek-ai/deepseek-v4-pro', 'DeepSeek V4 Pro', 'S+', '73.1%', '1M'],
+  ['deepseek-ai/deepseek-v4-flash', 'DeepSeek V4 Flash', 'S+', '72.0%', '1M'],
+  ['stepfun-ai/step-3.7-flash', 'Step 3.7 Flash', 'S+', '74.4%', '256k'],
   ['nvidia/nemotron-3-ultra-550b-a55b', 'Nemotron 3 Ultra', 'S+', '-', '1M'],
   // ── S tier — SWE-bench Verified 60–70% ──
-  ['qwen/qwen3-next-80b-a3b-instruct',             'Qwen3 80B Instruct',  'S',  '65.0%', '128k'],
-  ['qwen/qwen3.5-397b-a17b',                       'Qwen3.5 400B VLM',    'S',  '68.0%', '128k'],
-  ['openai/gpt-oss-120b',                          'GPT OSS 120B',        'S',  '60.0%', '128k'],
-  ['meta/llama-4-maverick-17b-128e-instruct',      'Llama 4 Maverick',    'S',  '62.0%', '1M'],
-  ['mistralai/mistral-medium-3.5-128b',             'Mistral Medium 3.5',  'S',  '66.0%', '128k'],
-  ['mistralai/mistral-small-4-119b-2603',           'Mistral Small 4',     'S',  '60.0%', '256k'],
-  ['qwen/qwen3.5-122b-a10b',                       'Qwen3.5 122B',        'S',  '64.0%', '128k'],
-  ['minimaxai/minimax-m3',                         'MiniMax M3',          'S',  '59.0%', '1M'],
+  ['openai/gpt-oss-120b', 'GPT OSS 120B', 'S', '60.0%', '128k'],
+  ['meta/llama-4-maverick-17b-128e-instruct', 'Llama 4 Maverick', 'S', '62.0%', '1M'],
+  ['mistralai/mistral-medium-3.5-128b', 'Mistral Medium 3.5', 'S', '66.0%', '128k'],
+  ['mistralai/mistral-small-4-119b-2603', 'Mistral Small 4', 'S', '60.0%', '256k'],
+  ['minimaxai/minimax-m3', 'MiniMax M3', 'S', '59.0%', '1M'],
+  ['qwen/qwen3-coder-480b-a35b-instruct', 'Qwen3 Coder 480B', 'S', '-', '262k'],
+  ['nvidia/mistral-nemotron', 'Mistral Nemotron', 'S', '-', '-'],
+  ['deepseek-ai/deepseek-v3.2', 'DeepSeek V3.2', 'S', '-', '160k'],
   // ── A+ tier — SWE-bench Verified 50–60% ──
-  ['mistralai/mistral-large-3-675b-instruct-2512', 'Mistral Large 675B',  'A+', '58.0%', '256k'],
-  ['nvidia/nemotron-3-super-120b-a12b',             'Nemotron 3 Super',    'A+', '56.0%', '128k'],
-  ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning','Nemotron 3 Omni',     'A+', '52.0%', '128k'],
+  ['mistralai/mistral-large-3-675b-instruct-2512', 'Mistral Large 675B', 'A+', '58.0%', '256k'],
+  ['nvidia/nemotron-3-super-120b-a12b', 'Nemotron 3 Super', 'A+', '56.0%', '128k'],
+  ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', 'Nemotron 3 Omni', 'A+', '52.0%', '128k'],
+  ['meta-llama/llama-4-scout-17b-16e-instruct', 'Llama 4 Scout', 'A+', '-', '10M'],
+  ['nvidia/llama-3.3-nemotron-super-49b-v1.5', 'Llama 3.3 Nemotron Super 49B v1.5', 'A+', '-', '128k'],
   // ── A tier — SWE-bench Verified 40–50% ──
-  ['nvidia/nemotron-3-nano-30b-a3b',               'Nemotron Nano 30B',   'A',  '43.0%', '128k'],
-  ['openai/gpt-oss-20b',                           'GPT OSS 20B',         'A',  '42.0%', '128k'],
-  ['google/gemma-4-31b-it',                         'Gemma 4 31B',         'A',  '45.0%', '256k'],
+  ['nvidia/nemotron-3-nano-30b-a3b', 'Nemotron Nano 30B', 'A', '43.0%', '1M'],
+  ['openai/gpt-oss-20b', 'GPT OSS 20B', 'A', '42.0%', '128k'],
+  ['google/gemma-4-31b-it', 'Gemma 4 31B', 'A', '45.0%', '256k'],
+  ['qwen/qwen2.5-coder-32b-instruct', 'Qwen2.5 Coder 32B', 'A', '-', '128k'],
+  ['mistralai/magistral-small-2506', 'Magistral Small 2506', 'A', '-', '128k'],
+  ['nvidia/nemotron-3-nano', 'Nemotron 3 Nano', 'A', '-', '256k'],
   // ── A- tier — SWE-bench Verified 35–40% ──
-  ['bytedance/seed-oss-36b-instruct',              'Seed OSS 36B',        'A-', '38.0%', '32k'],
-  ['stockmark/stockmark-2-100b-instruct',          'Stockmark 100B',      'A-', '36.0%', '32k'],
+  ['bytedance/seed-oss-36b-instruct', 'Seed OSS 36B', 'A-', '38.0%', '32k'],
+  ['stockmark/stockmark-2-100b-instruct', 'Stockmark 100B', 'A-', '36.0%', '32k'],
   // ── B+ tier — SWE-bench Verified 30–35% ──
-  ['mistralai/ministral-14b-instruct-2512',        'Ministral 14B',       'B+', '34.0%', '32k'],
+  ['mistralai/ministral-14b-instruct-2512', 'Ministral 14B', 'B+', '34.0%', '32k'],
   // ── B tier — SWE-bench Verified 20–30% ──
-  ['meta/llama-3.2-11b-vision-instruct',           'Llama 3.2 11B Vision','B',  '28.0%', '128k'],
-  // ── C tier — SWE-bench Verified <20% or lightweight edge models ──
-  ['microsoft/phi-4-mini-instruct',                'Phi 4 Mini',          'C',  '14.0%', '128k'],
+  ['meta/llama-3.2-11b-vision-instruct', 'Llama 3.2 11B Vision', 'B', '28.0%', '128k'],
+  // ── C tier — lightweight/edge models ──
+  ['microsoft/phi-4-mini-instruct', 'Phi 4 Mini', 'C', '14.0%', '128k'],
 ]
 
 // 📖 Groq source - https://console.groq.com
@@ -94,8 +98,12 @@ export const groq = [
 // 📖 Cerebras source - https://cloud.cerebras.ai
 // 📖 Free API keys available at https://cloud.cerebras.ai
 export const cerebras = [
-  ['gpt-oss-120b',                         'GPT OSS 120B',       'S',  '60.0%', '8k'],
-  ['zai-glm-4.7',                          'GLM 4.7',            'S+', '73.8%', '8k'],
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['zai-glm-4.7', 'GLM 4.7', 'S+', '73.8%', '128k'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['gpt-oss-120b', 'GPT OSS 120B', 'S', '60.0%', '128k'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['gemma-4-31b', 'Gemma 4 31B', 'A', '-', '128k'],
 ]
 
 // 📖 SambaNova source - https://cloud.sambanova.ai
@@ -126,82 +134,138 @@ export const sambanova = [
 // 📖 • Free-tier popular models may be additionally rate-limited by the provider itself during peak hours.
 // 📖 API keys at https://openrouter.ai/keys
 export const openrouter = [
-  // ── S+ tier — confirmed :free on openrouter.ai/collections/free-models ──
-  ['nvidia/nemotron-3-ultra-550b-a55b:free',    'Nemotron 3 Ultra',   'S+', '-',     '1M'],
-  ['poolside/laguna-m.1:free',                  'Poolside Laguna M.1', 'S+', '-',     '262k'],
-  ['poolside/laguna-xs.2:free',                 'Poolside Laguna XS.2','S+', '-',     '262k'],
-  // ── S tier ──
-  ['openai/gpt-oss-120b:free',                  'GPT OSS 120B',       'S',  '60.0%', '131k'],
-  ['cohere/north-mini-code:free',               'North Mini Code',    'S',  '-',     '256k'],
-  // ── A+ tier ──
-  ['nvidia/nemotron-3-super-120b-a12b:free',    'Nemotron 3 Super',   'A+', '56.0%', '1M'],
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['nvidia/nemotron-3-ultra-550b-a55b:free', 'Nemotron 3 Ultra', 'S+', '-', '1M'],
+  ['poolside/laguna-m.1:free', 'Poolside Laguna M.1', 'S+', '-', '262k'],
+  ['poolside/laguna-xs.2:free', 'Poolside Laguna XS.2', 'S+', '-', '262k'],
+  ['poolside/laguna-xs-2.1:free', 'Poolside Laguna XS 2.1', 'S+', '-', '262k'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['openai/gpt-oss-120b:free', 'GPT OSS 120B', 'S', '60.0%', '131k'],
+  ['cohere/north-mini-code:free', 'North Mini Code', 'S', '-', '256k'],
+  ['tencent/hy3:free', 'Tencent Hy3', 'S', '-', '262k'],
+  ['qwen/qwen3-coder:free', 'Qwen3 Coder', 'S', '-', '1M'],
+  // ── A+ tier — SWE-bench Verified 50–60% ──
+  ['nvidia/nemotron-3-super-120b-a12b:free', 'Nemotron 3 Super', 'A+', '56.0%', '1M'],
   ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', 'Nemotron 3 Omni', 'A+', '52.0%', '256k'],
-  ['openrouter/owl-alpha',                      'Owl Alpha',          'A+', '-',     '1M'],
-  // ── A tier ──
-  ['openai/gpt-oss-20b:free',                   'GPT OSS 20B',        'A',  '42.0%', '131k'],
-  ['nvidia/nemotron-nano-30b-a3b:free',         'Nemotron Nano 30B',  'A',  '43.0%', '256k'],
-  ['nvidia/nemotron-nano-12b-v2-vl:free',       'Nemotron Nano 12B VL','A', '20.0%', '128k'],
-  ['google/gemma-4-31b-it:free',                'Gemma 4 31B',        'A',  '45.0%', '262k'],
-  ['google/gemma-4-26b-a4b-it:free',            'Gemma 4 26B MoE',    'A',  '38.0%', '262k'],
-  // ── B+ tier ──
-  ['nvidia/nemotron-nano-9b-v2:free',           'Nemotron Nano 9B',   'B+', '18.0%', '128k'],
-  // ── B tier ──
-  ['openrouter/free',                           'OpenRouter Free',    'B',  '-',     '200k'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['openai/gpt-oss-20b:free', 'GPT OSS 20B', 'A', '42.0%', '131k'],
+  ['nvidia/nemotron-3-nano-30b-a3b:free', 'Nemotron Nano 30B', 'A', '43.0%', '256k'],
+  ['nvidia/nemotron-nano-12b-v2-vl:free', 'Nemotron Nano 12B VL', 'A', '20.0%', '128k'],
+  ['google/gemma-4-31b-it:free', 'Gemma 4 31B', 'A', '45.0%', '262k'],
+  ['google/gemma-4-26b-a4b-it:free', 'Gemma 4 26B MoE', 'A', '38.0%', '262k'],
+  ['meta-llama/llama-3.3-70b-instruct:free', 'Llama 3.3 70B Instruct', 'A', '-', '131k'],
+  ['nousresearch/hermes-3-llama-3.1-405b:free', 'Hermes 3 Llama 3.1 405B', 'A', '-', '131k'],
+  ['qwen/qwen3-next-80b-a3b-instruct:free', 'Qwen3 Next 80B A3B', 'A', '-', '262k'],
+  // ── B+ tier — SWE-bench Verified 30–35% ──
+  ['nvidia/nemotron-nano-9b-v2:free', 'Nemotron Nano 9B', 'B+', '18.0%', '128k'],
+  // ── B tier — SWE-bench Verified 20–30% ──
+  ['openrouter/free', 'OpenRouter Free', 'B', '-', '200k'],
+  ['meta-llama/llama-3.2-3b-instruct:free', 'Llama 3.2 3B Instruct', 'B', '-', '131k'],
+  ['cognitivecomputations/dolphin-mistral-24b-venice-edition:free', 'Dolphin Mistral 24B Venice', 'B', '-', '32k'],
+  // ── C tier — lightweight/edge models ──
+  ['nvidia/nemotron-3.5-content-safety:free', 'Nemotron 3.5 Content Safety', 'C', '-', '128k'],
+  ['liquid/lfm-2.5-1.2b-instruct:free', 'LFM 2.5 1.2B Instruct', 'C', '-', '32k'],
+  ['liquid/lfm-2.5-1.2b-thinking:free', 'LFM 2.5 1.2B Thinking', 'C', '-', '32k'],
 ]
 
 // 📖 GitHub Models source - https://models.github.ai
 // 📖 OpenAI-compatible endpoint: https://models.github.ai/inference/chat/completions
 // 📖 Free usage is quota-limited by GitHub/Copilot tier, but no separate provider billing is needed.
 export const githubModels = [
-  ['openai/gpt-4.1',                              'GPT-4.1',             'S+', '-',     '1M'],
-  ['openai/gpt-4.1-mini',                         'GPT-4.1 Mini',        'S',  '-',     '1M'],
-  ['openai/gpt-4.1-nano',                         'GPT-4.1 Nano',        'A',  '-',     '1M'],
-  ['deepseek/deepseek-v3-0324',                   'DeepSeek V3 0324',    'S',  '62.0%', '128k'],
-  ['meta/meta-llama-3.1-405b-instruct',           'Llama 3.1 405B',      'A',  '44.0%', '128k'],
-  ['meta/llama-4-maverick-17b-128e-instruct-fp8', 'Llama 4 Maverick',    'S',  '62.0%', '1M'],
-  ['meta/llama-4-scout-17b-16e-instruct',         'Llama 4 Scout',       'A',  '44.0%', '1M'],
-  ['meta/llama-3.3-70b-instruct',                 'Llama 3.3 70B',       'A-', '39.5%', '128k'],
-  ['meta/llama-3.2-90b-vision-instruct',          'Llama 3.2 90B Vision','A-', '-',     '128k'],
-  ['meta/llama-3.2-11b-vision-instruct',          'Llama 3.2 11B Vision','B',  '-',     '128k'],
-  ['meta/meta-llama-3.1-8b-instruct',             'Llama 3.1 8B',        'B',  '28.8%', '128k'],
-  ['mistral-ai/codestral-2501',                   'Codestral 2501',      'B+', '34.0%', '256k'],
-  ['mistral-ai/mistral-medium-2505',              'Mistral Medium 2505', 'A',  '48.0%', '128k'],
-  ['mistral-ai/mistral-small-2503',               'Mistral Small 2503',  'B+', '30.0%', '128k'],
-  ['mistral-ai/ministral-3b',                     'Ministral 3B',        'C',  '-',     '128k'],
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['openai/gpt-4.1', 'GPT-4.1', 'S+', '-', '1M'],
+  ['openai/gpt-5', 'GPT-5', 'S+', '-', '200k'],
+  ['openai/gpt-5-chat', 'GPT-5 Chat (preview)', 'S+', '-', '200k'],
+  ['openai/o3', 'OpenAI o3', 'S+', '-', '200k'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['openai/gpt-4.1-mini', 'GPT-4.1 Mini', 'S', '-', '1M'],
+  ['deepseek/deepseek-v3-0324', 'DeepSeek V3 0324', 'S', '62.0%', '128k'],
+  ['meta/llama-4-maverick-17b-128e-instruct-fp8', 'Llama 4 Maverick', 'S', '62.0%', '1M'],
+  ['openai/gpt-5-mini', 'GPT-5 Mini', 'S', '-', '200k'],
+  ['openai/gpt-4o', 'GPT-4o', 'S', '-', '128k'],
+  ['openai/o4-mini', 'OpenAI o4-mini', 'S', '-', '200k'],
+  ['openai/o1', 'OpenAI o1', 'S', '-', '200k'],
+  ['deepseek/deepseek-r1', 'DeepSeek-R1', 'S', '-', '128k'],
+  ['deepseek/deepseek-r1-0528', 'DeepSeek-R1-0528', 'S', '-', '128k'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['openai/gpt-4.1-nano', 'GPT-4.1 Nano', 'A', '-', '1M'],
+  ['meta/meta-llama-3.1-405b-instruct', 'Llama 3.1 405B', 'A', '44.0%', '128k'],
+  ['meta/llama-4-scout-17b-16e-instruct', 'Llama 4 Scout', 'A', '44.0%', '10M'],
+  ['mistral-ai/mistral-medium-2505', 'Mistral Medium 2505', 'A', '48.0%', '128k'],
+  ['openai/gpt-5-nano', 'GPT-5 Nano', 'A', '-', '200k'],
+  ['openai/gpt-4o-mini', 'GPT-4o Mini', 'A', '-', '128k'],
+  ['openai/o3-mini', 'OpenAI o3-mini', 'A', '-', '200k'],
+  ['openai/o1-preview', 'OpenAI o1-preview', 'A', '-', '128k'],
+  // ── A- tier — SWE-bench Verified 35–40% ──
+  ['meta/llama-3.3-70b-instruct', 'Llama 3.3 70B', 'A-', '39.5%', '128k'],
+  ['meta/llama-3.2-90b-vision-instruct', 'Llama 3.2 90B Vision', 'A-', '-', '128k'],
+  ['cohere/cohere-command-a', 'Cohere Command A', 'A-', '-', '128k'],
+  // ── B+ tier — SWE-bench Verified 30–35% ──
+  ['mistral-ai/codestral-2501', 'Codestral 2501', 'B+', '34.0%', '256k'],
+  ['mistral-ai/mistral-small-2503', 'Mistral Small 2503', 'B+', '30.0%', '128k'],
+  ['openai/o1-mini', 'OpenAI o1-mini', 'B+', '-', '128k'],
+  ['microsoft/phi-4', 'Phi-4', 'B+', '-', '16k'],
+  ['microsoft/phi-4-reasoning', 'Phi-4-reasoning', 'B+', '-', '32k'],
+  // ── B tier — SWE-bench Verified 20–30% ──
+  ['meta/llama-3.2-11b-vision-instruct', 'Llama 3.2 11B Vision', 'B', '-', '128k'],
+  ['meta/meta-llama-3.1-8b-instruct', 'Llama 3.1 8B', 'B', '28.8%', '128k'],
+  ['microsoft/phi-4-mini-instruct', 'Phi-4-mini-instruct', 'B', '-', '128k'],
+  ['microsoft/phi-4-mini-reasoning', 'Phi-4-mini-reasoning', 'B', '-', '128k'],
+  ['microsoft/phi-4-multimodal-instruct', 'Phi-4-multimodal-instruct', 'B', '-', '128k'],
+  // ── C tier — lightweight/edge models ──
+  ['mistral-ai/ministral-3b', 'Ministral 3B', 'C', '-', '128k'],
 ]
 
 // 📖 Mistral La Plateforme source - https://console.mistral.ai
 // 📖 Experiment plan is free for evaluation/prototyping and exposes general + coding models.
 // 📖 Keep Codestral as a separate provider key for backward compatibility with existing configs.
 export const mistral = [
-  ['mistral-large-2512',        'Mistral Large 3',     'S+', '70.0%', '256k'],
-  ['mistral-medium-3-5',        'Mistral Medium 3.5',  'S+', '77.6%', '256k'],
-  ['devstral-2512',             'Devstral 2',          'S+', '72.2%', '256k'],
-  ['magistral-medium-2509',     'Magistral Medium 1.2','A+', '52.0%', '128k'],
-  ['mistral-small-2603',        'Mistral Small 4',     'A',  '48.0%', '256k'],
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['mistral-large-2512', 'Mistral Large 3', 'S+', '70.0%', '256k'],
+  ['mistral-medium-3-5', 'Mistral Medium 3.5', 'S+', '77.6%', '256k'],
+  ['devstral-2512', 'Devstral 2', 'S+', '72.2%', '256k'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['mistral-small-2603', 'Mistral Small 4', 'A', '48.0%', '256k'],
+  // ── B+ tier — SWE-bench Verified 30–35% ──
+  ['ministral-3-14b-25-12', 'Ministral 3 14B', 'B+', '-', '128k'],
+  // ── B tier — SWE-bench Verified 20–30% ──
+  ['ministral-3-8b-25-12', 'Ministral 3 8B', 'B', '-', '128k'],
+  ['ministral-3-3b-25-12', 'Ministral 3 3B', 'B', '-', '128k'],
 ]
 
 // 📖 Mistral Codestral source - https://codestral.mistral.ai
 // 📖 Free coding model — 30 req/min, 2000/day (phone number required for key)
 // 📖 API keys now use the Mistral platform key format; CODESTRAL_API_KEY remains supported as an alias.
 export const codestral = [
-  ['codestral-2508',            'Codestral',           'B+', '34.0%', '128k'],
+  // ── B+ tier — SWE-bench Verified 30–35% ──
+  ['codestral-2508', 'Codestral', 'B+', '34.0%', '128k'],
+  ['codestral-2', 'Codestral 2', 'B+', '-', '128k'],
 ]
 
 // 📖 Scaleway source - https://console.scaleway.com
 // 📖 1M free tokens — API keys at https://console.scaleway.com/iam/api-keys
 export const scaleway = [
-  ['devstral-2-123b-instruct-2512',            'Devstral 2 123B',     'S+', '72.2%', '200k'],
-  ['qwen3.5-397b-a17b',                        'Qwen3.5 400B VLM',   'S',  '68.0%', '250k'],
-  ['mistral/mistral-large-3-675b-instruct-2512','Mistral Large 675B', 'A+', '58.0%', '250k'],
-  ['qwen3-235b-a22b-instruct-2507',            'Qwen3 235B',         'S+', '70.0%', '250k'],
-  ['gpt-oss-120b',                             'GPT OSS 120B',       'S',  '60.0%', '128k'],
-  ['qwen3-coder-30b-a3b-instruct',             'Qwen3 Coder 30B',    'A+', '55.0%', '128k'],
-  ['qwen3.6-35b-a3b',                          'Qwen3.6 35B MoE',    'A+', '-',     '256k'],
-  ['holo2-30b-a3b',                            'Holo2 30B',          'A+', '52.0%', '22k'],
-  ['llama-3.3-70b-instruct',                   'Llama 3.3 70B',      'A-', '39.5%', '100k'],
-  ['mistral-small-3.2-24b-instruct-2506',      'Mistral Small 3.2',  'B+', '30.0%', '128k'],
-  ['gemma-3-27b-it',                           'Gemma 3 27B',        'B',  '22.0%', '40k'],
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['devstral-2-123b-instruct-2512', 'Devstral 2 123B', 'S+', '72.2%', '200k'],
+  ['qwen3-235b-a22b-instruct-2507', 'Qwen3 235B', 'S+', '70.0%', '250k'],
+  ['glm-5.2', 'GLM 5.2', 'S+', '-', '256k'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['qwen3.5-397b-a17b', 'Qwen3.5 400B VLM', 'S', '68.0%', '250k'],
+  ['gpt-oss-120b', 'GPT OSS 120B', 'S', '60.0%', '128k'],
+  ['mistral-medium-3.5-128b', 'Mistral Medium 3.5 128B', 'S', '-', '256k'],
+  // ── A+ tier — SWE-bench Verified 50–60% ──
+  ['mistral-large-3-675b-instruct-2512', 'Mistral Large 675B', 'A+', '58.0%', '250k'],
+  ['qwen3-coder-30b-a3b-instruct', 'Qwen3 Coder 30B', 'A+', '55.0%', '128k'],
+  ['qwen3.6-35b-a3b', 'Qwen3.6 35B MoE', 'A+', '-', '256k'],
+  ['holo2-30b-a3b', 'Holo2 30B', 'A+', '52.0%', '22k'],
+  ['gemma-4-26b-a4b-it', 'Gemma 4 26B MoE', 'A+', '-', '256k'],
+  // ── A- tier — SWE-bench Verified 35–40% ──
+  ['llama-3.3-70b-instruct', 'Llama 3.3 70B', 'A-', '39.5%', '100k'],
+  // ── B+ tier — SWE-bench Verified 30–35% ──
+  ['mistral-small-3.2-24b-instruct-2506', 'Mistral Small 3.2', 'B+', '30.0%', '128k'],
+  ['pixtral-12b-2409', 'Pixtral 12B', 'B+', '-', '128k'],
+  // ── B tier — SWE-bench Verified 20–30% ──
+  ['gemma-3-27b-it', 'Gemma 3 27B', 'B', '22.0%', '40k'],
 ]
 
 // 📖 Google AI Studio source - https://aistudio.google.com
@@ -219,8 +283,11 @@ export const googleai = [
 // 📖 ZAI source - https://open.z.ai
 // 📖 Free tier is limited to Flash models; paid GLM models are intentionally excluded.
 export const zai = [
-  ['zai/glm-4.7-flash',                                   'GLM-4.7-Flash',       'S',  '59.2%', '200k'],
-  ['zai/glm-4.5-flash',                                   'GLM-4.5-Flash',       'S',  '59.2%', '128k'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['zai/glm-4.7-flash', 'GLM-4.7-Flash', 'S', '59.2%', '203k'],
+  ['zai/glm-4.5-flash', 'GLM-4.5-Flash', 'S', '59.2%', '128k'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['zai/glm-4.6v-flash', 'GLM-4.6V-Flash', 'A', '-', '128k'],
 ]
 
 // 📖 Alibaba Cloud (DashScope) source - https://dashscope-intl.aliyuncs.com
@@ -231,21 +298,30 @@ export const zai = [
 // 📖 Qwen3-Coder models: optimized coding models with excellent SWE-bench scores
 export const qwen = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
-  ['qwen3.7-max',                               'Qwen3.7 Max',       'S+', '80.0%', '1M'],
-  ['qwen3-max',                               'Qwen3 Max',          'S+', '78.8%', '256k'],
-  ['qwen3.6-plus',                             'Qwen3.6 Plus',      'S+', '72.0%', '1M'],
-  ['qwen3-235b-a22b',                          'Qwen3 235B',         'S+', '70.0%', '256k'],
+  ['qwen3.7-max', 'Qwen3.7 Max', 'S+', '80.0%', '1M'],
+  ['qwen3-max', 'Qwen3 Max', 'S+', '78.8%', '256k'],
+  ['qwen3.6-plus', 'Qwen3.6 Plus', 'S+', '72.0%', '1M'],
+  ['qwen3-235b-a22b', 'Qwen3 235B', 'S+', '70.0%', '128k'],
+  ['qwen3.7-plus', 'Qwen3.7 Plus', 'S+', '-', '1M'],
+  ['qwen3.6-max-preview', 'Qwen3.6 Max Preview', 'S+', '-', '256k'],
   // ── S tier — SWE-bench Verified 60–70% ──
-  ['qwen3.5-plus',                             'Qwen3.5 Plus',      'S',  '68.0%', '1M'],
-  ['qwen3-coder-plus',                        'Qwen3 Coder Plus',  'S',  '69.6%', '1M'],
-  ['qwen3-coder-next',                        'Qwen3 Coder Next',  'S',  '65.0%', '256k'],
+  ['qwen3.5-plus', 'Qwen3.5 Plus', 'S', '68.0%', '1M'],
+  ['qwen3-coder-plus', 'Qwen3 Coder Plus', 'S', '69.6%', '1M'],
+  ['qwen3-coder-next', 'Qwen3 Coder Next', 'S', '65.0%', '256k'],
+  ['qwen3-coder-480b-a35b-instruct', 'Qwen3 Coder 480B', 'S', '-', '256k'],
   // ── A+ tier — SWE-bench Verified 50–60% ──
-  ['qwen3.6-flash',                           'Qwen3.6 Flash',     'A+', '60.0%', '1M'],
-  ['qwen3.5-flash',                           'Qwen3.5 Flash',     'A+', '55.0%', '1M'],
-  ['qwen3-coder-flash',                       'Qwen3 Coder Flash', 'A+', '55.0%', '1M'],
-  ['qwen3-32b',                               'Qwen3 32B',          'A+', '50.0%', '256k'],
-  // Fix (2026-05-26): qwen3-max ctx 1M→256k, qwen3-coder-plus ctx 256k→1M, qwen3-coder-flash ctx 256k→1M, qwen3-32b ctx 128k→256k
-  // Fix (2026-05-26): qwen3-235b-a22b-instruct ID → qwen3-235b-a22b
+  ['qwen3.6-flash', 'Qwen3.6 Flash', 'A+', '60.0%', '1M'],
+  ['qwen3.5-flash', 'Qwen3.5 Flash', 'A+', '55.0%', '1M'],
+  ['qwen3-coder-flash', 'Qwen3 Coder Flash', 'A+', '55.0%', '1M'],
+  ['qwen3-32b', 'Qwen3 32B', 'A+', '50.0%', '128k'],
+  ['qwen3.5-397b-a17b', 'Qwen3.5 397B A17B', 'A+', '-', '256k'],
+  ['qwen3.5-122b-a10b', 'Qwen3.5 122B A10B', 'A+', '-', '256k'],
+  ['qwen3.5-35b-a3b', 'Qwen3.5 35B A3B', 'A+', '-', '256k'],
+  ['qwen3-next-80b-a3b-thinking', 'Qwen3 Next 80B Thinking', 'A+', '-', '128k'],
+  ['qwen3-next-80b-a3b-instruct', 'Qwen3 Next 80B Instruct', 'A+', '-', '128k'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['qwen3.5-27b', 'Qwen3.5 27B', 'A', '-', '256k'],
+  ['qwen3-30b-a3b', 'Qwen3 30B A3B', 'A', '-', '128k'],
 ]
 
 // 📖 Cloudflare Workers AI source - https://developers.cloudflare.com/workers-ai
@@ -253,30 +329,30 @@ export const qwen = [
 // 📖 https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions
 // 📖 Free plan includes daily neuron quota and provider-level request limits.
 export const cloudflare = [
-  // ── S+ tier ──
-  ['@cf/moonshotai/kimi-k2.6',                'Kimi K2.6',         'S+', '76.8%', '262k'],
-  ['@cf/moonshotai/kimi-k2.7-code',           'Kimi K2.7 Code',    'S+', '-',     '262k'],
-  // ── S tier ──
-  ['@cf/zai-org/glm-4.7-flash',               'GLM-4.7-Flash',     'S',  '59.2%', '131k'],
-  ['@cf/openai/gpt-oss-120b',                 'GPT OSS 120B',      'S',  '60.0%', '128k'],
-  // ── A+ tier ──
-  ['@cf/nvidia/nemotron-3-120b-a12b',         'Nemotron 3 Super',  'A+', '56.0%', '128k'],
-  ['@cf/zai-org/glm-5.2',                  'GLM-5.2',            'S+', '-',     '262k'],
-  ['@cf/moonshotai/kimi-k2.5',             'Kimi K2.5',          'S+', '-',     '256k'],
-  // ── A tier ──
-  ['@cf/meta/llama-4-scout-17b-16e-instruct', 'Llama 4 Scout',     'A',  '44.0%', '131k'],
-  ['@cf/mistralai/mistral-7b-instruct-v0.2',   'Mistral 7B v0.2',   'A',  '38.0%', '128k'],
-  ['@cf/qwen/qwen3-30b-a3b-fp8',              'Qwen3 30B MoE',     'A',  '45.0%', '128k'],
-  ['@cf/qwen/qwen2.5-coder-32b-instruct',     'Qwen2.5 Coder 32B', 'A',  '46.0%', '128k'],
-  ['@cf/openai/gpt-oss-20b',                  'GPT OSS 20B',       'A',  '42.0%', '128k'],
-  // ── A- tier ──
-  ['@cf/meta/llama-3.3-70b-instruct-fp8-fast','Llama 3.3 70B',     'A-', '39.5%', '128k'],
-  ['@cf/google/gemma-4-26b-a4b-it',           'Gemma 4 26B MoE',   'A-', '38.0%', '128k'],
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['@cf/moonshotai/kimi-k2.6', 'Kimi K2.6', 'S+', '76.8%', '262k'],
+  ['@cf/moonshotai/kimi-k2.7-code', 'Kimi K2.7 Code', 'S+', '-', '262k'],
+  ['@cf/zai-org/glm-5.2', 'GLM-5.2', 'S+', '-', '262k'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['@cf/zai-org/glm-4.7-flash', 'GLM-4.7-Flash', 'S', '59.2%', '131k'],
+  ['@cf/openai/gpt-oss-120b', 'GPT OSS 120B', 'S', '60.0%', '128k'],
+  // ── A+ tier — SWE-bench Verified 50–60% ──
+  ['@cf/nvidia/nemotron-3-120b-a12b', 'Nemotron 3 Super', 'A+', '56.0%', '128k'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['@cf/meta/llama-4-scout-17b-16e-instruct', 'Llama 4 Scout', 'A', '44.0%', '131k'],
+  ['@cf/qwen/qwen3-30b-a3b-fp8', 'Qwen3 30B MoE', 'A', '45.0%', '128k'],
+  ['@cf/qwen/qwen2.5-coder-32b-instruct', 'Qwen2.5 Coder 32B', 'A', '46.0%', '128k'],
+  ['@cf/openai/gpt-oss-20b', 'GPT OSS 20B', 'A', '42.0%', '128k'],
+  ['@cf/qwen/qwq-32b', 'QwQ 32B', 'A', '-', '128k'],
+  ['@cf/deepseek/deepseek-r1-distill-qwen-32b', 'DeepSeek R1 Distill Qwen 32B', 'A', '-', '128k'],
+  // ── A- tier — SWE-bench Verified 35–40% ──
+  ['@cf/meta/llama-3.3-70b-instruct-fp8-fast', 'Llama 3.3 70B', 'A-', '39.5%', '128k'],
+  ['@cf/google/gemma-4-26b-a4b-it', 'Gemma 4 26B MoE', 'A-', '38.0%', '128k'],
+  // ── B+ tier — SWE-bench Verified 30–35% ──
   ['@cf/mistralai/mistral-small-3.1-24b-instruct', 'Mistral Small 3.1', 'B+', '30.0%', '128k'],
-
-  // ── B tier ──
-  ['@cf/ibm/granite-4.0-h-micro',             'Granite 4.0 Micro', 'B+', '30.0%', '128k'],
-  // Fix (2026-05-26): @cf/moonshotai/kimi-k2.6 ctx 256k → 262k
+  ['@cf/ibm/granite-4.0-h-micro', 'Granite 4.0 Micro', 'B+', '30.0%', '128k'],
+  // ── B tier — SWE-bench Verified 20–30% ──
+  ['@cf/meta/llama-3.1-8b-instruct-fast', 'Llama 3.1 8B Instruct (Fast)', 'B', '-', '128k'],
 ]
 
 // 📖 OVHcloud AI Endpoints - https://endpoints.ai.cloud.ovh.net
@@ -328,65 +404,97 @@ export const kilo = [
 // 📖 Free unauthenticated tier works with tight shared limits; optional free token at https://token.llm7.io
 // 📖 Pro-tagged models from /v1/models are intentionally excluded.
 export const llm7 = [
-  ['deepseek-v4-flash',                      'DeepSeek V4 Flash',   'S+', '-',     '128k'],
-  ['kimi-k2.6',                              'Kimi K2.6',           'S+', '-',     '256k'],
-  ['qwen3-235b',                             'Qwen3 235B',          'S+', '70.0%', '240k'],
-  ['devstral-small-2:24b',                   'Devstral Small 2',    'A',  '-',     '128k'],
-  ['mistral-small-3.2',                      'Mistral Small 3.2',   'B+', '34.0%', '128k'],
-  ['codestral-latest',                       'Codestral Latest',    'B+', '34.0%', '32k'],
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['deepseek-v4-flash', 'DeepSeek V4 Flash', 'S+', '-', '1M'],
+  ['kimi-k2.6', 'Kimi K2.6', 'S+', '-', '240k'],
+  ['claude-opus-4-8', 'Claude Opus 4.8', 'S+', '-', '1M'],
+  ['claude-sonnet-5', 'Claude Sonnet 5', 'S+', '-', '1M'],
+  ['claude-fable-5', 'Claude Fable 5', 'S+', '-', '1M'],
+  ['gpt-5.5', 'GPT-5.5', 'S+', '-', '1.05M'],
+  ['gpt-5.4', 'GPT-5.4', 'S+', '-', '1.05M'],
+  ['glm-5.2', 'GLM 5.2', 'S+', '-', '1M'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['devstral-small-2:24b', 'Devstral Small 2', 'A', '-', '255k'],
+  ['gpt-5.4-mini', 'GPT-5.4 mini', 'A', '-', '400k'],
+  ['minimax-m2.7', 'MiniMax M2.7', 'A', '-', '180k'],
+  // ── B+ tier — SWE-bench Verified 30–35% ──
+  ['codestral-latest', 'Codestral Latest', 'B+', '34.0%', '32k'],
 ]
 
 // 📖 Routeway source - https://api.routeway.ai/v1/models
 // 📖 OpenAI-compatible gateway with explicit zero-price `:free` chat models.
 // 📖 Live catalog checked 2026-06-11; only chat-completions models with free pricing are listed.
 export const routeway = [
-  ['deepseek-v4-flash:free',                 'DeepSeek V4 Flash',   'S+', '72.0%', '1M'],
-  ['step-3.5-flash:free',                    'Step 3.5 Flash',      'S+', '74.4%', '256k'],
-  ['ling-2.6-flash:free',                    'Ling 2.6 Flash',      'S',  '-',     '262k'],
-  ['gpt-oss-120b:free',                      'GPT OSS 120B',        'S',  '60.0%', '131k'],
-  ['minimax-m2:free',                        'MiniMax M2',          'S',  '-',     '197k'],
-  ['laguna-m.1:free',                        'Poolside Laguna M.1', 'S+', '-',     '131k'],
-  ['laguna-xs.2:free',                       'Poolside Laguna XS.2','S+', '-',     '131k'],
-  ['gemma-4-31b-it:free',                    'Gemma 4 31B',         'A',  '45.0%', '262k'],
-  ['nemotron-3-nano-30b-a3b:free',           'Nemotron Nano 30B',   'A',  '43.0%', '256k'],
-  ['llama-3.3-70b-instruct:free',            'Llama 3.3 70B',       'A-', '39.5%', '131k'],
-  ['mistral-nemo-instruct:free',             'Mistral Nemo',        'B+', '30.0%', '16k'],
-  ['nemotron-nano-9b-v2:free',               'Nemotron Nano 9B',    'B+', '18.0%', '128k'],
-  ['llama-3.1-8b-instruct:free',             'Llama 3.1 8B',        'B',  '28.8%', '16k'],
-  ['llama-3.2-3b-instruct:free',             'Llama 3.2 3B',        'B',  '20.0%', '16k'],
-  ['llama-3.2-1b-instruct:free',             'Llama 3.2 1B',        'C',  '-',     '16k'],
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['deepseek-v4-flash:free', 'DeepSeek V4 Flash', 'S+', '72.0%', '1M'],
+  ['step-3.5-flash:free', 'Step 3.5 Flash', 'S+', '74.4%', '256k'],
+  ['laguna-m.1:free', 'Poolside Laguna M.1', 'S+', '-', '131k'],
+  ['laguna-xs.2:free', 'Poolside Laguna XS.2', 'S+', '-', '131k'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['ling-2.6-flash:free', 'Ling 2.6 Flash', 'S', '-', '262k'],
+  ['gpt-oss-120b:free', 'GPT OSS 120B', 'S', '60.0%', '131k'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['gemma-4-31b-it:free', 'Gemma 4 31B', 'A', '45.0%', '262k'],
+  ['nemotron-3-nano-30b-a3b:free', 'Nemotron Nano 30B', 'A', '43.0%', '256k'],
+  // ── A- tier — SWE-bench Verified 35–40% ──
+  ['llama-3.3-70b-instruct:free', 'Llama 3.3 70B', 'A-', '39.5%', '131k'],
+  // ── B+ tier — SWE-bench Verified 30–35% ──
+  ['nemotron-nano-9b-v2:free', 'Nemotron Nano 9B', 'B+', '18.0%', '128k'],
+  // ── B tier — SWE-bench Verified 20–30% ──
+  ['llama-3.1-8b-instruct:free', 'Llama 3.1 8B', 'B', '28.8%', '16k'],
+  ['llama-3.2-3b-instruct:free', 'Llama 3.2 3B', 'B', '20.0%', '16k'],
+  // ── C tier — lightweight/edge models ──
+  ['llama-3.2-1b-instruct:free', 'Llama 3.2 1B', 'C', '-', '16k'],
 ]
 
 // 📖 Novita AI source - https://api.novita.ai/openai/v1/models
 // 📖 Novita is mostly paid/trial-credit, so this catalog only includes live chat models reporting 0 input/output price.
 // 📖 Test/dev/placeholder zero-price IDs were intentionally excluded.
 export const novita = [
-  ['qwen/qwen3.6-plus',                      'Qwen3.6 Plus',        'S+', '72.0%', '1M'],
-  ['qwen/qwen3.5-plus',                      'Qwen3.5 Plus',        'S',  '68.0%', '1M'],
-  ['nex-agi/nex-n2-pro',                     'Nex N2 Pro',          'S',  '-',     '262k'],
-  ['minimax/m2-her',                         'MiniMax M2 HER',      'S',  '-',     '32k'],
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['qwen/qwen3.6-plus', 'Qwen3.6 Plus', 'S+', '78.8%', '1M'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['qwen/qwen3.5-plus', 'Qwen3.5 Plus', 'S', '68.0%', '1M'],
+  ['nex-agi/nex-n2-pro', 'Nex N2 Pro', 'S', '-', '262k'],
+  ['minimax/m2-her', 'MiniMax M2 HER', 'S', '-', '66k'],
 ]
 
 // 📖 Ollama Cloud source - https://ollama.com/pricing and https://ollama.com/v1/models
 // 📖 Free plan includes cloud model access with session/weekly limits. This list keeps coding-relevant cloud models only.
 export const ollamaCloud = [
-  ['minimax-m2.7',                           'MiniMax M2.7',        'S+', '80.2%', '200k'],
-  ['glm-5.1',                                'GLM 5.1',             'S+', '77.8%', '203k'],
-  ['kimi-k2.6',                              'Kimi K2.6',           'S+', '76.8%', '131k'],
-  ['deepseek-v4-pro',                        'DeepSeek V4 Pro',     'S+', '73.1%', '1M'],
-  ['deepseek-v4-flash',                      'DeepSeek V4 Flash',   'S+', '72.0%', '1M'],
-  ['devstral-2:123b',                        'Devstral 2 123B',     'S+', '72.2%', '200k'],
-  ['qwen3-coder:480b',                       'Qwen3 Coder 480B',    'S+', '70.6%', '256k'],
-  ['nemotron-3-ultra',                       'Nemotron 3 Ultra',    'S+', '-',     '1M'],
-  ['glm-4.7',                                'GLM 4.7',             'S+', '73.8%', '128k'],
-  ['qwen3.5:397b',                           'Qwen3.5 397B',        'S',  '68.0%', '128k'],
-  ['qwen3-coder-next',                       'Qwen3 Coder Next',    'S',  '65.0%', '256k'],
-  ['gpt-oss:120b',                           'GPT OSS 120B',        'S',  '60.0%', '128k'],
-  ['minimax-m3',                             'MiniMax M3',          'S',  '59.0%', '1M'],
-  ['mistral-large-3:675b',                   'Mistral Large 3',     'A+', '58.0%', '256k'],
-  ['nemotron-3-super',                       'Nemotron 3 Super',    'A+', '56.0%', '128k'],
-  ['gemma4:31b',                             'Gemma 4 31B',         'A',  '45.0%', '256k'],
-  ['gpt-oss:20b',                            'GPT OSS 20B',         'A',  '42.0%', '128k'],
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['devstral-2:123b', 'Devstral 2 123B', 'S+', '72.2%', '256k'],
+  ['qwen3-coder:480b', 'Qwen3 Coder 480B', 'S+', '70.6%', '256k'],
+  ['nemotron-3-ultra', 'Nemotron 3 Ultra', 'S+', '-', '256k'],
+  ['glm-4.7', 'GLM 4.7', 'S+', '73.8%', '200k'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['qwen3-coder-next', 'Qwen3 Coder Next', 'S', '65.0%', '256k'],
+  ['gpt-oss:120b', 'GPT OSS 120B', 'S', '60.0%', '128k'],
+  ['minimax-m3', 'MiniMax M3', 'S', '59.0%', '512k'],
+  // ── A+ tier — SWE-bench Verified 50–60% ──
+  ['nemotron-3-super', 'Nemotron 3 Super', 'A+', '56.0%', '256k'],
+  ['cogito-2.1:671b', 'Cogito 2.1 671B', 'A+', '-', '160k'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['gemma4:31b', 'Gemma 4 31B', 'A', '45.0%', '256k'],
+  ['gpt-oss:20b', 'GPT OSS 20B', 'A', '42.0%', '128k'],
+  ['glm-4.6', 'GLM 4.6', 'A', '-', '200k'],
+  ['qwen3-next:80b', 'Qwen3 Next 80B', 'A', '-', '256k'],
+  ['qwen3-vl:235b', 'Qwen3 VL 235B', 'A', '-', '256k'],
+  ['qwen3-vl:235b-instruct', 'Qwen3 VL 235B Instruct', 'A', '-', '256k'],
+  // ── A- tier — SWE-bench Verified 35–40% ──
+  ['devstral-small-2:24b', 'Devstral Small 2 24B', 'A-', '-', '256k'],
+  ['gemma3:27b', 'Gemma 3 27B', 'A-', '-', '128k'],
+  ['minimax-m2', 'MiniMax M2', 'A-', '-', '200k'],
+  ['minimax-m2.1', 'MiniMax M2.1', 'A-', '-', '200k'],
+  ['minimax-m2.5', 'MiniMax M2.5', 'A-', '-', '200k'],
+  ['ministral-3:8b', 'Ministral 3 8B', 'A-', '-', '256k'],
+  ['ministral-3:14b', 'Ministral 3 14B', 'A-', '-', '256k'],
+  ['nemotron-3-nano:30b', 'Nemotron 3 Nano 30B', 'A-', '-', '1M'],
+  // ── B+ tier — SWE-bench Verified 30–35% ──
+  ['gemma3:4b', 'Gemma 3 4B', 'B+', '-', '128k'],
+  ['gemma3:12b', 'Gemma 3 12B', 'B+', '-', '128k'],
+  ['ministral-3:3b', 'Ministral 3 3B', 'B+', '-', '256k'],
+  ['rnj-1:8b', 'RNJ 1 8B', 'B+', '-', '32k'],
 ]
 
 // 📖 All sources combined - used by the main script

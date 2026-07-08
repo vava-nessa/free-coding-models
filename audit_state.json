@@ -1,81 +1,106 @@
 {
   "_meta": {
-    "totalModels": 157,
-    "lastFullAudit": "2026-06-10"
+    "totalModels": 257,
+    "lastFullAudit": "2026-07-08"
   },
   "nvidia": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "cde1331268a4d3686f34297a4487e92b",
-    "modelCount": 27
+    "lastAudited": "2026-07-08",
+    "fingerprint": "1a022776debc080e6468683032e60947",
+    "modelCount": 31
   },
   "groq": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "dc41cb7450c0b5a97ae5b4c0366656a3",
-    "modelCount": 8
+    "lastAudited": "2026-07-08",
+    "fingerprint": "e065a098a7d02fe6e3ac093c82f39768",
+    "modelCount": 9
   },
   "cerebras": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "36017621a884dd553c73c34757309eaf",
-    "modelCount": 2
+    "lastAudited": "2026-07-08",
+    "fingerprint": "13f81ad23020f6bfff023425b18910fc",
+    "modelCount": 3
   },
   "googleai": {
-    "lastAudited": "2026-06-10",
+    "lastAudited": "2026-07-08",
     "fingerprint": "7c1853c3e20ec800af5798ac0abbc4ca",
     "modelCount": 7
   },
   "github-models": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "073d0cc1aeebaa2cd9d9e58f74e613ae",
-    "modelCount": 15
+    "lastAudited": "2026-07-08",
+    "fingerprint": "5742be2a908c74163d786bda89437958",
+    "modelCount": 35
   },
   "mistral": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "f4776050698087893e6c513f9bcd5932",
-    "modelCount": 5
-  },
-  "cloudflare": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "f411667b29f00dda92b58537dde8081f",
-    "modelCount": 16
-  },
-  "openrouter": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "b02cd17e8b92846ffb716ec86e70dcdf",
-    "modelCount": 24
-  },
-  "sambanova": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "d769460cb4ba340408d26271125bb94e",
+    "lastAudited": "2026-07-08",
+    "fingerprint": "8e07fa53b93649b60e4336c81f65cdf5",
     "modelCount": 7
   },
+  "cloudflare": {
+    "lastAudited": "2026-07-08",
+    "fingerprint": "0edcb0eda30fd1088923cac8eaf00ac9",
+    "modelCount": 17
+  },
+  "openrouter": {
+    "lastAudited": "2026-07-08",
+    "fingerprint": "ad889216d8c715a28f42706d65da9550",
+    "modelCount": 25
+  },
+  "sambanova": {
+    "lastAudited": "2026-07-08",
+    "fingerprint": "078169a8afab2f63a42e74212832f5a4",
+    "modelCount": 6
+  },
   "ovhcloud": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "20ab6894a702778f44f0b772a30103a1",
-    "modelCount": 10
+    "lastAudited": "2026-07-08",
+    "fingerprint": "97a038a441e3601abd5faf773836c4e4",
+    "modelCount": 14
   },
   "codestral": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "5e8ca2462d78998441463382957eb963",
-    "modelCount": 1
-  },
-  "zai": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "bac9274515e6a27920cbad47cf94edb3",
+    "lastAudited": "2026-07-08",
+    "fingerprint": "aa88453acea900e1d6cb0ccaaf68e375",
     "modelCount": 2
   },
+  "zai": {
+    "lastAudited": "2026-07-08",
+    "fingerprint": "9810e87090ca37044fab2dd9ba76c22e",
+    "modelCount": 3
+  },
   "scaleway": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "6c1306c1804eebb73bad4e026ec1065c",
-    "modelCount": 10
+    "lastAudited": "2026-07-08",
+    "fingerprint": "acbdc795b98c778129e9cabdd0d04de1",
+    "modelCount": 15
   },
   "qwen": {
-    "lastAudited": "2026-06-10",
-    "fingerprint": "84abb56ab959de853ff0a53fde0668ea",
-    "modelCount": 11
+    "lastAudited": "2026-07-08",
+    "fingerprint": "08ab14efe65a3111c6083c5325381fad",
+    "modelCount": 21
   },
   "opencode-zen": {
-    "lastAudited": "2026-06-01",
-    "fingerprint": "12f6f6de4460c6708189e0f45bc0cc3f",
+    "lastAudited": "2026-07-08",
+    "fingerprint": "02f87ba135c0598a9c6c11b2f58223d7",
     "modelCount": 5
+  },
+  "kilo": {
+    "lastAudited": "2026-07-08",
+    "modelCount": 1,
+    "fingerprint": "d5017bb2e942233d2dbf23a7e1411730"
+  },
+  "llm7": {
+    "lastAudited": "2026-07-08",
+    "modelCount": 12,
+    "fingerprint": "cea99f4304572742e80f464c980fa817"
+  },
+  "routeway": {
+    "lastAudited": "2026-07-08",
+    "modelCount": 13,
+    "fingerprint": "c3f9c4331e702ed92747b1903c3b1de0"
+  },
+  "novita": {
+    "lastAudited": "2026-07-08",
+    "modelCount": 4,
+    "fingerprint": "ae66741895547f807c31def61e3ceacd"
+  },
+  "ollama-cloud": {
+    "lastAudited": "2026-07-08",
+    "modelCount": 27,
+    "fingerprint": "a7e83162051114e8954c33e6a25848b5"
   }
 }

@@ -967,7 +967,7 @@ describe('provider key test model discovery', () => {
         'deepseek-ai/deepseek-v4-flash',
         'openai/gpt-oss-120b',
         'minimaxai/minimax-m2.7',
-        'z-ai/glm-5.1',
+        'z-ai/glm-5.2',
         'moonshotai/kimi-k2.6',
       ]
     )
