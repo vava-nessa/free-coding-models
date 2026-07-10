@@ -54,7 +54,7 @@ jobs:
       # 📖 workflow_run.head_sha (the commit that *contained* the trigger)
       # 📖 which can drift from the published artifact on heavy-traffic repos.
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
