@@ -85,11 +85,9 @@ export const nvidiaNim = [
 // 📖 Free API keys available at https://console.groq.com/keys
 export const groq = [
   ['llama-3.3-70b-versatile',              'Llama 3.3 70B',      'B', '22.0%', '131k'],
-  ['meta-llama/llama-4-scout-17b-16e-instruct', 'Llama 4 Scout',  'B',  '28.0%', '131k'],
   ['llama-3.1-8b-instant',                 'Llama 3.1 8B',       'C',  '18.0%', '131k'],
   ['openai/gpt-oss-120b',                  'GPT OSS 120B',       'S',  '62.4%', '131k'],
   ['openai/gpt-oss-20b',                   'GPT OSS 20B',        'A+',  '50.3%', '131k'],
-  ['qwen/qwen3-32b',                       'Qwen3 32B',          'B+', '30.0%', '131k'],
   ['qwen/qwen3.6-27b',                     'Qwen3.6 27B',        'S+',  '77.2%',     '131k'],
   ['groq/compound',                        'Groq Compound',      'A',  '45.0%', '131k'],
   ['groq/compound-mini',                   'Groq Compound Mini', 'B+', '32.0%', '131k'],
