@@ -259,6 +259,17 @@
 
 .uptime { font-family: var(--font-mono); font-size: 13px; }
 
+.quota {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+}
+.quotaGood { color: #00ff88; }
+.quotaWarn { color: #ffaa00; }
+.quotaBad { color: #ff4444; }
+.quotaNA,
+.quotaNone { color: var(--color-text-dim); }
+
 /* ─── Model cell ─── */
 .modelCell    { display: flex; align-items: center; gap: 6px; overflow: hidden; }
 .modelMeta    { flex: 1; min-width: 0; }

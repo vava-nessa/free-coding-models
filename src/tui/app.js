@@ -313,6 +313,7 @@ export async function runApp(cliArgs, config, startupOptions = {}) {
       status: 'pending',
       pings: [],  // 📖 All ping results (ms or 'TIMEOUT')
       httpCode: null,
+      hasApiKey: !!getApiKey(config, providerKey),
       isPinging: false, // 📖 Per-row live flag so Last Ping can keep last value and show a spinner during refresh.
       hidden: false,  // 📖 Simple flag to hide/show models
     }))
@@ -431,6 +432,7 @@ export async function runApp(cliArgs, config, startupOptions = {}) {
 
     try {
       const providerApiKey = getApiKey(state.config, r.providerKey) ?? null
+      r.hasApiKey = !!providerApiKey
       const providerUrl = sources[r.providerKey]?.url ?? sources.nvidia.url
       let { code, ms, quotaPercent } = await ping(providerApiKey, r.modelId, r.providerKey, providerUrl)
 

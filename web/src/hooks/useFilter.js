@@ -232,6 +232,8 @@ export function useFilter(models) {
         cmp = compareNullableNumber(a.benchmark?.ok ? a.benchmark.totalMs : null, b.benchmark?.ok ? b.benchmark.totalMs : null, direction)
       } else if (sortColumn === 'tps') {
         cmp = compareNullableNumber(a.benchmark?.ok ? a.benchmark.tokensPerSecond ?? 0 : null, b.benchmark?.ok ? b.benchmark.tokensPerSecond ?? 0 : null, direction)
+      } else if (sortColumn === 'quota') {
+        cmp = compareNullableNumber(numericOrNull(a.usagePercent), numericOrNull(b.usagePercent), direction)
       } else if (sortColumn === 'trend') {
         cmp = compareNullableNumber(trendDelta(a), trendDelta(b), direction)
       }

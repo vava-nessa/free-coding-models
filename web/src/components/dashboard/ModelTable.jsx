@@ -44,6 +44,7 @@ import { sweClass } from '../../utils/ranks.js'
 // 📖 file the TUI uses; both surfaces share the source of truth for which
 // 📖 providers are compatible with which tools.
 import { getCompatibleTools } from '../../../../src/core/tool-metadata.js'
+import { supportsUsagePercent } from '../../../../src/core/quota-capabilities.js'
 import ExpandedDetailRow from './ExpandedDetailRow.jsx'
 import styles from './ModelTable.module.css'
 
@@ -51,7 +52,7 @@ const colHelper = createColumnHelper()
 
 const SORTABLE_COLUMN_IDS = new Set([
   'mood', 'idx', 'tier', 'sweScore', 'ctx', 'label', 'origin', 'latestPing',
-  'avg', 'condition', 'verdict', 'stability', 'uptime', 'aiLatency', 'tps', 'trend',
+  'avg', 'condition', 'verdict', 'stability', 'uptime', 'aiLatency', 'tps', 'quota', 'trend',
 ])
 
 // ─── Cell renderers ───────────────────────────────────────────────────────────
@@ -165,6 +166,18 @@ function AILatencyCellRenderer({ row }) {
 function TPSCellRenderer({ row }) {
   const m = row.original
   return <TPSCell result={m.benchmark || null} isRunning={Boolean(m.isBenchmarking)} />
+}
+
+function QuotaCellRenderer({ row }) {
+  const m = row.original
+  if (!m.hasApiKey) return <span className={`${styles.quota} ${styles.quotaNone}`}>-</span>
+  if (!supportsUsagePercent(m.providerKey)) return <span className={`${styles.quota} ${styles.quotaNA}`}>N/A</span>
+  if (typeof m.usagePercent !== 'number' || !Number.isFinite(m.usagePercent)) {
+    return <span className={`${styles.quota} ${styles.quotaNone}`}>…</span>
+  }
+  const pct = Math.round(m.usagePercent)
+  const cls = pct >= 50 ? styles.quotaGood : pct >= 20 ? styles.quotaWarn : styles.quotaBad
+  return <span className={`${styles.quota} ${cls}`}>{pct}%</span>
 }
 
 function TrendCellRenderer({ row }) {
@@ -299,6 +312,13 @@ const buildColumns = ({ favorites, onBenchmarkRow, onSelectModel, onLaunch, tool
     header: 'TPS',
     size: 48,
     cell: TPSCellRenderer,
+    enableSorting: true,
+  }),
+  colHelper.display({
+    id: 'quota',
+    header: 'Quota',
+    size: 64,
+    cell: QuotaCellRenderer,
     enableSorting: true,
   }),
   colHelper.display({

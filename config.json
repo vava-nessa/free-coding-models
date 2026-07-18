@@ -1,0 +1,611 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "command": {
+    "mobile": {
+      "template": "Call the `mobile` tool.\n\nCommand arguments: $ARGUMENTS\n\n- If $ARGUMENTS is non-empty, call the tool with { token: \"$ARGUMENTS\" }.\n- If $ARGUMENTS is empty, call the tool with no args to print the QR.\n\nToken format:\n- `ExponentPushToken[xxxxxxxxxxxxxx]` - Register push token only\n- `ExponentPushToken[xxx] ServerUrl[http://...]` - Register with custom server URL\n\nWhen to use ServerUrl:\n- Use when the mobile app is connected directly to a local server\n- The serverUrl will be used for notification deep links instead of tunnel\n- Omit when using tunnel connection (default behavior)\n\nImportant:\n- Do not output analysis/thoughts.\n- Only call the tool; return no extra text.\n\nExamples:\n- `/mobile` - Show QR code for tunnel connection\n- `/mobile ExponentPushToken[xxxxxxxxxxxxxx]` - Register token\n- `/mobile ExponentPushToken[xxx] ServerUrl[http://192.168.1.100:4096]` - Register with custom URL",
+      "description": "OpenCode Mobile (QR + push token)"
+    },
+    "gquota": {
+      "template": "Retrieve Gemini Code Assist quota usage for the current authenticated account.\n\nImmediately call `gemini_quota` with no arguments and return its output verbatim.\nDo not call other tools.\n",
+      "description": "Show Gemini Code Assist quota usage"
+    },
+    "fcm": {
+      "template": "FCM command handled by the fcm-opencode plugin. Arguments: $ARGUMENTS",
+      "description": "Scan/list/switch free coding models with FCM"
+    },
+    "fcm-status": {
+      "template": "FCM status command handled by the fcm-opencode plugin.",
+      "description": "Show FCM OpenCode status"
+    },
+    "fcm-router": {
+      "template": "FCM router command handled by the fcm-opencode plugin.",
+      "description": "Switch OpenCode to the local FCM Smart Router daemon"
+    }
+  },
+  "plugin": [
+    "@mohak34/opencode-notifier@latest",
+    "opencode-gemini-auth",
+    "opencode-openai-codex-auth",
+    "opencode-auto-resume",
+    "opencode-wakatime",
+    "file:///Users/vava/.config/opencode/plugin/sonclaude.js",
+    "file:///Users/vava/.config/opencode/plugin/wakatime.js",
+    "file:///Users/vava/.config/opencode/plugins/aisnitch.ts",
+    "file:///Users/vava/.config/opencode/plugins/codeisland.js",
+    "file:///Users/vava/.config/opencode/plugins/herdr-agent-state.js",
+    "file:///Users/vava/.config/opencode/plugins/fcm-opencode.js",
+    "file:///Users/vava/.config/opencode/plugins/peon-ping.ts",
+    "file:///Users/vava/.opencode/.opencode/plugins/graphify.js",
+    "file:///Users/vava/.opencode/.opencode/plugins/opencode-wakatime",
+    "file:///Users/vava/.opencode/plugins/graphify.js"
+  ],
+  "model": "nvidia/deepseek-ai/deepseek-v4-pro",
+  "username": "vava",
+  "mode": {},
+  "agent": {
+    "prd-maker": {
+      "prompt": "You are an expert Product Manager and PRD specialist with extensive experience creating comprehensive Product Requirement Documents for software products. Your role is to guide users through the process of creating well-structured, actionable PRDs that bridge the gap between product vision and engineering execution.\n\n## Your Expertise\n- Deep knowledge of PRD structures and best practices across different product types (B2B, B2C, SaaS, mobile apps, etc.)\n- Understanding of user story mapping, feature prioritization, and acceptance criteria\n- Familiarity with technical implementation considerations\n- Experience with agile product development workflows\n- Ability to translate vague product ideas into concrete requirements\n\n## Your Approach\n\n### 1. Discovery Phase\nWhen a user wants to create a PRD, start by gathering essential information:\n- What is the product or feature being built?\n- Who are the target users?\n- What problem does it solve?\n- What are the business goals and success metrics?\n- Are there any technical constraints or dependencies?\n\nAsk clarifying questions proactively to ensure you understand the full scope before diving into document creation.\n\n### 2. PRD Structure\nOrganize the document with these standard sections (adapt as needed based on product type):\n- **Executive Summary**: High-level overview of the product/feature\n- **Goals & Objectives**: Business outcomes this PRD aims to achieve\n- **User Personas**: Detailed descriptions of target users\n- **User Stories & Features**: Prioritized list of functionality\n- **Functional Requirements**: Specific behaviors and features\n- **Non-Functional Requirements**: Performance, security, scalability needs\n- **UI/UX Requirements**: Design guidelines and user flow expectations\n- **Technical Considerations**: Architecture, integrations, dependencies\n- **Timeline & Milestones**: Phased delivery approach if applicable\n- **Success Metrics & KPIs**: How success will be measured\n- **Risks & Assumptions**: Known constraints and dependencies\n\n### 3. Quality Standards\nEnsure each requirement is:\n- **Clear**: Unambiguous and easily understood\n- **Complete**: Includes all necessary details\n- **Testable**: Has clear acceptance criteria\n- **Feasible**: Realistic given constraints\n- **Prioritized**: Has clear importance/ranking\n\n### 4. Output Format\nPresent the PRD in a structured, professional format using:\n- Clear headings and subheadings\n- Numbered lists for requirements\n- Tables for feature comparisons or prioritization\n- Bullet points for easy scanning\n- Bold text for key terms and emphasis\n\n## Handling Edge Cases\n\n- **Vague Requirements**: Ask follow-up questions to clarify before proceeding\n- **Scope Creep**: Flag when requirements seem to expand beyond original intent and help prioritize\n- **Technical Gaps**: Note when technical details are needed and suggest what to clarify with engineering\n- **Incomplete Information**: Proceed with reasonable assumptions but clearly mark them as such\n\n## Collaboration Style\n- Be conversational but professional\n- Ask questions to deepen understanding rather than making assumptions\n- Provide templates and examples when helpful\n- Offer suggestions while respecting the user's product vision\n- Iterate on sections based on feedback\n\n## Your Goal\nCreate a comprehensive, actionable PRD that engineering teams can use as a clear reference for implementation, while ensuring alignment between stakeholders on product direction.",
+      "description": "Use this agent when the user wants to create, draft, or improve a Product Requirement Document (PRD). Examples include: when starting a new product feature and needing to document requirements, when a user says \"help me write a PRD for...\" or \"create a product requirement document\", when needing to structure product ideas into a formal document, when reviewing or refining existing PRDs, when converting product concepts into actionable specifications, or when a user describes a product idea and needs help formalizing it into a structured requirements document.",
+      "mode": "all",
+      "options": {},
+      "permission": {},
+      "name": "prd-maker"
+    },
+    "task-clarifier": {
+      "prompt": "You are a task clarification specialist. Your role is to help users articulate their needs when they have provided insufficient information.\n\nWhen you receive a request that is empty, contains only separators (like '---'), or is otherwise meaningless, you will:\n\n1. Politely acknowledge that you need more information to help effectively\n2. Ask clarifying questions to understand what the user wants to accomplish\n3. Provide examples of the kinds of tasks you can help with (code writing, debugging, documentation, testing, analysis, etc.)\n4. Be patient and encouraging - users may be new to working with AI agents\n\nGuidelines:\n- Do not assume what the user wants - always ask for clarification\n- Keep your response concise but friendly\n- Offer specific suggestions if appropriate (e.g., \"Would you like me to help write code, review something, or create documentation?\")\n- If the input appears to be a mistake or placeholder, gently point this out\n\nYour goal is to guide the user toward providing a clear, actionable request that you or another specialized agent can handle effectively.",
+      "description": "Use this agent when the user provides no meaningful task description, uses only separators like '---', or submits an empty request that requires clarification about what they want to accomplish.",
+      "mode": "all",
+      "options": {},
+      "permission": {},
+      "name": "task-clarifier"
+    }
+  },
+  "provider": {
+    "nvidia": {
+      "name": "NVIDIA NIM",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "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",
+        "baseURL": "https://integrate.api.nvidia.com/v1"
+      },
+      "models": {
+        "openai/gpt-oss-120b": {
+          "name": "GPT OSS 120B"
+        },
+        "qwen/qwen3-next-80b-a3b-thinking": {
+          "name": "Qwen3 80B Thinking"
+        },
+        "deepseek-ai/deepseek-v4-flash": {
+          "name": "DeepSeek V4 Flash"
+        },
+        "stockmark/stockmark-2-100b-instruct": {
+          "name": "Stockmark 100B"
+        },
+        "meta/llama-3.2-11b-vision-instruct": {
+          "name": "Llama 3.2 11B Vision"
+        },
+        "qwen/qwen3.5-397b-a17b": {
+          "name": "Qwen3.5 400B VLM"
+        },
+        "qwen/qwen3-next-80b-a3b-instruct": {
+          "name": "Qwen3 80B Instruct"
+        },
+        "stepfun-ai/step-3.5-flash": {
+          "name": "Step 3.5 Flash"
+        },
+        "deepseek-ai/deepseek-v4-pro": {
+          "name": "DeepSeek V4 Pro"
+        }
+      }
+    },
+    "minimax": {
+      "name": "MiniMax",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "sk-cp-owEupv9eYvnebmFvX1PWPkkm6Uya97MydnIzslI2f5KykXS7CyRn2pXxjji1S9VIxpjMM40t-WswAxRzBTl11KX76fb6gJ6zmhePciwetnix8DF7aDzzCnc",
+        "baseURL": "https://api.minimax.io/v1"
+      },
+      "models": {
+        "MiniMax-M2.7": {
+          "name": "MiniMax M2.7",
+          "limit": {
+            "context": 204800,
+            "output": 128000
+          }
+        },
+        "MiniMax-M2.7-highspeed": {
+          "name": "MiniMax M2.7 Highspeed",
+          "limit": {
+            "context": 204800,
+            "output": 128000
+          }
+        }
+      }
+    },
+    "lmstudio": {
+      "name": "LM Studio",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "lm-studio",
+        "baseURL": "http://127.0.0.1:1234/v1"
+      },
+      "models": {
+        "gemma-4-e4b-it": {
+          "name": "Gemma 4 E4B IT",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        }
+      }
+    },
+    "openai": {
+      "options": {
+        "reasoningEffort": "medium",
+        "reasoningSummary": "auto",
+        "textVerbosity": "medium",
+        "include": [
+          "reasoning.encrypted_content"
+        ],
+        "store": false
+      },
+      "models": {
+        "gpt-5.5": {
+          "name": "GPT 5.5 (OAuth)",
+          "limit": {
+            "context": 1050000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "variants": {
+            "none": {
+              "reasoningEffort": "none",
+              "reasoningSummary": "auto",
+              "textVerbosity": "medium"
+            },
+            "low": {
+              "reasoningEffort": "low",
+              "reasoningSummary": "auto",
+              "textVerbosity": "medium"
+            },
+            "medium": {
+              "reasoningEffort": "medium",
+              "reasoningSummary": "auto",
+              "textVerbosity": "medium"
+            },
+            "high": {
+              "reasoningEffort": "high",
+              "reasoningSummary": "detailed",
+              "textVerbosity": "medium"
+            },
+            "xhigh": {
+              "reasoningEffort": "xhigh",
+              "reasoningSummary": "detailed",
+              "textVerbosity": "medium"
+            }
+          }
+        }
+      }
+    },
+    "fcm-nvidia": {
+      "name": "FCM NVIDIA NIM",
+      "env": [
+        "FCM_NVIDIA_API_KEY"
+      ],
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "{env:FCM_NVIDIA_API_KEY}",
+        "baseURL": "https://integrate.api.nvidia.com/v1"
+      },
+      "models": {
+        "openai/gpt-oss-120b": {
+          "name": "GPT OSS 120B"
+        },
+        "nvidia/nemotron-3-ultra-550b-a55b": {
+          "id": "nvidia/nemotron-3-ultra-550b-a55b",
+          "name": "Nemotron 3 Ultra (NVIDIA NIM) [FCM S+]",
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "stepfun-ai/step-3.7-flash": {
+          "id": "stepfun-ai/step-3.7-flash",
+          "name": "Step 3.7 Flash (NVIDIA NIM) [FCM S+]",
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 256000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "deepseek-ai/deepseek-v4-flash": {
+          "id": "deepseek-ai/deepseek-v4-flash",
+          "name": "DeepSeek V4 Flash (NVIDIA NIM) [FCM S+]",
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    },
+    "fcm-cerebras": {
+      "name": "FCM Cerebras",
+      "env": [
+        "FCM_CEREBRAS_API_KEY"
+      ],
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "{env:FCM_CEREBRAS_API_KEY}",
+        "baseURL": "https://api.cerebras.ai/v1"
+      },
+      "models": {
+        "zai-glm-4.7": {
+          "name": "GLM 4.7"
+        },
+        "gpt-oss-120b": {
+          "id": "gpt-oss-120b",
+          "name": "GPT OSS 120B (Cerebras) [FCM S]",
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 128000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    },
+    "fcm-sambanova": {
+      "name": "FCM SambaNova",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "77129e1f-69c9-45d1-abab-6a47c30e512b",
+        "baseURL": "https://api.sambanova.ai/v1"
+      },
+      "models": {
+        "DeepSeek-V3.1": {
+          "name": "DeepSeek V3.1"
+        }
+      }
+    },
+    "cerebras": {
+      "name": "Cerebras",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "",
+        "baseURL": "https://api.cerebras.ai/v1"
+      },
+      "models": {
+        "gpt-oss-120b": {
+          "name": "GPT OSS 120B"
+        },
+        "zai-glm-4.7": {
+          "name": "GLM 4.7"
+        }
+      }
+    },
+    "openrouter": {
+      "name": "OpenRouter",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "",
+        "baseURL": "https://openrouter.ai/api/v1"
+      },
+      "models": {
+        "google/gemma-4-26b-a4b-it:free": {
+          "name": "Gemma 4 26b A4b It"
+        }
+      }
+    },
+    "llm7": {
+      "name": "LLM7",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "",
+        "baseURL": "https://api.llm7.io/v1"
+      },
+      "models": {
+        "qwen3-235b": {
+          "name": "Qwen3 235B"
+        }
+      }
+    },
+    "zai": {
+      "name": "Z.AI (GLM Coding Plan)",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "e0aa13eb31b04262a5f6c1f6011b6e26.KC3HX9niWal4miUO",
+        "baseURL": "https://api.z.ai/api/coding/paas/v4"
+      },
+      "models": {
+        "glm-5.2": {
+          "name": "GLM 5.2 (Z.AI Coding Plan)"
+        },
+        "glm-5.1": {
+          "name": "GLM 5.1 (Z.AI Coding Plan)"
+        },
+        "glm-5-turbo": {
+          "name": "GLM 5 Turbo (Z.AI Coding Plan)"
+        },
+        "glm-4.7": {
+          "name": "GLM 4.7 (Z.AI Coding Plan)"
+        }
+      }
+    },
+    "fcm-openrouter": {
+      "name": "FCM OpenRouter",
+      "env": [
+        "FCM_OPENROUTER_API_KEY"
+      ],
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "{env:FCM_OPENROUTER_API_KEY}",
+        "baseURL": "https://openrouter.ai/api/v1"
+      },
+      "models": {
+        "poolside/laguna-m.1:free": {
+          "id": "poolside/laguna-m.1:free",
+          "name": "Poolside Laguna M.1 (OpenRouter) [FCM S+]",
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 262000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "nvidia/nemotron-3-ultra-550b-a55b:free": {
+          "id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+          "name": "Nemotron 3 Ultra (OpenRouter) [FCM S+]",
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "poolside/laguna-xs-2.1:free": {
+          "id": "poolside/laguna-xs-2.1:free",
+          "name": "Poolside Laguna XS 2.1 (OpenRouter) [FCM S+]",
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 262000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    },
+    "fcm-mistral": {
+      "name": "FCM Mistral LP",
+      "env": [
+        "FCM_MISTRAL_API_KEY"
+      ],
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "apiKey": "{env:FCM_MISTRAL_API_KEY}",
+        "baseURL": "https://api.mistral.ai/v1"
+      },
+      "models": {
+        "mistral-medium-3-5": {
+          "id": "mistral-medium-3-5",
+          "name": "Mistral Medium 3.5 (Mistral LP) [FCM S+]",
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 256000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "devstral-2512": {
+          "id": "devstral-2512",
+          "name": "Devstral 2 (Mistral LP) [FCM S+]",
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 256000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "mistral-large-2512": {
+          "id": "mistral-large-2512",
+          "name": "Mistral Large 3 (Mistral LP) [FCM S+]",
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "limit": {
+            "context": 256000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true,
+      "headers": {
+        "CONTEXT7_API_KEY": "ctx7sk-c9d95a1e-68c6-4a5e-9134-1c10e5cebdd9"
+      }
+    },
+    "chrome-devtools": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "chrome-devtools-mcp@latest"
+      ],
+      "enabled": true
+    },
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp?exaApiKey=9c99f9b1-7aad-43be-b6a3-f28496677181",
+      "enabled": true
+    }
+  },
+  "permission": {
+    "*": "allow"
+  }
+}

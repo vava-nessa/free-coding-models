@@ -51,16 +51,15 @@ export const nvidiaNim = [
   // ── S tier — SWE-bench Verified 60–70% ──
   ['openai/gpt-oss-120b', 'GPT OSS 120B', 'S', '62.4%', '128k'],
   ['meta/llama-4-maverick-17b-128e-instruct', 'Llama 4 Maverick', 'S+', '74.8%', '1M'],
-  ['mistralai/mistral-medium-3.5-128b', 'Mistral Medium 3.5', 'S+', '77.6%', '128k'],
+  ['mistralai/mistral-medium-3.5-128b', 'Mistral Medium 3.5', 'S+', '77.6%', '256k'],
   ['mistralai/mistral-small-4-119b-2603', 'Mistral Small 4', 'S', '60.0%', '256k'],
   ['minimaxai/minimax-m3', 'MiniMax M3', 'S+', '78.4%', '1M'],
-  ['qwen/qwen3-coder-480b-a35b-instruct', 'Qwen3 Coder 480B', 'S', '69.6%', '262k'],
-  ['nvidia/mistral-nemotron', 'Mistral Nemotron', 'S', '-', '-'],
+  ['nvidia/mistral-nemotron', 'Mistral Nemotron', 'S', '-', '128k'],
   ['deepseek-ai/deepseek-v3.2', 'DeepSeek V3.2', 'S+', '70.0%', '160k'],
   // ── A+ tier — SWE-bench Verified 50–60% ──
   ['mistralai/mistral-large-3-675b-instruct-2512', 'Mistral Large 675B', 'A+', '58.0%', '256k'],
   ['nvidia/nemotron-3-super-120b-a12b', 'Nemotron 3 Super', 'S', '60.5%', '128k'],
-  ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', 'Nemotron 3 Omni', 'A+', '52.0%', '128k'],
+  ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', 'Nemotron 3 Omni', 'A+', '52.0%', '256k'],
   ['meta-llama/llama-4-scout-17b-16e-instruct', 'Llama 4 Scout', 'B', '28.0%', '10M'],
   ['nvidia/llama-3.3-nemotron-super-49b-v1.5', 'Llama 3.3 Nemotron Super 49B v1.5', 'A+', '-', '128k'],
   // ── A tier — SWE-bench Verified 40–50% ──
@@ -68,7 +67,7 @@ export const nvidiaNim = [
   ['openai/gpt-oss-20b', 'GPT OSS 20B', 'A+', '50.3%', '128k'],
   ['google/gemma-4-31b-it', 'Gemma 4 31B', 'A+', '52.0%', '256k'],
   ['qwen/qwen2.5-coder-32b-instruct', 'Qwen2.5 Coder 32B', 'A', '47.0%', '128k'],
-  ['mistralai/magistral-small-2506', 'Magistral Small 2506', 'A', '45.0%', '128k'],
+  ['deepseek-ai/deepseek-r1', 'DeepSeek R1', 'A', '49.2%', '128k'],
   ['nvidia/nemotron-3-nano', 'Nemotron 3 Nano', 'A-', '38.8%', '256k'],
   // ── A- tier — SWE-bench Verified 35–40% ──
   ['bytedance/seed-oss-36b-instruct', 'Seed OSS 36B', 'A+', '56.0%', '32k'],
@@ -97,7 +96,8 @@ export const groq = [
 // 📖 Free API keys available at https://cloud.cerebras.ai
 export const cerebras = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
-  ['zai-glm-4.7', 'GLM 4.7', 'S+', '73.8%', '128k'],
+  // ⚠️ DEPRECATED — shutdown 2026-08-17 (Cerebras official notice)
+  ['zai-glm-4.7', 'GLM 4.7', 'S+', '73.8%', '128k', null, '2026-08-17'],
   // ── S tier — SWE-bench Verified 60–70% ──
   ['gpt-oss-120b', 'GPT OSS 120B', 'S', '62.4%', '128k'],
   // ── A tier — SWE-bench Verified 40–50% ──
@@ -138,7 +138,6 @@ export const openrouter = [
   ['poolside/laguna-xs.2:free', 'Poolside Laguna XS.2', 'S', '68.2%', '262k'],
   ['poolside/laguna-xs-2.1:free', 'Poolside Laguna XS 2.1', 'S+', '70.9%', '262k'],
   // ── S tier — SWE-bench Verified 60–70% ──
-  ['openai/gpt-oss-120b:free', 'GPT OSS 120B', 'S', '62.4%', '131k'],
   ['cohere/north-mini-code:free', 'North Mini Code', 'S', '-', '256k'],
   ['tencent/hy3:free', 'Tencent Hy3', 'S', '-', '262k'],
   ['qwen/qwen3-coder:free', 'Qwen3 Coder', 'S', '69.6%', '1M'],
@@ -146,7 +145,6 @@ export const openrouter = [
   ['nvidia/nemotron-3-super-120b-a12b:free', 'Nemotron 3 Super', 'S', '60.5%', '1M'],
   ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', 'Nemotron 3 Omni', 'A+', '52.0%', '256k'],
   // ── A tier — SWE-bench Verified 40–50% ──
-  ['openai/gpt-oss-20b:free', 'GPT OSS 20B', 'A+', '50.3%', '131k'],
   ['nvidia/nemotron-3-nano-30b-a3b:free', 'Nemotron Nano 30B', 'A-', '38.8%', '256k'],
   ['nvidia/nemotron-nano-12b-v2-vl:free', 'Nemotron Nano 12B VL', 'A', '20.0%', '128k'],
   ['google/gemma-4-31b-it:free', 'Gemma 4 31B', 'A+', '52.0%', '262k'],
@@ -235,8 +233,8 @@ export const mistral = [
 // 📖 Free coding model — 30 req/min, 2000/day (phone number required for key)
 // 📖 API keys now use the Mistral platform key format; CODESTRAL_API_KEY remains supported as an alias.
 export const codestral = [
-  // ── B+ tier — SWE-bench Verified 30–35% ──
-  ['codestral-2508', 'Codestral', 'A', '40.0%', '128k'],
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['codestral-2508', 'Codestral', 'A', '40.0%', '256k'],
   ['codestral-2', 'Codestral 2', 'B+', '-', '128k'],
 ]
 
@@ -387,8 +385,9 @@ export const opencodeZen = [
   ['big-pickle',                       'Big Pickle',              'S+', '72.0%', '200k'],
   ['deepseek-v4-flash-free',           'DeepSeek V4 Flash Free',  'S+', '79.0%', '200k'],
   ['mimo-v2.5-free',                   'MiMo-V2.5 Free',          'S+', '-',     '200k'],
-  ['nemotron-3-ultra-free',            'Nemotron 3 Ultra Free',   'S+', '71.9%',     '200k'],
+  ['nemotron-3-ultra-free',            'Nemotron 3 Ultra Free',   'S+', '71.9%', '200k'],
   ['north-mini-code-free',             'North Mini Code Free',    'B+', '-',     '200k'],
+  ['hy3-free',                         'Tencent Hy3 Free',        'S',  '-',     '200k'],
 ]
 
 // 📖 Kilo source - https://api.kilo.ai/api/gateway
@@ -403,8 +402,10 @@ export const kilo = [
 // 📖 Pro-tagged models from /v1/models are intentionally excluded.
 export const llm7 = [
   // 📖 LLM7 live /v1/models: only `turbo` tier is free (noKeyNeeded). All `pro` models are usage-based paid.
-  // ── S tier — SWE-bench Verified 60–70% ──
-  ['devstral-small-2:24b', 'Devstral Small 2', 'S', '68.0%', '255k'],
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['minimax-m2.7', 'MiniMax M2.7', 'S+', '78.0%', '180k'],
+  // ── A+ tier — SWE-bench Verified 50–60% ──
+  ['gpt-oss:20b', 'GPT OSS 20B', 'A+', '50.3%', '128k'],
   // ── A tier — SWE-bench Verified 40–50% ──
   ['codestral-latest', 'Codestral Latest', 'A', '40.0%', '32k'],
 ]
@@ -440,49 +441,34 @@ export const routeway = [
 // 📖 Test/dev/placeholder zero-price IDs were intentionally excluded.
 export const novita = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
-  ['qwen/qwen3.6-plus', 'Qwen3.6 Plus', 'S+', '78.8%', '1M'],
-  // ── S tier — SWE-bench Verified 60–70% ──
   ['qwen/qwen3.5-plus', 'Qwen3.5 Plus', 'S+', '80.0%', '1M'],
-  ['nex-agi/nex-n2-pro', 'Nex N2 Pro', 'S', '-', '262k'],
-  ['minimax/m2-her', 'MiniMax M2 HER', 'S', '-', '66k'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['tencent/hy3', 'Tencent Hy3', 'S', '-', '262k'],
 ]
 
-// 📖 Ollama Cloud source - https://ollama.com/pricing and https://ollama.com/v1/models
+// 📖 Ollama Cloud source - https://ollama.com/pricing and https://ollama.com/search?c=cloud
 // 📖 Free plan includes cloud model access with session/weekly limits. This list keeps coding-relevant cloud models only.
+// 📖 Catalog verified 2026-07-18 against official Ollama cloud model search page.
 export const ollamaCloud = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
-  ['devstral-2:123b', 'Devstral 2 123B', 'S+', '72.2%', '256k'],
-  ['qwen3-coder:480b', 'Qwen3 Coder 480B', 'S', '69.6%', '256k'],
   ['nemotron-3-ultra', 'Nemotron 3 Ultra', 'S+', '71.9%', '256k'],
-  ['glm-4.7', 'GLM 4.7', 'S+', '73.8%', '200k'],
-  // ── S tier — SWE-bench Verified 60–70% ──
-  ['qwen3-coder-next', 'Qwen3 Coder Next', 'S+', '70.6%', '256k'],
-  ['gpt-oss:120b', 'GPT OSS 120B', 'S', '62.4%', '128k'],
+  ['glm-5.1', 'GLM 5.1', 'S+', '82.8%', '128k'],
+  ['glm-5.2', 'GLM 5.2', 'S+', '82.8%', '128k'],
+  ['minimax-m2.7', 'MiniMax M2.7', 'S+', '78.0%', '200k'],
   ['minimax-m3', 'MiniMax M3', 'S+', '78.4%', '512k'],
-  // ── A+ tier — SWE-bench Verified 50–60% ──
+  ['minimax-m2.5', 'MiniMax M2.5', 'S+', '80.2%', '200k'],
+  ['kimi-k2.6', 'Kimi K2.6', 'S+', '80.2%', '262k'],
+  ['deepseek-v4-flash', 'DeepSeek V4 Flash', 'S+', '79.0%', '256k'],
+  ['deepseek-v4-pro', 'DeepSeek V4 Pro', 'S+', '80.6%', '256k'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['kimi-k2.7-code', 'Kimi K2.7 Code', 'S', '60.4%', '262k'],
+  ['gpt-oss:120b', 'GPT OSS 120B', 'S', '62.4%', '128k'],
   ['nemotron-3-super', 'Nemotron 3 Super', 'S', '60.5%', '256k'],
-  ['cogito-2.1:671b', 'Cogito 2.1 671B', 'A+', '-', '160k'],
-  // ── A tier — SWE-bench Verified 40–50% ──
+  // ── A+ tier — SWE-bench Verified 50–60% ──
+  ['kimi-k2.5', 'Kimi K2.5', 'A+', '-', '200k'],
   ['gemma4:31b', 'Gemma 4 31B', 'A+', '52.0%', '256k'],
   ['gpt-oss:20b', 'GPT OSS 20B', 'A+', '50.3%', '128k'],
-  ['glm-4.6', 'GLM 4.6', 'A', '-', '200k'],
-  ['qwen3-next:80b', 'Qwen3 Next 80B', 'S+', '70.6%', '256k'],
-  ['qwen3-vl:235b', 'Qwen3 VL 235B', 'A', '-', '256k'],
-  ['qwen3-vl:235b-instruct', 'Qwen3 VL 235B Instruct', 'A', '-', '256k'],
-  // ── A- tier — SWE-bench Verified 35–40% ──
-  ['devstral-small-2:24b', 'Devstral Small 2 24B', 'S', '68.0%', '256k'],
-  ['gemma3:27b', 'Gemma 3 27B', 'B', '22.0%', '128k'],
-  ['minimax-m2', 'MiniMax M2', 'S', '69.4%', '200k'],
-  ['minimax-m2.1', 'MiniMax M2.1', 'S+', '74.0%', '200k'],
-  ['minimax-m2.5', 'MiniMax M2.5', 'S+', '80.2%', '200k'],
-  ['ministral-3:8b', 'Ministral 3 8B', 'A-', '-', '256k'],
-  ['ministral-3:14b', 'Ministral 3 14B', 'A-', '-', '256k'],
   ['nemotron-3-nano:30b', 'Nemotron 3 Nano 30B', 'A-', '38.8%', '1M'],
-  // ── B+ tier — SWE-bench Verified 30–35% ──
-  ['gemma3:4b', 'Gemma 3 4B', 'B+', '-', '128k'],
-  ['gemma3:12b', 'Gemma 3 12B', 'B+', '-', '128k'],
-  ['ministral-3:3b', 'Ministral 3 3B', 'B+', '-', '256k'],
-  ['rnj-1:8b', 'RNJ 1 8B', 'B+', '-', '32k'],
 ]
 
 // 📖 All sources combined - used by the main script
@@ -598,11 +584,14 @@ export const sources = {
 
 // 📖 Flatten all models from all sources — each entry includes providerKey as 6th element
 // 📖 providerKey lets the main CLI know which API key and URL to use per model
+// 📖 Models with a deprecatedAfter date (7th tuple element) are auto-filtered after that date
 export const MODELS = [];
+const _today = new Date().toISOString().split('T')[0];
 for (const [sourceKey, sourceData] of Object.entries(sources)) {
   if (!sourceData || !sourceData.models) continue
   for (const model of sourceData.models) {
-    const [modelId, label, tier, sweScore, ctx, addedDate] = model
+    const [modelId, label, tier, sweScore, ctx, addedDate, deprecatedAfter] = model
+    if (deprecatedAfter && _today > deprecatedAfter) continue
     MODELS.push([modelId, label, tier, sweScore, ctx, sourceKey, addedDate || null])
   }
 }

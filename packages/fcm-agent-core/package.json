@@ -1,0 +1,36 @@
+{
+  "name": "fcm-agent-core",
+  "version": "0.1.0",
+  "description": "Shared scan / ranking / cache / provider-config core for the FCM coding-agent extensions (fcm-pi, fcm-opencode).",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/",
+    "README.md"
+  ],
+  "keywords": [
+    "free-coding-models",
+    "coding-agent",
+    "scanner",
+    "ranker",
+    "pi",
+    "opencode"
+  ],
+  "author": "vava",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vava-nessa/free-coding-models.git",
+    "directory": "packages/fcm-agent-core"
+  },
+  "peerDependencies": {
+    "free-coding-models": ">=0.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

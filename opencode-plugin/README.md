@@ -1,36 +1,21 @@
-# fcm-opencode
+# fcm-opencode (legacy compat wrapper)
 
-Beta OpenCode plugin for `free-coding-models`.
+> ⚠️ This folder is a **thin re-export wrapper** kept so existing `~/.config/opencode/plugins/fcm-opencode.js` symlinks (which point here) keep working after the shared-core extraction.
 
-## What it does
+The real OpenCode adapter now lives in **[`packages/fcm-opencode`](../packages/fcm-opencode)**, and all shared scan/rank/cache/provider logic lives in **[`packages/fcm-agent-core`](../packages/fcm-agent-core)**.
 
-- Stays light on OpenCode startup: cache/daemon only, no direct probe unless requested.
-- Adds `/fcm`, `/fcm-status`, and `/fcm-router` commands.
-- Reuses the same scan/ranking/safety code as `fcm-pi`.
-- Injects FCM providers into OpenCode config using `fcm-*` provider IDs.
-- Never switches model on startup; switching requires `/fcm 1`, `/fcm best`, or `/fcm router`.
+## What's here
 
-## Local install while developing
+- `index.js` — re-exports the canonical adapter from `packages/fcm-opencode`.
 
-Symlink the plugin file so relative imports still point back to this repository:
+## New installs
+
+Symlink directly to the canonical package:
 
 ```bash
 mkdir -p ~/.config/opencode/plugins
-ln -sf /Users/vava/Documents/GitHub/free-coding-models/opencode-plugin/index.js \
+ln -sf /Users/<you>/Documents/GitHub/free-coding-models/packages/fcm-opencode/index.js \
   ~/.config/opencode/plugins/fcm-opencode.js
 ```
 
-Restart OpenCode, then use:
-
-```txt
-/fcm           # scan and list top choices
-/fcm 1         # switch to rank #1 explicitly
-/fcm best      # switch to best explicitly
-/fcm rescan    # force a fresh scan
-/fcm status    # diagnostics
-/fcm router    # switch to local FCM Smart Router daemon
-```
-
-## Notes
-
-OpenCode plugins cannot currently show a Pi-style interactive picker from the public API, so the first implementation is rank-number based. It is still explicit: listing models does not switch; `/fcm 1` or `/fcm best` does.
+See [`packages/fcm-opencode/README.md`](../packages/fcm-opencode/README.md) for commands and limitations.

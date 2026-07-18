@@ -37,7 +37,7 @@ import { sources, MODELS } from '../sources.js'
 import { loadConfig, getApiKey, saveConfig, isProviderEnabled } from '../src/core/config.js'
 import { getProviderBillingNote, getProviderLabelWithBilling, PROVIDER_METADATA } from '../src/core/provider-metadata.js'
 import { ensureFavoritesConfig } from '../src/core/favorites.js'
-import { ping } from '../src/core/ping.js'
+import { ping, getProviderQuotaPercentCached } from '../src/core/ping.js'
 import { runProviderKeyTest } from '../src/core/provider-key-tester.js'
 import { loadChangelog } from '../src/core/changelog-loader.js'
 import { checkForUpdateDetailed, checkForUpdate, runUpdate, fetchLastReleaseDate } from '../src/core/updater.js'
@@ -231,6 +231,19 @@ async function pingModel(result) {
   const apiKey = getApiKey(config, result.providerKey) ?? null
   try {
     const pingResult = await ping(apiKey, result.modelId, result.providerKey, result.url)
+    let quotaPercent = pingResult.quotaPercent
+    if ((quotaPercent === null || quotaPercent === undefined) && apiKey) {
+      const providerQuota = await getProviderQuotaPercentCached(result.providerKey, apiKey)
+      if (typeof providerQuota === 'number' && Number.isFinite(providerQuota)) quotaPercent = providerQuota
+    }
+    if (typeof quotaPercent === 'number' && Number.isFinite(quotaPercent)) {
+      result.usagePercent = quotaPercent
+      for (const sibling of results) {
+        if (sibling.providerKey === result.providerKey && (sibling.usagePercent === undefined || sibling.usagePercent === null)) {
+          sibling.usagePercent = quotaPercent
+        }
+      }
+    }
     updateHealthFromPing(result, pingResult, !!apiKey)
   } catch (err) {
     updateHealthFromPing(result, { code: '000', ms: null, error: err?.message || 'Ping failed' }, !!apiKey)
@@ -295,6 +308,7 @@ function serializeModel(result) {
     pingHistory: result.pings.slice(-20).map((p) => ({ ms: p.ms, code: p.code })),
     pingCount: result.pings.length,
     hasApiKey: !!getApiKey(config, result.providerKey),
+    usagePercent: typeof result.usagePercent === 'number' && Number.isFinite(result.usagePercent) ? result.usagePercent : null,
     inRouterSet,
     benchmarkKey: key,
     isBenchmarking: benchmarkRunning.has(key),

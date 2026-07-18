@@ -1,0 +1,41 @@
+{
+  "name": "fcm-pi",
+  "version": "0.2.0",
+  "description": "Pi coding-agent extension for free-coding-models — on-demand scan, ranking, and explicit model switching.",
+  "type": "module",
+  "main": "extensions/index.js",
+  "exports": {
+    ".": "./extensions/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "extensions/",
+    "lib/",
+    "README.md"
+  ],
+  "keywords": [
+    "pi-package",
+    "free-coding-models",
+    "ai",
+    "benchmark",
+    "coding",
+    "llm"
+  ],
+  "author": "vava",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vava-nessa/free-coding-models.git",
+    "directory": "packages/fcm-pi"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "fcm-agent-core": "file:../fcm-agent-core"
+  },
+  "peerDependencies": {
+    "free-coding-models": ">=0.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -539,7 +539,7 @@ Cerebras free-tier API has a strict **~8k total token limit** (prompt + tools + 
 
 ### Full documentation
 
-See [`pi-extension/README.md`](./pi-extension/README.md) for the complete architecture diagram, config format, and troubleshooting guide.
+The adapter lives in [`packages/fcm-pi`](./packages/fcm-pi); `pi-extension/` is kept as a thin compat wrapper so existing local-path installs keep loading. See [`packages/fcm-pi/README.md`](./packages/fcm-pi/README.md) for the complete architecture, config format, and the one-time `packages/` self-link setup.
 
 ---
 
@@ -551,9 +551,11 @@ See [`pi-extension/README.md`](./pi-extension/README.md) for the complete archit
 
 ```bash
 mkdir -p ~/.config/opencode/plugins
-ln -sf /Users/vava/Documents/GitHub/free-coding-models/opencode-plugin/index.js \
+ln -sf /Users/vava/Documents/GitHub/free-coding-models/packages/fcm-opencode/index.js \
   ~/.config/opencode/plugins/fcm-opencode.js
 ```
+
+(`opencode-plugin/` at the repo root is kept as a thin compat wrapper, so existing symlinks keep working.)
 
 ### Commands
 
@@ -568,7 +570,31 @@ ln -sf /Users/vava/Documents/GitHub/free-coding-models/opencode-plugin/index.js 
 
 Startup is intentionally light: fresh cache first, daemon second, **no direct scan** unless you run `/fcm`.
 
-See [`opencode-plugin/README.md`](./opencode-plugin/README.md) for details and limitations.
+See [`packages/fcm-opencode/README.md`](./packages/fcm-opencode/README.md) for details and limitations.
+
+---
+
+## 🧩 Agent extensions architecture
+
+Both adapters share one core so scan/rank/cache/daemon/API-key/provider logic lives in exactly one place:
+
+```
+packages/
+├── fcm-agent-core/   ← shared core (scan, rank, cache, daemon, keys, provider descriptors; no rendering)
+├── fcm-pi/           ← Pi adapter (hooks, commands, status-bar renderer, ~/.pi/agent disk writer)
+└── fcm-opencode/     ← OpenCode adapter (config mutation, commands, toasts, shell.env)
+```
+
+- The core emits **structured progress events**; each adapter renders them its own way (Pi status bar, OpenCode toast).
+- API keys are never inlined into OpenCode config — they are referenced via `{env:FCM_<PROVIDER>_API_KEY}`.
+- The cross-tool cache means a scan done in Pi benefits OpenCode (and vice-versa).
+
+> The `packages/` tree needs a one-time self-link so `free-coding-models` resolves by name during local-path use:
+> ```bash
+> cd packages && mkdir -p node_modules && ln -s ../../ node_modules/free-coding-models
+> ```
+
+See [`packages/fcm-agent-core/README.md`](./packages/fcm-agent-core/README.md) for the public API and rationale. Tracked in [`.kandown/tasks/t2.md`](./.kandown/tasks/t2.md).
 
 ---
 

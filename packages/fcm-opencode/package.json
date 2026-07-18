@@ -1,0 +1,39 @@
+{
+  "name": "fcm-opencode",
+  "version": "0.2.0",
+  "description": "OpenCode plugin for free-coding-models — on-demand scans, routing, and provider injection.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "free-coding-models",
+    "ai",
+    "coding",
+    "llm"
+  ],
+  "author": "vava",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vava-nessa/free-coding-models.git",
+    "directory": "packages/fcm-opencode"
+  },
+  "dependencies": {
+    "fcm-agent-core": "file:../fcm-agent-core"
+  },
+  "peerDependencies": {
+    "free-coding-models": ">=0.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

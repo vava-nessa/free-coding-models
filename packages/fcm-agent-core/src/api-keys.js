@@ -1,10 +1,17 @@
 /**
  * @file api-keys.js
- * @description API Key loader and resolver for FCM Pi extension.
+ * @description API key loader and resolver shared by all FCM agent adapters.
  *
  * @details
- *   Loads API keys from both process.env (highest priority) and
- *   the free-coding-models config file (~/.free-coding-models.json).
+ *   Resolves the effective API key for a provider from two sources, in priority
+ *   order: the matching process.env variable first, then the
+ *   `~/.free-coding-models.json` config file written by the FCM TUI/CLI.
+ *   This module is deliberately free of any host-agent (Pi/OpenCode) concerns
+ *   so both adapters share identical key resolution.
+ *
+ * @functions
+ *   - getKeyForProvider → Resolve one provider's API key (env wins over config)
+ *   - loadAllApiKeys → Build a providerKey → apiKey map for the whole catalog
  */
 
 import { loadConfig, getApiKey } from 'free-coding-models/src/core/config.js'
@@ -14,7 +21,7 @@ import { sources } from 'free-coding-models/sources.js'
 /**
  * 📖 Resolve the effective API key for a given provider key.
  * 📖 Env overrides take precedence over the ~/.free-coding-models.json config file.
- * 
+ *
  * @param {string} providerKey - Key of the provider (e.g., 'groq', 'nvidia')
  * @returns {string|null} The resolved API key, or null if none found
  */
@@ -42,18 +49,18 @@ export function getKeyForProvider(providerKey) {
 
 /**
  * 📖 Load all available API keys across all cataloged providers.
- * 
+ *
  * @returns {Map<string, string>} A map of providerKey -> apiKey
  */
 export function loadAllApiKeys() {
   const keyMap = new Map()
-  
+
   for (const providerKey of Object.keys(sources)) {
     const key = getKeyForProvider(providerKey)
     if (key) {
       keyMap.set(providerKey, key)
     }
   }
-  
+
   return keyMap
 }

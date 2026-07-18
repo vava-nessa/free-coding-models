@@ -1,16 +1,16 @@
 {
   "name": "fcm-pi",
-  "version": "0.1.0",
-  "description": "Pi extension for free-coding-models — scan, benchmark, and auto-select the best free AI coding model before every session",
+  "version": "0.2.0",
+  "description": "COMPAT WRAPPER — real adapter lives in packages/fcm-pi. Kept so existing local-path installs keep loading.",
   "type": "module",
-  "keywords": ["pi-package", "free-coding-models", "ai", "benchmark", "coding", "llm"],
   "main": "extensions/index.js",
+  "keywords": ["pi-package", "free-coding-models"],
   "author": "vava",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vava-nessa/free-coding-models.git",
-    "directory": "pi-extension"
+    "directory": "packages/fcm-pi"
   },
   "peerDependencies": {
     "free-coding-models": ">=0.5.0"

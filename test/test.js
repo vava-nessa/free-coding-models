@@ -104,7 +104,7 @@ import {
   buildBenchmarkRequest,
   benchmarkModel,
 } from '../src/core/benchmark.js'
-import { buildChatCompletionPingBody, buildPingRequest, ping } from '../src/core/ping.js'
+import { buildChatCompletionPingBody, buildPingRequest, ping, extractQuotaPercent } from '../src/core/ping.js'
 
 // ─── Helper: create a mock model result ──────────────────────────────────────
 // 📖 Builds a minimal result object matching the shape used by the main script
@@ -225,6 +225,32 @@ async function withMockProvider(responder, fn) {
     await closeRouterTestServer(server)
   }
 }
+
+describe('extractQuotaPercent', () => {
+  it('parses Groq request quota headers', () => {
+    const headers = new Headers({
+      'x-ratelimit-remaining-requests': '750',
+      'x-ratelimit-limit-requests': '1000',
+    })
+    assert.strictEqual(extractQuotaPercent(headers), 75)
+  })
+
+  it('parses Cerebras daily request quota headers', () => {
+    const headers = new Headers({
+      'x-ratelimit-remaining-requests-day': '25',
+      'x-ratelimit-limit-requests-day': '100',
+    })
+    assert.strictEqual(extractQuotaPercent(headers), 25)
+  })
+
+  it('parses Cerebras token-minute quota headers when request headers are absent', () => {
+    const headers = new Headers({
+      'x-ratelimit-remaining-tokens-minute': '12000',
+      'x-ratelimit-limit-tokens-minute': '30000',
+    })
+    assert.strictEqual(extractQuotaPercent(headers), 40)
+  })
+})
 
 describe('buildPingRequest', () => {
   it('adds disabled thinking to standard chat-completion ping payloads', () => {

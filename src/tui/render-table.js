@@ -28,7 +28,7 @@
  *   - ../src/constants.js: PING_INTERVAL, FRAMES
  *   - ../src/tier-colors.js: TIER_COLOR
  *   - ../src/utils.js: getAvg, getVerdict, getUptime, getStabilityScore
- *   - ../src/ping.js: usagePlaceholderForProvider
+ *   - ../src/quota-capabilities.js: supportsUsagePercent
  *   - ../src/render-helpers.js: calculateViewport, sortResultsWithPinnedFavorites, padEndDisplay, fadedRow
  *
  *   @see bin/free-coding-models.js — main entry point that calls renderTable
@@ -50,7 +50,7 @@ import {
 import { themeColors, currentPalette, getProviderRgb, getTierRgb, getReadableTextRgb, getTheme, THEME_BG_RGB } from './theme.js'
 import { TIER_COLOR } from './tier-colors.js'
 import { getAvg, getVerdict, getUptime, getStabilityScore, getVersionStatusInfo, isNewModel } from '../core/utils.js'
-import { usagePlaceholderForProvider } from '../core/ping.js'
+import { supportsUsagePercent } from '../core/quota-capabilities.js'
 import { formatBenchmarkLatency, formatBenchmarkTps } from '../core/benchmark.js'
 import { calculateViewport, sortResultsWithPinnedFavorites, padEndDisplay, displayWidth, stripAnsi, fadedRow } from './render-helpers.js'
 import { getToolMeta, TOOL_METADATA, TOOL_MODE_ORDER, isModelCompatibleWithTool } from '../core/tool-metadata.js'
@@ -96,6 +96,7 @@ const COLUMN_SORT_MAP = {
   uptime: 'uptime',
   aiLatency: 'aiLatency',
   tps: 'tps',
+  quota: 'usage',
 }
 export { COLUMN_SORT_MAP }
 
@@ -284,7 +285,7 @@ export function renderTable({
   const W_RANK = 6
   const W_TIER = 5
   const W_CTX = 4
-  const W_SOURCE = 14
+  const W_SOURCE = 11
   const W_MODEL = 26
   const W_SWE = 5
   const W_STATUS = 17
@@ -292,9 +293,9 @@ export function renderTable({
   const W_UPTIME = 6
   const W_AI_LATENCY = 17
   const W_TPS = 5
+  const W_QUOTA = 6
 
   // const W_TOKENS = 7 // Used column removed
-  // const W_USAGE = 7 // Usage column removed
   const MIN_TABLE_WIDTH = WIDTH_WARNING_MIN_COLS
 
   // 📖 Responsive column visibility: progressively hide least-useful columns
@@ -308,6 +309,7 @@ export function renderTable({
   let wAvg = 9
   let wStab = 11
   let wSource = W_SOURCE
+  let wModel = W_MODEL
   let wStatus = W_STATUS
   let wAiLatency = W_AI_LATENCY
   let showRank = true
@@ -324,10 +326,11 @@ export function renderTable({
       cols.push(W_MOOD)
       if (showRank) cols.push(W_RANK)
       if (showTier) cols.push(W_TIER)
-      cols.push(W_SWE, W_CTX, W_MODEL, wSource, wPing, wAvg, wStatus, W_VERDICT)
+      cols.push(W_SWE, W_CTX, wModel, wSource, wPing, wAvg, wStatus, W_VERDICT)
       if (showStability) cols.push(wStab)
       if (showUptime) cols.push(W_UPTIME)
       if (showBenchmarkColumns) cols.push(wAiLatency, W_TPS)
+      cols.push(W_QUOTA)
       return ROW_MARGIN + cols.reduce((a, b) => a + b, 0) + (cols.length - 1) * SEP_W
     }
 
@@ -338,8 +341,9 @@ export function renderTable({
       wAvg = 9       // 'Avg Ping' stays aligned with Last Ping
       wStab = 8      // 'StaB.' instead of 'Stability'
       wSource = 7    // Provider truncated to 4 chars + '…', 7 cols total
+      wModel = 21    // Keep compact tables wide enough for Rank + Quota
       wStatus = 13   // Health truncated after 6 chars + '…'
-      wAiLatency = 13 // Mirror compact Health text when health is not good
+      wAiLatency = 9 // Keep compact tables wide enough for Rank + Quota
     }
     // 📖 Steps 2–6: Progressive column hiding (least useful first)
     if (calcWidth() > terminalCols) showRank = false
@@ -359,7 +363,7 @@ export function renderTable({
     if (showTier) colDefs.push({ name: 'tier', width: W_TIER })
     colDefs.push({ name: 'swe', width: W_SWE })
     colDefs.push({ name: 'ctx', width: W_CTX })
-    colDefs.push({ name: 'model', width: W_MODEL })
+    colDefs.push({ name: 'model', width: wModel })
     colDefs.push({ name: 'source', width: wSource })
     colDefs.push({ name: 'ping', width: wPing })
     colDefs.push({ name: 'avg', width: wAvg })
@@ -371,6 +375,7 @@ export function renderTable({
       colDefs.push({ name: 'aiLatency', width: wAiLatency })
       colDefs.push({ name: 'tps', width: W_TPS })
     }
+    colDefs.push({ name: 'quota', width: W_QUOTA })
     let x = ROW_MARGIN + 1 // 📖 1-based: first column starts after the 2-char left margin
     const columns = []
     for (let i = 0; i < colDefs.length; i++) {
@@ -517,7 +522,7 @@ export function renderTable({
     if (headerFlashColumn === 'tier') return flashHeader(tierLabel, W_TIER)
     return colorFirst(tierLabel, W_TIER)
   })()
-  const modelH_c   = headerStyle('model', modelLabel, W_MODEL)
+  const modelH_c   = headerStyle('model', modelLabel, wModel)
   const sweH_c     = headerStyle('swe', sweLabel, W_SWE)
   const ctxH_c     = headerStyle('ctx', ctxLabel, W_CTX)
   const pingH_c    = headerStyle('ping', pingLabel, wPing)
@@ -580,8 +585,15 @@ export function renderTable({
     const padding = ' '.repeat(Math.max(0, W_TPS - plain.length))
     return themeColors.dim(plain + padding)
   })()
+  const quotaH_c = (() => {
+    if (headerFlashColumn === 'quota' || headerFlashColumn === 'usage') {
+      const ft = (dir + ' Quota').length <= W_QUOTA ? dir + ' Quota' : 'Quota' + dir
+      return flashHeader(ft, W_QUOTA)
+    }
+    if (sortColumn === 'usage') return sortActiveHeader('Quota', W_QUOTA)
+    return themeColors.dim('Quota'.padEnd(W_QUOTA))
+  })()
 
-  // 📖 Usage column removed from UI – no header or separator for it.
   // 📖 Header row: conditionally include columns based on responsive visibility
   const headerParts = [moodH_c]
   if (showRank) headerParts.push(rankH_c)
@@ -590,6 +602,7 @@ export function renderTable({
   if (showStability) headerParts.push(stabH_c)
   if (showUptime) headerParts.push(uptimeH_c)
   if (showBenchmarkColumns) headerParts.push(aiLatencyH_c, tpsH_c)
+  headerParts.push(quotaH_c)
   lines.push('  ' + headerParts.join(COL_SEP))
 
   // 📖 Mouse support: the column header row is the last line we just pushed.
@@ -666,7 +679,7 @@ export function renderTable({
       favoritePrefix = '🆕 '
     }
     const prefixDisplayWidth = displayWidth(favoritePrefix)
-    const nameWidth = Math.max(0, W_MODEL - prefixDisplayWidth)
+    const nameWidth = Math.max(0, wModel - prefixDisplayWidth)
     const name = favoritePrefix + r.label.slice(0, nameWidth).padEnd(nameWidth)
     const sweScore = r.sweScore ?? '—'
     // 📖 SWE% colorized on the same gradient as Tier:
@@ -901,9 +914,23 @@ export function renderTable({
     // 📖 Check if this model is incompatible with the active tool mode
     const isIncompatible = !isModelCompatibleWithTool(r.providerKey, mode)
 
-    // 📖 Usage column removed from UI – no usage data displayed.
-    // (We keep the logic but do not render it.)
-    const usageCell = ''
+    // 📖 Quota column: provider telemetry if available, N/A when impossible,
+    // 📖 and '-' when the provider is not configured.
+    let quotaCell
+    if (!r.hasApiKey) {
+      quotaCell = themeColors.dim('-'.padEnd(W_QUOTA))
+    } else if (!supportsUsagePercent(r.providerKey)) {
+      quotaCell = themeColors.dim('N/A'.padEnd(W_QUOTA))
+    } else if (typeof r.usagePercent === 'number' && Number.isFinite(r.usagePercent)) {
+      const quotaText = `${Math.round(r.usagePercent)}%`.padEnd(W_QUOTA)
+      quotaCell = r.usagePercent >= 50
+        ? themeColors.metricGood(quotaText)
+        : r.usagePercent >= 20
+          ? themeColors.metricWarn(quotaText)
+          : themeColors.metricBad(quotaText)
+    } else {
+      quotaCell = themeColors.dim('…'.padEnd(W_QUOTA))
+    }
 
     // 📖 AI Latency + TPS columns — same benchmark result, split into two readable metrics.
     // 📖 Benchmark results are shown regardless of health status (up/timeout/down/429/noauth).
@@ -960,6 +987,7 @@ export function renderTable({
     if (showStability) rowParts.push(stabCell)
     if (showUptime) rowParts.push(uptimeCell)
     if (showBenchmarkColumns) rowParts.push(latencyCell, tpsCell)
+    rowParts.push(quotaCell)
     const row = '  ' + rowParts.join(COL_SEP)
 
     // 📖 "Unusable" models (no key / bad key) are visually de-emphasized at the

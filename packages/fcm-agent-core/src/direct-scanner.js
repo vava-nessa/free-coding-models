@@ -1,27 +1,26 @@
 /**
  * @file direct-scanner.js
- * @description Direct model scanner (non-daemon fallback).
+ * @description Direct model scanner (non-daemon fallback) — shared core.
  *
  * @details
- *   Runs pings and AI benchmarks directly from the Pi session process by
- *   importing core FCM modules. Limits requests to the top 30 models by SWE
- *   to avoid hitting local bandwidth caps. Provides real-time percentage
- *   progress tracking for the terminal status display.
+ *   Runs pings and AI benchmarks directly from the host agent process by
+ *   importing core FCM modules. This is the slow path (no daemon), so it limits
+ *   work to the top N candidates by SWE score to avoid network thrashing.
+ *
+ *   Rendering is NOT done here. The scanner emits structured progress events
+ *   via `onProgress(event)`; each adapter decides how to show them (Pi status
+ *   bar, OpenCode toast, logs, …). This keeps the core free of chalk/ANSI and
+ *   host-specific UI.
+ *
+ * @functions
+ *   - directScan → Ping + benchmark candidates, return scanned models + events
  */
 
 import { MODELS, sources } from 'free-coding-models/sources.js'
 import { ping } from 'free-coding-models/src/core/ping.js'
 import { benchmarkModel } from 'free-coding-models/src/core/benchmark.js'
 import { loadAllApiKeys } from './api-keys.js'
-import { parseSweScore } from './model-ranker.js'
-import chalk from 'chalk'
-
-// 📖 Brand logo colours — mirror the main FCM TUI header (dark theme palette)
-// 📖 so the scan status badge looks identical to the `> free-coding-models_`
-// 📖 header logo. Same green/white on black, bold.
-const HEADER_BG = [0, 0, 0]
-const HEADER_GREEN = [118, 185, 0]
-const HEADER_WHITE = [255, 255, 255]
+import { parseSweScore } from './ranker.js'
 
 /**
  * @typedef {object} ScannedModel
@@ -34,45 +33,48 @@ const HEADER_WHITE = [255, 255, 255]
  * @property {string} providerName
  * @property {string} providerUrl
  * @property {string} apiKey
- * @property {string} status - 'up' | 'down' | 'timeout' | 'auth_error'
+ * @property {string} status - 'up' | 'down' | 'timeout' | 'auth_error' | 'noauth'
  * @property {number|null} latencyMs
  * @property {number|null} tps
  * @property {number|null} totalBenchMs
+ * @property {number} stabilityScore
  * @property {boolean} hasKey
  */
 
 /**
- * 📖 Scan model availability and latency directly from the CLI/TUI process.
- * 
- * @param {object} options - Configuration and progress callbacks
- * @param {function} [options.onProgress] - Progress message callback
- * @returns {Promise<Array<ScannedModel>>} Scanned models list
+ * 📖 Scan model availability and latency directly from the agent process.
+ *
+ * @param {object} [options={}]
+ * @param {function} [options.onProgress] - Structured progress callback `(event) => void`
+ * @param {AbortSignal} [options.signal] - Abort signal to cancel the scan early
+ * @param {number} [options.maxCandidates=30] - Cap on pinged candidates
+ * @param {number} [options.maxBenchmarkCandidates=5] - Cap on benchmarked survivors
+ * @returns {Promise<Array<ScannedModel>>} Scanned models list (unfiltered)
  */
 export async function directScan(options = {}) {
+  const onProgress = typeof options.onProgress === 'function' ? options.onProgress : () => {}
+  const signal = options.signal
+  const maxCandidates = options.maxCandidates ?? 30
+  const maxBenchmarkCandidates = options.maxBenchmarkCandidates ?? 5
   const keys = loadAllApiKeys()
   const scannedList = []
 
-  // 📖 Step 1: Filter models by available keys (and skip zen-only / cli-only models)
+  // 📖 Step 1: Filter models by available keys (skip zen-only / cli-only models)
   const candidateModels = MODELS.filter(tuple => {
     const providerKey = tuple[5]
     const sourceInfo = sources[providerKey]
-    
     if (!sourceInfo) return false
     if (sourceInfo.zenOnly) return false // 📖 Zen models only work in OpenCode
-    
     const key = keys.get(providerKey)
-    const hasKey = !!key
-    const noKeyNeeded = !!sourceInfo.noKeyNeeded
-
-    return hasKey || noKeyNeeded
+    return !!key || !!sourceInfo.noKeyNeeded
   })
 
   if (candidateModels.length === 0) {
-    if (options.onProgress) options.onProgress('No configured API keys found')
+    onProgress({ phase: 'error', message: 'No configured API keys found' })
     return []
   }
 
-  // 📖 Step 2: Sort by SWE score descending, keep top 30 to prevent network thrashing
+  // 📖 Step 2: Sort by SWE score descending, keep top N
   const sortedCandidates = candidateModels
     .map(tuple => ({
       modelId: tuple[0],
@@ -84,53 +86,45 @@ export async function directScan(options = {}) {
       sourceInfo: sources[tuple[5]]
     }))
     .sort((a, b) => parseSweScore(b.sweScore) - parseSweScore(a.sweScore))
-    .slice(0, 30)
+    .slice(0, maxCandidates)
 
   const totalPings = sortedCandidates.length
   let completedPings = 0
 
-  const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-  let spinnerIndex = 0
   let currentAction = 'Probing'
-  let currentTargets = []
+  let activeModels = []
   let pct = 0
   let completed = 0
   let total = totalPings
 
-  const updateProgress = () => {
-    if (!options.onProgress) return
-    const spinner = chalk.bold.magenta(spinnerFrames[spinnerIndex])
-    const actionStr = chalk.bold.yellow(`${currentAction}:`)
-    // 📖 Brand badge — replace live model names with the `> free-coding-models`
-    // 📖 header logo, exact same green/white-on-black colours as the TUI header.
-    const hBold = (color, text) => chalk.rgb(...color).bgRgb(...HEADER_BG).bold(text)
-    const targetStr = `${hBold(HEADER_GREEN, '> ')}${hBold(HEADER_GREEN, 'free')}${hBold(HEADER_WHITE, '-coding-models')}`
-    const pctStr = chalk.bold.cyan(`${pct}%`)
-    const counterStr = chalk.gray(`(${completed}/${total})`)
-    
-    options.onProgress(`${spinner} ${actionStr} ${targetStr} — ${pctStr} ${counterStr}`)
+  const emit = (overrides = {}) => {
+    onProgress({
+      phase: currentAction === 'Probing' ? 'probing' : 'benchmarking',
+      action: currentAction,
+      percent: pct,
+      completed,
+      total,
+      activeModels: activeModels.slice(-2),
+      ...overrides
+    })
   }
 
-  const intervalId = setInterval(() => {
-    spinnerIndex = (spinnerIndex + 1) % spinnerFrames.length
-    updateProgress()
-  }, 80)
+  emit()
 
   // 📖 Step 3: Ping candidate models in parallel (15s timeout inside ping.js)
   const pingPromises = sortedCandidates.map(async (candidate) => {
+    if (signal?.aborted) return null
     const { modelId, providerKey, sourceInfo, label } = candidate
     const apiKey = keys.get(providerKey) || null
     const url = sourceInfo.url
     const providerName = sourceInfo.name || providerKey
-    const targetDesc = `${label} [${providerName}]`
-
-    currentTargets.push(targetDesc)
-    updateProgress()
+    const target = { label, providerName }
+    activeModels.push(target)
+    emit()
 
     try {
       const res = await ping(apiKey, modelId, providerKey, url)
-      
-      // 📖 Map ping code to clean status string
+
       let status = 'down'
       if (res.code === '200') status = 'up'
       else if (res.code === '000') status = 'timeout'
@@ -147,6 +141,7 @@ export async function directScan(options = {}) {
         latencyMs: typeof res.ms === 'number' ? res.ms : null,
         tps: null,
         totalBenchMs: null,
+        stabilityScore: 100,
         hasKey: status !== 'noauth' && status !== 'auth_error'
       }
     } catch (err) {
@@ -159,14 +154,15 @@ export async function directScan(options = {}) {
         latencyMs: null,
         tps: null,
         totalBenchMs: null,
+        stabilityScore: 100,
         hasKey: true
       }
     } finally {
       completedPings++
       pct = Math.round((completedPings / totalPings) * 100)
       completed = completedPings
-      currentTargets = currentTargets.filter(t => t !== targetDesc)
-      updateProgress()
+      activeModels = activeModels.filter(t => t !== target)
+      emit()
     }
   })
 
@@ -174,42 +170,45 @@ export async function directScan(options = {}) {
   const aliveModels = []
 
   for (const result of pingResults) {
-    if (result.status === 'fulfilled') {
+    if (result.status === 'fulfilled' && result.value) {
       aliveModels.push(result.value)
     }
   }
 
-  // 📖 Filter to only models that responded successfully
-  const usableAlive = aliveModels.filter(m => m.status === 'up')
-  
-  if (usableAlive.length === 0) {
-    clearInterval(intervalId)
-    return aliveModels // 📖 Return what we have (mostly timeouts/auth_errors)
+  // 📖 Remove intermediate sourceInfo so returning plain JSON is safe
+  for (const m of aliveModels) {
+    delete m.sourceInfo
   }
 
-  // 📖 Step 4: Run AI Latency + TPS Benchmark on top 5 alive candidates
+  const usableAlive = aliveModels.filter(m => m.status === 'up')
+  if (usableAlive.length === 0) {
+    onProgress({ phase: 'done', percent: 100, completed: totalPings, total: totalPings, activeModels: [] })
+    return aliveModels
+  }
+
+  // 📖 Step 4: AI Latency + TPS benchmark on the top survivors
   const benchmarkCandidates = usableAlive
     .sort((a, b) => parseSweScore(b.sweScore) - parseSweScore(a.sweScore))
-    .slice(0, 5)
+    .slice(0, maxBenchmarkCandidates)
 
   currentAction = 'Benchmarking'
   completed = 0
   pct = 0
   total = benchmarkCandidates.length
-  currentTargets = []
-  updateProgress()
+  activeModels = []
+  emit()
 
   const totalBenchmarks = benchmarkCandidates.length
   let completedBenchmarks = 0
 
   const benchmarkPromises = benchmarkCandidates.map(async (model) => {
+    if (signal?.aborted) return { modelId: model.modelId, ok: false, code: 'ABORTED', totalMs: null }
     const { modelId, providerKey, providerUrl, apiKey, label, providerName } = model
-    const targetDesc = `${label} [${providerName}]`
-    currentTargets.push(targetDesc)
-    updateProgress()
+    const target = { label, providerName }
+    activeModels.push(target)
+    emit()
 
     try {
-      // 📖 Limit benchmark retries to 1 with a short delay for speed
       const res = await benchmarkModel({
         apiKey,
         modelId,
@@ -220,34 +219,21 @@ export async function directScan(options = {}) {
       })
 
       if (res.ok) {
-        return {
-          modelId,
-          ok: true,
-          tps: res.tokensPerSecond || null,
-          totalMs: res.totalMs || null
-        }
+        return { modelId, ok: true, tps: res.tokensPerSecond || null, totalMs: res.totalMs || null }
       }
-      return {
-        modelId,
-        ok: false,
-        code: res.code || 'ERR',
-        totalMs: res.totalMs || null
-      }
+      return { modelId, ok: false, code: res.code || 'ERR', totalMs: res.totalMs || null }
     } catch (err) {
-      // 📖 Catch benchmark errors gracefully
+      return { modelId, ok: false, code: 'ERR', totalMs: null }
     } finally {
       completedBenchmarks++
       pct = Math.round((completedBenchmarks / totalBenchmarks) * 100)
       completed = completedBenchmarks
-      currentTargets = currentTargets.filter(t => t !== targetDesc)
-      updateProgress()
+      activeModels = activeModels.filter(t => t !== target)
+      emit()
     }
-    return { modelId, ok: false, code: 'ERR', totalMs: null }
   })
 
   const benchmarkResults = await Promise.allSettled(benchmarkPromises)
-  clearInterval(intervalId)
-
   const benchMap = new Map()
   const benchmarkedIds = new Set(benchmarkCandidates.map((model) => model.modelId))
 
@@ -257,18 +243,14 @@ export async function directScan(options = {}) {
     }
   }
 
-  // 📖 Step 5: Merge benchmark stats back into the model objects. If a model
-  // 📖 was chosen for the real AI latency test and failed there, mark it down:
-  // 📖 a tiny ping is not enough for Pi if the actual completion endpoint fails.
-  const finalModels = aliveModels.map(model => {
+  onProgress({ phase: 'done', percent: 100, completed: total, total, activeModels: [] })
+
+  // 📖 Step 5: Merge benchmark stats back in. If a survivor failed the real AI
+  // 📖 latency test, mark it down: a tiny ping passing is not enough for an agent.
+  return aliveModels.map(model => {
     const bench = benchMap.get(model.modelId)
     if (bench?.ok) {
-      return {
-        ...model,
-        tps: bench.tps,
-        totalBenchMs: bench.totalMs,
-        benchmarkStatus: 'up'
-      }
+      return { ...model, tps: bench.tps, totalBenchMs: bench.totalMs, benchmarkStatus: 'up' }
     }
     if (benchmarkedIds.has(model.modelId)) {
       return {
@@ -281,7 +263,4 @@ export async function directScan(options = {}) {
     }
     return model
   })
-
-  // 📖 Remove intermediate sourceInfo object so returning plain JSON is safe
-  return finalModels.map(({ sourceInfo, ...rest }) => rest)
 }

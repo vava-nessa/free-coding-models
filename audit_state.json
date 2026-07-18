@@ -1,12 +1,12 @@
 {
   "_meta": {
-    "totalModels": 247,
-    "lastFullAudit": "2026-07-08"
+    "totalModels": 231,
+    "lastFullAudit": "2026-07-18"
   },
   "nvidia": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "1a022776debc080e6468683032e60947",
-    "modelCount": 31
+    "modelCount": 30
   },
   "groq": {
     "lastAudited": "2026-07-18",
@@ -14,93 +14,93 @@
     "modelCount": 7
   },
   "cerebras": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "13f81ad23020f6bfff023425b18910fc",
     "modelCount": 3
   },
   "googleai": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "7c1853c3e20ec800af5798ac0abbc4ca",
     "modelCount": 7
   },
   "github-models": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "5742be2a908c74163d786bda89437958",
     "modelCount": 35
   },
   "mistral": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "8e07fa53b93649b60e4336c81f65cdf5",
     "modelCount": 7
   },
   "cloudflare": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "0edcb0eda30fd1088923cac8eaf00ac9",
     "modelCount": 17
   },
   "openrouter": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "ad889216d8c715a28f42706d65da9550",
-    "modelCount": 25
+    "modelCount": 23
   },
   "sambanova": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "078169a8afab2f63a42e74212832f5a4",
     "modelCount": 6
   },
   "ovhcloud": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "97a038a441e3601abd5faf773836c4e4",
     "modelCount": 14
   },
   "codestral": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "aa88453acea900e1d6cb0ccaaf68e375",
     "modelCount": 2
   },
   "zai": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "9810e87090ca37044fab2dd9ba76c22e",
     "modelCount": 3
   },
   "scaleway": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "acbdc795b98c778129e9cabdd0d04de1",
     "modelCount": 15
   },
   "qwen": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "08ab14efe65a3111c6083c5325381fad",
     "modelCount": 21
   },
   "opencode-zen": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "02f87ba135c0598a9c6c11b2f58223d7",
-    "modelCount": 5
+    "modelCount": 6
   },
   "kilo": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "modelCount": 1,
     "fingerprint": "d5017bb2e942233d2dbf23a7e1411730"
   },
   "llm7": {
-    "lastAudited": "2026-07-08",
-    "modelCount": 2,
+    "lastAudited": "2026-07-18",
+    "modelCount": 3,
     "fingerprint": "68c5bb6f5af462edaefa684e4341a8e9"
   },
   "routeway": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "modelCount": 13,
     "fingerprint": "c3f9c4331e702ed92747b1903c3b1de0"
   },
   "novita": {
-    "lastAudited": "2026-07-08",
-    "modelCount": 4,
+    "lastAudited": "2026-07-18",
+    "modelCount": 2,
     "fingerprint": "ae66741895547f807c31def61e3ceacd"
   },
   "ollama-cloud": {
-    "lastAudited": "2026-07-08",
-    "modelCount": 27,
+    "lastAudited": "2026-07-18",
+    "modelCount": 16,
     "fingerprint": "a7e83162051114e8954c33e6a25848b5"
   }
 }

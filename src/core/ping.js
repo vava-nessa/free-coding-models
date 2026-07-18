@@ -205,6 +205,9 @@ export function extractQuotaPercent(headers) {
   const variants = [
     ['x-ratelimit-remaining', 'x-ratelimit-limit'],
     ['x-ratelimit-remaining-requests', 'x-ratelimit-limit-requests'],
+    ['x-ratelimit-remaining-requests-day', 'x-ratelimit-limit-requests-day'],
+    ['x-ratelimit-remaining-tokens', 'x-ratelimit-limit-tokens'],
+    ['x-ratelimit-remaining-tokens-minute', 'x-ratelimit-limit-tokens-minute'],
     ['ratelimit-remaining', 'ratelimit-limit'],
     ['ratelimit-remaining-requests', 'ratelimit-limit-requests'],
   ]
