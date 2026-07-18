@@ -9,9 +9,9 @@
     "modelCount": 31
   },
   "groq": {
-    "lastAudited": "2026-07-08",
+    "lastAudited": "2026-07-18",
     "fingerprint": "e065a098a7d02fe6e3ac093c82f39768",
-    "modelCount": 9
+    "modelCount": 7
   },
   "cerebras": {
     "lastAudited": "2026-07-08",
