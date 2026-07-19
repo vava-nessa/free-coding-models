@@ -313,4 +313,4 @@ The content of `changelog/vX.Y.Z.md` (minus the `# Changelog vX.Y.Z - YYYY-MM-DD
 <!-- kandown:agent-ref -->
 ## Task management
 
-This project uses **kandown** for task management. **Always run `kandown work` when starting a new task** — it prints the current rules and board state, kept in sync with the installed CLI version. (Tasks live in `./tasks/*.md`; if you can't run the CLI, read `.kandown/AGENT_KANDOWN.md` instead.)
+This project uses **kandown** for task management. **Always run `kandown work` when starting a new task** — it prints the current rules and board state, kept in sync with the installed CLI version. (Tasks live in `./tasks/*.md`.)
