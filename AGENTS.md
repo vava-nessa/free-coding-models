@@ -313,9 +313,4 @@ The content of `changelog/vX.Y.Z.md` (minus the `# Changelog vX.Y.Z - YYYY-MM-DD
 <!-- kandown:agent-ref -->
 ## Task management
 
-**IMPORTANT:** Before touching any task files, you MUST read `.kandown/AGENT_KANDOWN.md`.
-
-This project uses a file-based kanban:
-- **Tasks live in `.kandown/tasks/t-xxx.md`** — each task file owns its status
-- **Columns live in `.kandown/kandown.json`** under `board.columns`
-- **Completion workflow:** set task frontmatter `status: Done` + write the completion report
+This project uses **kandown** for task management. **Always run `kandown work` when starting a new task** — it prints the current rules and board state, kept in sync with the installed CLI version. (Tasks live in `./tasks/*.md`; if you can't run the CLI, read `.kandown/AGENT_KANDOWN.md` instead.)
