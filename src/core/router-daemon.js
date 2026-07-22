@@ -31,7 +31,7 @@
 
 import { createServer } from 'node:http'
 import { existsSync, readFileSync } from 'node:fs'
-import { dirname, join, resolve as resolvePath } from 'node:path'
+import { dirname, join, resolve as resolvePath, sep as pathSep } from 'node:path'
 import { fork } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { appendFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
@@ -434,7 +434,7 @@ function serveWebStaticFile(res, pathname, requestId) {
   // 📖 Without this, `pathname` like `/../../etc/passwd` escapes the dist root.
   const requested = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '')
   const candidate = resolvePath(WEB_DIST_DIR, requested)
-  if (candidate !== WEB_DIST_DIR && !candidate.startsWith(WEB_DIST_DIR + '/')) {
+  if (candidate !== WEB_DIST_DIR && !candidate.startsWith(WEB_DIST_DIR + pathSep)) {
     sendError(res, 403, 'Forbidden', 'invalid_request_error', 'path_traversal_blocked', requestId)
     return
   }
@@ -454,7 +454,7 @@ function serveWebStaticFile(res, pathname, requestId) {
 
   if (stats.isDirectory()) {
     const dirIndex = resolvePath(candidate, 'index.html')
-    if (dirIndex.startsWith(WEB_DIST_DIR + '/') && existsSync(dirIndex)) {
+    if (dirIndex.startsWith(WEB_DIST_DIR + pathSep) && existsSync(dirIndex)) {
       serveStaticFromDist(res, dirIndex)
       return
     }
