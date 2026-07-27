@@ -21,8 +21,8 @@ importers:
         specifier: ^5.6.2
         version: 5.6.2
       kandown:
-        specifier: ^0.34.3
-        version: 0.34.3(@floating-ui/dom@1.8.0)(@mantine/core@8.3.18(@mantine/hooks@8.3.18(react@19.2.8))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@mantine/hooks@8.3.18(react@19.2.8))(@mantine/utils@6.0.22(react@19.2.8))(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^0.41.0
+        version: 0.41.0(@floating-ui/dom@1.8.0)(@mantine/core@8.3.18(@mantine/hooks@8.3.18(react@19.2.8))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@mantine/hooks@8.3.18(react@19.2.8))(@mantine/utils@6.0.22(react@19.2.8))(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       socket.io:
         specifier: ^4.8.3
         version: 4.8.3
@@ -1286,8 +1286,8 @@ packages:
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
-  kandown@0.34.3:
-    resolution: {integrity: sha512-cJY8gteM6J73q6TyVQHKpbdOzhW/TcasiCvq/QuvVVDOUkQqISSlgZ33MGG9XEB/hKs38EqX4i9OmTAwUSu96A==}
+  kandown@0.41.0:
+    resolution: {integrity: sha512-+V2g/f8vEvELvoIanIfrSKZh81LxeAncB9kfFDOm0JBLiqJjKIzanFMnzboJaoH6UBOQsA36zM4XtKjRdfHiNQ==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -3254,7 +3254,7 @@ snapshots:
 
   js-tokens@4.0.0: {}
 
-  kandown@0.34.3(@floating-ui/dom@1.8.0)(@mantine/core@8.3.18(@mantine/hooks@8.3.18(react@19.2.8))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@mantine/hooks@8.3.18(react@19.2.8))(@mantine/utils@6.0.22(react@19.2.8))(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  kandown@0.41.0(@floating-ui/dom@1.8.0)(@mantine/core@8.3.18(@mantine/hooks@8.3.18(react@19.2.8))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@mantine/hooks@8.3.18(react@19.2.8))(@mantine/utils@6.0.22(react@19.2.8))(@types/hast@3.0.5)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       '@blocknote/code-block': 0.49.0(@blocknote/core@0.49.0(@types/hast@3.0.5))
       '@blocknote/core': 0.49.0(@types/hast@3.0.5)
