@@ -673,6 +673,7 @@ Flags combine freely in any order. Run `free-coding-models --help` to print the 
 | `--show-broken` | Don't auto-hide broken models this run |
 | `--check-drift` | Diff `sources.js` against `models.dev`; exit 1 on mismatch |
 | `--no-telemetry` | Disable anonymous telemetry for this run |
+| `--config-dir <dir>` | Store `config.json` + `backups/` in `<dir>` (e.g. `--config-dir ~/.config/free-coding-models`) |
 
 **Tool launchers** — start the TUI pre-configured for a tool, then `Enter` writes the model into that tool's config and launches it:
 

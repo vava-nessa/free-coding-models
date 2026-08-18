@@ -35,10 +35,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import readline from 'node:readline'
+import { CONFIG_PATH } from './config.js'
 
-// 📖 Config file path — matches the path used in config.js
+// 📖 Config file path — matches the path used in config.js (honours the
+// 📖 --config-dir / FCM_CONFIG_DIR override when set).
 function getConfigPath() {
-  return path.join(os.homedir(), '.free-coding-models.json')
+  return CONFIG_PATH
 }
 
 // 📖 Secure file permissions: user read/write only (0o600 = 384 in decimal)

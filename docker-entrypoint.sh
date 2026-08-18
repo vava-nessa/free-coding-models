@@ -1,7 +1,13 @@
 #!/bin/sh
 set -e
 
-CONFIG_FILE="$HOME/.free-coding-models.json"
+# 📖 Config file location follows FCM_CONFIG_DIR when set (the --config-dir /
+# 📖 XDG-style override), otherwise the default dotfile in $HOME is used.
+if [ -n "$FCM_CONFIG_DIR" ]; then
+  CONFIG_FILE="$FCM_CONFIG_DIR/config.json"
+else
+  CONFIG_FILE="$HOME/.free-coding-models.json"
+fi
 LOG_FILE="$HOME/.free-coding-models-daemon.log"
 DAEMON_PORT_FILE="$HOME/.free-coding-models-daemon.port"
 

@@ -11,10 +11,19 @@
 // 📖 IMPORTANT: these checks MUST run synchronously before any static imports
 // 📖 resolve, because router-daemon.js reads FCM_DEV at module load time.
 import { existsSync, readFileSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 if (process.argv.includes('--dev') || (!process.env.FCM_DEV && existsSync(join(dirname(fileURLToPath(import.meta.url)), '..', '.git')))) {
   process.env.FCM_DEV = '1'
+}
+// 📖 --config-dir <dir>: point FCM's config files (config.json + backups/) at an
+// 📖 arbitrary directory (e.g. the XDG layout ~/.config/free-coding-models).
+// 📖 Stored as FCM_CONFIG_DIR BEFORE any static imports resolve so
+// 📖 src/core/config.js picks the path up at module load time. An externally-set
+// 📖 FCM_CONFIG_DIR (e.g. Docker) is preserved when the flag is absent.
+const _configDirIdx = process.argv.indexOf('--config-dir')
+if (_configDirIdx !== -1 && process.argv[_configDirIdx + 1] && !process.argv[_configDirIdx + 1].startsWith('--')) {
+  process.env.FCM_CONFIG_DIR = resolve(process.argv[_configDirIdx + 1])
 }
 
 import chalk from 'chalk';

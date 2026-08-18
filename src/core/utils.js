@@ -465,6 +465,8 @@ export function findBestModel(results) {
 //     --reprobe / --no-cache (boolean) — force-rebuild the probe cache this run
 //     --probe-ttl <ms> (value)          — override the 24h default TTL
 //     --show-broken (boolean)           — don't auto-hide broken models (one-shot)
+//   - Config location flag:
+//     --config-dir <dir> (value)        — override where config.json + backups/ live
 //
 // Returns:
 //   { apiKey, bestMode, fiableMode, openCodeMode, openCodeDesktopMode, openCodeWebMode, openClawMode,
@@ -512,6 +514,14 @@ export function parseArgs(argv) {
     ? syncSetIdx + 1
     : -1
 
+  // 📖 --config-dir <dir> — override where FCM's config files (config.json + backups/)
+  // 📖 live. Any directory works, e.g. --config-dir ~/.config/free-coding-models for the
+  // 📖 XDG layout. The bin entry point persists this as FCM_CONFIG_DIR before imports.
+  const configDirIdx = args.findIndex(a => a.toLowerCase() === '--config-dir')
+  const configDirValueIdx = (configDirIdx !== -1 && args[configDirIdx + 1] && !args[configDirIdx + 1].startsWith('--'))
+    ? configDirIdx + 1
+    : -1
+
   // 📖 Set of arg indices that are values for flags (not API keys)
   const skipIndices = new Set()
   if (tierValueIdx !== -1) skipIndices.add(tierValueIdx)
@@ -520,6 +530,7 @@ export function parseArgs(argv) {
   if (pingIntervalValueIdx !== -1) skipIndices.add(pingIntervalValueIdx)
   if (syncSetValueIdx !== -1) skipIndices.add(syncSetValueIdx)
   if (probeTtlValueIdx !== -1) skipIndices.add(probeTtlValueIdx)
+  if (configDirValueIdx !== -1) skipIndices.add(configDirValueIdx)
 
   for (const [i, arg] of args.entries()) {
     if (arg.startsWith('--') || arg === '-h') {
@@ -673,6 +684,8 @@ export function parseArgs(argv) {
     showBrokenMode,
     // 📖 Runtime telemetry flag (t3) — see src/core/runtime-telemetry.js
     clearRuntimeMode,
+    // 📖 Config location flag — see src/core/config.js getConfigDir()
+    configDir: configDirValueIdx !== -1 ? args[configDirValueIdx] : null,
   }
 }
 

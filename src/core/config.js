@@ -103,11 +103,42 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, unlinkSync, renameSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { syncShellEnv } from './shell-env.js'
 
-// 📖 New JSON config path — stores all providers' API keys + enabled state
-export const CONFIG_PATH = join(homedir(), '.free-coding-models.json')
+// 📖 getConfigDir: Resolve the user-chosen config directory — set via the
+// 📖 `--config-dir <dir>` CLI flag or via FCM_CONFIG_DIR directly (Docker).
+// 📖 The CLI flag wins over the env var, and the env var wins over nothing.
+// 📖 Returns null so the default dotfile layout in $HOME keeps working unchanged.
+// 📖 NOTE: scanning process.argv here (rather than only trusting the env var)
+// 📖 matters because ESM static imports are hoisted — the bin entry's flag
+// 📖 handling runs after config.js is evaluated, so CONFIG_PATH must be able
+// 📖 to see `--config-dir` on its own.
+export function getConfigDir() {
+  const fromArgv = configDirFromArgv()
+  if (fromArgv) return fromArgv
+  const raw = process.env.FCM_CONFIG_DIR
+  if (typeof raw !== 'string' || !raw.trim()) return null
+  return resolve(raw.trim())
+}
+
+// 📖 Scan process.argv for `--config-dir <dir>` — the raw value before any
+// 📖 other arg parsing so module-load-time constants like CONFIG_PATH pick it up.
+function configDirFromArgv() {
+  const argv = process.argv || []
+  const idx = argv.indexOf('--config-dir')
+  if (idx === -1) return null
+  const raw = argv[idx + 1]
+  if (typeof raw !== 'string' || !raw.trim() || raw.startsWith('--')) return null
+  return resolve(raw.trim())
+}
+
+// 📖 New JSON config path — stores all providers' API keys + enabled state.
+// 📖 Overridable via `--config-dir <dir>`: config.json lives inside the chosen
+// 📖 directory (e.g. the XDG layout ~/.config/free-coding-models).
+export const CONFIG_PATH = getConfigDir()
+  ? join(getConfigDir(), 'config.json')
+  : join(homedir(), '.free-coding-models.json')
 export { ENV_VARS }
 
 // 📖 Runtime data directory — backups and local snapshots live here.
@@ -815,6 +846,15 @@ export function formatPermissionHint(writeError) {
   return '\n' + lines.join('\n')
 }
 
+// 📖 getBackupsDir: Backup directory for config snapshots. Follows the chosen
+// 📖 config dir (`--config-dir` / FCM_CONFIG_DIR) so backups stay next to the
+// 📖 config file they protect; falls back to ~/.free-coding-models.backups.
+function getBackupsDir() {
+  return getConfigDir()
+    ? join(getConfigDir(), 'backups')
+    : join(homedir(), '.free-coding-models.backups')
+}
+
 /**
  * 📖 createBackup: Creates a timestamped backup of the current config file.
  * 📖 Keeps only the 5 most recent backups to avoid disk space issues.
@@ -829,7 +869,7 @@ function createBackup() {
     }
 
     // 📖 Create backup directory if it doesn't exist
-    const backupDir = join(homedir(), '.free-coding-models.backups')
+    const backupDir = getBackupsDir()
     if (!existsSync(backupDir)) {
       mkdirSync(backupDir, { mode: 0o700, recursive: true })
     }
@@ -876,7 +916,7 @@ function createBackup() {
  * @throws {Error} if no backup exists or restoration fails
  */
 function restoreFromBackup() {
-  const backupDir = join(homedir(), '.free-coding-models.backups')
+  const backupDir = getBackupsDir()
   
   if (!existsSync(backupDir)) {
     throw new Error('No backup directory found')

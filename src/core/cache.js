@@ -2,7 +2,8 @@
  * @file cache.js
  * @description Persistent cache for ping results to speed up startup.
  *
- * 📖 Cache file location: ~/.free-coding-models.cache.json
+ * 📖 Cache file location: <config-dir>/cache.json when a config dir is chosen
+ * 📖   (--config-dir / FCM_CONFIG_DIR), else ~/.free-coding-models.cache.json.
  * 📖 File permissions: 0o600 (user read/write only — contains API timing data)
  *
  * 📖 Why caching matters:
@@ -50,13 +51,18 @@ import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { getConfigDir } from './config.js'
 
 // 📖 Cache TTL: 5 minutes in milliseconds
 // 📖 Ping results are considered fresh for this duration
 const CACHE_TTL = 5 * 60 * 1000
 
-// 📖 Get cache file path — platform-aware home directory resolution
+// 📖 Get cache file path — follows the chosen config dir (--config-dir /
+// 📖 FCM_CONFIG_DIR) so the cache lands next to config.json + backups/;
+// 📖 falls back to the classic ~/.free-coding-models.cache.json otherwise.
 export function getCachePath() {
+  const configDir = getConfigDir()
+  if (configDir) return path.join(configDir, 'cache.json')
   const homeDir = os.homedir()
   return path.join(homeDir, '.free-coding-models.cache.json')
 }
