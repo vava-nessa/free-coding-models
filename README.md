@@ -861,11 +861,11 @@ A: Yes — see [`sources.js`](./sources.js) for the model catalog format.
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=vava-nessa%2Ffree-coding-models&type=timeline&logscale=&legend=top-left">
+<a href="https://star-history.dera.page/#vava-nessa/free-coding-models&type=timeline&logscale&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=vava-nessa/free-coding-models&type=timeline&theme=dark&logscale&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=vava-nessa/free-coding-models&type=timeline&logscale&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=vava-nessa/free-coding-models&type=timeline&logscale&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=vava-nessa/free-coding-models&type=timeline&theme=dark&logscale&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=vava-nessa/free-coding-models&type=timeline&logscale&legend=top-left" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=vava-nessa/free-coding-models&type=timeline&logscale&legend=top-left" />
  </picture>
 </a>
 
