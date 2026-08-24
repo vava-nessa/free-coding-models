@@ -293,6 +293,13 @@ function writeQwenConfig(model, providerKey, apiKey, baseUrl, paths = getDefault
     name: model.label,
     envKey: ENV_VAR_NAMES[providerKey] || 'OPENAI_API_KEY',
     baseUrl,
+    ...(providerKey === 'groq' && {
+      // 📖 Groq rejects assistant messages that carry `reasoning_content`
+      // 📖 (400: property 'reasoning_content' is unsupported). Disabling Qwen
+      // 📖 Code's thinking mode stops it from emitting that field on Groq.
+      generationConfig: { reasoning: false },
+      extra_body: { chat_template_kwargs: { enable_thinking: false } },
+    }),
   }
   const filtered = config.modelProviders.openai.filter((entry) => entry?.id !== model.modelId)
   filtered.unshift(nextEntry)
@@ -348,6 +355,12 @@ function writeGooseConfig(model, apiKey, baseUrl, providerKey, paths = getDefaul
     models: [{ name: model.modelId, context_limit: parseContextWindow(model.ctx) }],
     supports_streaming: true,
     requires_auth: true,
+    ...(providerKey === 'groq' && {
+      // 📖 Groq rejects assistant messages that carry `reasoning_content`
+      // 📖 (400: property 'reasoning_content' is unsupported). `clear_thinking`
+      // 📖 makes Goose omit that field when talking to Groq.
+      clear_thinking: true,
+    }),
   }
   writeFileSync(providerFilePath, JSON.stringify(providerConfig, null, 2) + '\n')
 

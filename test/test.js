@@ -4544,6 +4544,36 @@ describe('tool launch preparation', () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  it('disables Groq reasoning_content for Qwen and Goose without LiteLLM', () => {
+    const dir = join(tmpdir(), `fcm-groq-reasoning-${process.pid}-${Date.now()}`)
+    mkdirSync(dir, { recursive: true })
+    const paths = createToolPaths(dir)
+    const config = { apiKeys: { groq: 'gsk-test', nvidia: 'nvapi-test' } }
+    const groqModel = { providerKey: 'groq', modelId: 'openai/gpt-oss-120b', label: 'GPT OSS 120B', ctx: '128k' }
+    const nvidiaModel = { providerKey: 'nvidia', modelId: 'deepseek-ai/deepseek-v4-flash-0731', label: 'DeepSeek V4 Flash', ctx: '1M' }
+    try {
+      // 📖 Goose: clear_thinking must be added only for Groq
+      prepareExternalToolLaunch('goose', groqModel, config, { paths, inheritedEnv: { PATH: process.env.PATH || '' } })
+      const groqGooseProvider = JSON.parse(readFileSync(join(paths.gooseProvidersDir, 'fcm-groq.json'), 'utf8'))
+      assert.equal(groqGooseProvider.clear_thinking, true)
+
+      prepareExternalToolLaunch('goose', nvidiaModel, config, { paths, inheritedEnv: { PATH: process.env.PATH || '' } })
+      const nvGooseProvider = JSON.parse(readFileSync(join(paths.gooseProvidersDir, 'fcm-nvidia.json'), 'utf8'))
+      assert.equal(nvGooseProvider.clear_thinking, undefined)
+
+      // 📖 Qwen: generationConfig.reasoning:false must be added only for Groq
+      prepareExternalToolLaunch('qwen', groqModel, config, { paths, inheritedEnv: { PATH: process.env.PATH || '' } })
+      const groqQwenConfig = JSON.parse(readFileSync(paths.qwenConfigPath, 'utf8'))
+      assert.deepEqual(groqQwenConfig.modelProviders.openai[0].generationConfig, { reasoning: false })
+
+      prepareExternalToolLaunch('qwen', nvidiaModel, config, { paths, inheritedEnv: { PATH: process.env.PATH || '' } })
+      const nvQwenConfig = JSON.parse(readFileSync(paths.qwenConfigPath, 'utf8'))
+      assert.equal(nvQwenConfig.modelProviders.openai[0].generationConfig, undefined)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 describe('openclaw selected model persistence', () => {
