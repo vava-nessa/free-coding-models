@@ -1999,6 +1999,28 @@ class RouterRuntime {
     this.probeWatchdog.unref?.()
   }
 
+  // 📖 GPT-OSS (Groq) defaults to reasoning_effort 'medium', making a 120b model
+  // 📖 reason for a long time before any content token — the stream hangs.
+  // 📖 Unless the client opted in, drop to 'low' so content arrives promptly.
+  applyGroqGptOssReasoningEffortDefault(upstreamBody, candidate) {
+    if (candidate?.provider !== 'groq') return
+    if (!/gpt-oss/i.test(candidate?.model || '')) return
+    if (upstreamBody.reasoning_effort !== undefined) return
+    upstreamBody.reasoning_effort = 'low'
+  }
+
+  sanitizeGroqUpstreamMessages(upstreamBody) {
+    if (upstreamBody.messages && Array.isArray(upstreamBody.messages)) {
+      upstreamBody.messages = upstreamBody.messages.map(msg => {
+        if (msg?.role === 'assistant' && msg?.reasoning_content !== undefined) {
+          const { reasoning_content, ...rest } = msg
+          return rest
+        }
+        return msg
+      })
+    }
+  }
+
   async routeRequest({ req, res, body, setName, requestId }) {
     this.activeRequests.set(requestId, {
       requestId,
@@ -2187,6 +2209,8 @@ class RouterRuntime {
     if (upstreamBody.add_generation_prompt !== undefined) delete upstreamBody.add_generation_prompt
     if (upstreamBody.continue_final_message !== undefined) delete upstreamBody.continue_final_message
     if (upstreamBody.tools?.length === 0) delete upstreamBody.tools
+    this.applyGroqGptOssReasoningEffortDefault(upstreamBody, candidate)
+    this.sanitizeGroqUpstreamMessages(upstreamBody)
 
     const clientAbort = attachClientAbort(req, res, controller)
     try {
@@ -2361,6 +2385,8 @@ class RouterRuntime {
     if (upstreamBody.add_generation_prompt !== undefined) delete upstreamBody.add_generation_prompt
     if (upstreamBody.continue_final_message !== undefined) delete upstreamBody.continue_final_message
     if (upstreamBody.tools?.length === 0) delete upstreamBody.tools
+    this.applyGroqGptOssReasoningEffortDefault(upstreamBody, candidate)
+    this.sanitizeGroqUpstreamMessages(upstreamBody)
 
     const timeout = setTimeout(() => controller.abort(), this.routerConfig().failover.requestTimeoutMs)
     let sentToClient = false
