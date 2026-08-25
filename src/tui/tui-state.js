@@ -170,6 +170,9 @@ export function createTuiState({
     settingsUpdateLatestVersion: null,
     settingsUpdateError: null,
 
+    // 📖 LiteLLM toggle — routes selected models through ~/Goose/litellm-config.yaml
+    litellmEnabled: config.settings?.litellmEnabled === true,
+
     // 📖 Live config reference — mutated in-place by save/restore
     config,
     sessionId,

@@ -125,6 +125,7 @@ export function createOverlayRenderers(state, deps) {
     const cleanupLegacyProxyRowIdx = autoHideBrokenModelsRowIdx + 1
     const changelogViewRowIdx = cleanupLegacyProxyRowIdx + 1
     const shellEnvRowIdx = changelogViewRowIdx + 1
+    const litellmRowIdx = shellEnvRowIdx + 1
     const EL = '\x1b[K'
     const lines = []
     const cursorLineByRow = {}
@@ -313,6 +314,15 @@ export function createOverlayRenderers(state, deps) {
     cursorLineByRow[shellEnvRowIdx] = lines.length
     lines.push(state.settingsCursor === shellEnvRowIdx ? themeColors.bgCursorSettingsList(shellEnvRow) : shellEnvRow)
 
+    // 📖 LiteLLM toggle — routes selected models through ~/Goose/litellm-config.yaml
+    const litellmEnabled = state.litellmEnabled === true
+    const litellmStatus = litellmEnabled
+      ? themeColors.successBold('✅ Enabled — uses ~/Goose/litellm-config.yaml')
+      : themeColors.dim('❌ Disabled — direct provider calls')
+    const litellmRow = `${bullet(state.settingsCursor === litellmRowIdx)}${themeColors.textBold('LiteLLM Router').padEnd(44)} ${litellmStatus}`
+    cursorLineByRow[litellmRowIdx] = lines.length
+    lines.push(state.settingsCursor === litellmRowIdx ? themeColors.bgCursorSettingsList(litellmRow) : litellmRow)
+
     // 📖 Profile system removed - API keys now persist permanently across all sessions
 
     lines.push('')
@@ -360,7 +370,7 @@ export function createOverlayRenderers(state, deps) {
     // 📖 Mouse support: record layout so click handler can map Y → settingsCursor
     overlayLayout.settingsCursorToLine = { ...cursorLineByRow }
     overlayLayout.settingsScrollOffset = offset
-    overlayLayout.settingsMaxRow = shellEnvRowIdx
+    overlayLayout.settingsMaxRow = litellmRowIdx
 
     const tintedLines = tintOverlayLines(visible, themeColors.overlayBgSettings, state.terminalCols)
     const cleared = tintedLines.map(l => l + EL)

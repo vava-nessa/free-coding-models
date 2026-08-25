@@ -105,6 +105,93 @@ function backupIfExists(filePath) {
 
 // 📖 readJson/writeJson imported from shared-helpers.js
 
+// 📖 LiteLLM config writer — converts ~/Goose/litellm-config.yaml to fcm-litellm.json
+// 📖 for tools that consume OpenAI-compatible LiteLLM router configs.
+function writeLiteLLMConfig(homeDir = homedir()) {
+  const gooseDir = join(homeDir, 'Goose')
+  const yamlPath = join(gooseDir, 'litellm-config.yaml')
+  const jsonPath = join(gooseDir, 'fcm-litellm.json')
+
+  if (!existsSync(yamlPath)) {
+    return { filePath: null, backupPath: null, label: 'litellm-config (not found)' }
+  }
+
+  // 📖 Read YAML, strip comments, write JSON
+  const yamlContent = readFileSync(yamlPath, 'utf-8')
+  const jsonContent = yamlToJson(yamlContent)
+
+  const backupPath = backupIfExists(jsonPath)
+  writeFileSync(jsonPath, jsonContent, 'utf-8')
+
+  return { filePath: jsonPath, backupPath, label: 'fcm-litellm.json' }
+}
+
+// 📖 Minimal YAML→JSON converter for LiteLLM config (handles the subset used here).
+function yamlToJson(yamlStr) {
+  const lines = yamlStr.split('\n')
+  const result = {}
+  let currentModel = null
+  let currentSection = null
+  let inModelList = false
+
+  for (const rawLine of lines) {
+    const line = rawLine.split('#')[0].trimEnd()
+    if (!line.trim()) continue
+
+    // 📖 Detect model_list entries
+    if (line.trim() === 'model_list:') {
+      result.model_list = []
+      inModelList = true
+      continue
+    }
+
+    if (inModelList) {
+      const trimmed = line.trim()
+      if (trimmed.startsWith('- model_name:')) {
+        currentModel = { model_name: trimmed.split(':')[1].trim().replace(/^"|"$/g, '') }
+        result.model_list.push(currentModel)
+        continue
+      }
+      if (trimmed.startsWith('litellm_params:')) {
+        currentModel.litellm_params = {}
+        currentSection = 'litellm_params'
+        continue
+      }
+      if (trimmed.startsWith('fallback_models:')) {
+        const arrStr = trimmed.split(':')[1].trim()
+        currentModel.fallback_models = JSON.parse(arrStr.replace(/'/g, '"'))
+        currentSection = null
+        continue
+      }
+      if (currentSection === 'litellm_params' && currentModel) {
+        const [key, ...valParts] = trimmed.split(':')
+        const val = valParts.join(':').trim()
+        if (val.startsWith('"') && val.endsWith('"')) {
+          currentModel.litellm_params[key.trim()] = val.slice(1, -1)
+        } else if (!isNaN(Number(val))) {
+          currentModel.litellm_params[key.trim()] = Number(val)
+        } else {
+          currentModel.litellm_params[key.trim()] = val
+        }
+      }
+    }
+  }
+
+  // 📖 Extract top-level settings
+  const topLines = yamlStr.split('\n')
+  for (const line of topLines) {
+    const trimmed = line.trim()
+    if (trimmed.startsWith('litellm_settings:')) {
+      result.litellm_settings = { drop_params: true }
+    }
+    if (trimmed.startsWith('general_settings:')) {
+      result.general_settings = {}
+    }
+  }
+
+  return JSON.stringify(result, null, 2)
+}
+
 function getProviderBaseUrl(providerKey) {
   const url = sources[providerKey]?.url
   if (!url) return null

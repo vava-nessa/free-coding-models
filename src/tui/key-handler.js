@@ -621,6 +621,17 @@ export function createKeyHandler(ctx) {
     })
   }
 
+  function toggleLiteLLM() {
+    const currentlyEnabled = state.litellmEnabled === true
+    state.litellmEnabled = !currentlyEnabled
+    state.config.settings = state.config.settings || {}
+    state.config.settings.litellmEnabled = state.litellmEnabled
+    saveConfig(state.config)
+    trackAppAction('litellm_toggled', {
+      enabled: state.litellmEnabled,
+    })
+  }
+
   function resetInstallEndpointsOverlay() {
     state.installEndpointsOpen = false
     state.installEndpointsPhase = 'providers'
@@ -2710,6 +2721,12 @@ export function createKeyHandler(ctx) {
           return
         }
 
+        // 📖 LiteLLM toggle row: Enter → toggle LiteLLM router
+        if (state.settingsCursor === litellmRowIdx) {
+          toggleLiteLLM()
+          return
+        }
+
         // 📖 Profile system removed - API keys now persist permanently across all sessions
 
         // 📖 Enter edit mode for the selected provider's key
@@ -2730,6 +2747,11 @@ export function createKeyHandler(ctx) {
         // 📖 Shell env toggle
         if (state.settingsCursor === shellEnvRowIdx) {
           toggleShellEnv()
+          return
+        }
+        // 📖 LiteLLM toggle (Space)
+        if (state.settingsCursor === litellmRowIdx) {
+          toggleLiteLLM()
           return
         }
         // 📖 Theme configuration cycle inside settings
@@ -2770,6 +2792,7 @@ export function createKeyHandler(ctx) {
           || state.settingsCursor === autoHideBrokenModelsRowIdx
           || state.settingsCursor === cleanupLegacyProxyRowIdx
           || state.settingsCursor === changelogViewRowIdx
+          || state.settingsCursor === litellmRowIdx
         ) return
         // 📖 Profile system removed - API keys now persist permanently across all sessions
 
