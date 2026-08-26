@@ -19,7 +19,7 @@ jobs:
         run: |
           set -e
 
-          INVITE_CODE="f2AjwV2AN"
+          INVITE_CODE="ZTNFHvvCkU"
           DISCORD_URL="https://discord.gg/${INVITE_CODE}"
           API_URL="https://discord.com/api/v10/invites/${INVITE_CODE}"
 
