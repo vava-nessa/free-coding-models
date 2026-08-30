@@ -1014,8 +1014,8 @@ describe('provider key test model discovery', () => {
         'deepseek-ai/deepseek-v4-flash-0731',
         'openai/gpt-oss-120b',
         'moonshotai/kimi-k2.6',
-        'deepseek-ai/deepseek-v4-pro',
-        'stepfun-ai/step-3.7-flash',
+        'nvidia/nemotron-3-ultra-550b-a55b',
+        'poolside/laguna-xs-2.1',
       ]
     )
   })

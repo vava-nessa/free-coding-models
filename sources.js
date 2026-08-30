@@ -43,9 +43,9 @@ export const nvidiaNim = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
   // Removed (2026-08-23): z-ai/glm-5.2 (GLM 5.1) — no longer in integrate.api.nvidia.com/v1/models (102 models live)
   ['moonshotai/kimi-k2.6', 'Kimi K2.6', 'S+', '80.2%', '262k'],
-  ['deepseek-ai/deepseek-v4-pro', 'DeepSeek V4 Pro', 'S+', '80.6%', '1M'], // ⚠️ Page-only / partner-routed (2026-08-13): listed on build.nvidia.com but NOT in integrate.api.nvidia.com/v1/models; served via Fireworks/DeepInfra/Together/OpenRouter
+  // Removed (2026-08-30): deepseek-ai/deepseek-v4-pro (DeepSeek V4 Pro) — 410 Gone per NVIDIA NIM forum; replaced by deepseek-v4-flash:0731 (forums.developer.nvidia.com/t/deepseek-v4-pro-flash-removed/379558)
   ['deepseek-ai/deepseek-v4-flash-0731', 'DeepSeek V4 Flash', 'S+', '79.0%', '1M'], // Fixed (2026-08-13): id 'deepseek-ai/deepseek-v4-flash' → 'deepseek-ai/deepseek-v4-flash-0731' (NIM /v1/models only exposes the -0731 suffix)
-  ['stepfun-ai/step-3.7-flash', 'Step 3.7 Flash', 'S+', '74.4%', '256k'],
+  // Removed (2026-08-30): stepfun-ai/step-3.7-flash (Step 3.7 Flash) — 410 Gone per NVIDIA NIM TUI ping (no replacement listed; superseded by step-3.7-flash via Routeway `step-3.7-flash:free`)
   ['nvidia/nemotron-3-ultra-550b-a55b', 'Nemotron 3 Ultra', 'S+', '71.9%', '1M'],
   ['poolside/laguna-xs-2.1', 'Laguna XS 2.1', 'S+', '70.9%', '262k'], // Added (2026-08-13)
   // ── S tier — SWE-bench Verified 60–70% ──
@@ -61,30 +61,30 @@ export const nvidiaNim = [
   ['nvidia/nemotron-3-super-120b-a12b', 'Nemotron 3 Super', 'S', '60.5%', '128k'],
   ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', 'Nemotron 3 Omni', 'A+', '52.0%', '256k'],
   // Removed (2026-07-27): meta-llama/llama-4-scout-17b-16e-instruct (Llama 4 Scout) — HTTP 404
-  ['nvidia/llama-3.3-nemotron-super-49b-v1.5', 'Llama 3.3 Nemotron Super 49B v1.5', 'A+', '-', '128k'],
+  // Removed (2026-08-30): nvidia/llama-3.3-nemotron-super-49b-v1.5 (Llama 3.3 Nemotron Super 49B) — 410 Gone per NVIDIA NIM TUI ping
   // ── A tier — SWE-bench Verified 40–50% ──
   ['nvidia/nemotron-3-nano-30b-a3b', 'Nemotron Nano 30B', 'A-', '38.8%', '1M'],
   ['openai/gpt-oss-20b', 'GPT OSS 20B', 'A+', '50.3%', '128k'],
   ['google/gemma-4-31b-it', 'Gemma 4 31B', 'A+', '52.0%', '256k'],
-  ['mistralai/mistral-large-2-instruct', 'Mistral Large 2', 'A+', '-', '128k'], // Added (2026-08-13)
+  // Removed (2026-08-30): mistralai/mistral-large-2-instruct (Mistral Large 2) — 404 NOT FOUND per NVIDIA NIM TUI ping (model not in NIM catalog; use Mistral LP `mistral-large-2512`)
   // Removed (2026-07-27): qwen/qwen2.5-coder-32b-instruct (Qwen2.5 Coder 32B) — EOL 2026-05-12 (HTTP 410 Gone)
   // Removed (2026-07-27): deepseek-ai/deepseek-r1 (DeepSeek R1) — HTTP 404
   // Removed (2026-07-27): nvidia/nemotron-3-nano (Nemotron 3 Nano) — HTTP 404 (replaced by nvidia/nvidia-nemotron-nano-9b-v2)
-  ['nvidia/nvidia-nemotron-nano-9b-v2', 'Nemotron Nano 9B v2', 'A-', '-', '128k'], // Added (2026-07-27)
-  ['meta/llama-3.3-70b-instruct', 'Llama 3.3 70B', 'A+', '-', '128k'], // Added (2026-08-13)
-  ['deepseek-ai/deepseek-coder-6.7b-instruct', 'DeepSeek Coder 6.7B', 'A-', '-', '128k'], // Added (2026-07-27)
-  ['meta/codellama-70b', 'CodeLlama 70B', 'A', '-', '100k'], // Added (2026-08-13)
-  ['mistralai/codestral-22b-instruct-v0.1', 'Codestral 22B', 'A', '-', '32k'], // Added (2026-07-27)
-  ['ibm/granite-34b-code-instruct', 'Granite 34B Code', 'A-', '-', '128k'], // Added (2026-08-13)
+  // Removed (2026-08-30): nvidia/nvidia-nemotron-nano-9b-v2 (Nemotron Nano 9B v2) — 410 Gone per NVIDIA NIM TUI ping (superseded by nvidia/nemotron-3-nano-30b-a3b)
+  // Removed (2026-08-30): meta/llama-3.3-70b-instruct (Llama 3.3 70B) — 410 Gone per NVIDIA NIM TUI ping (no longer in NIM catalog)
+  // Removed (2026-08-30): deepseek-ai/deepseek-coder-6.7b-instruct (DeepSeek Coder 6.7B) — 404 NOT FOUND per NVIDIA NIM TUI ping
+  // Removed (2026-08-30): meta/codellama-70b (CodeLlama 70B) — 404 NOT FOUND per NVIDIA NIM TUI ping (docs.nvidia.com still lists CodeLlama but not via NIM `integrate.api` free tier)
+  // Removed (2026-08-30): mistralai/codestral-22b-instruct-v0.1 (Codestral 22B) — 404 NOT FOUND per NVIDIA NIM TUI ping (use Codestral `codestral-2508` via Mistral LP)
+  // Removed (2026-08-30): ibm/granite-34b-code-instruct (Granite 34B Code) — 404 NOT FOUND per NVIDIA NIM TUI ping
   // ── A- tier — SWE-bench Verified 35–40% ──
   // Removed (2026-07-27): bytedance/seed-oss-36b-instruct (Seed OSS 36B) — EOL 2026-07-27 (HTTP 410 Gone)
   // Removed (2026-07-27): stockmark/stockmark-2-100b-instruct (Stockmark 100B) — EOL 2026-07-15 (HTTP 410 Gone)
   // ── B+ tier — SWE-bench Verified 30–35% ──
   // Removed (2026-07-27): mistralai/ministral-14b-instruct-2512 (Ministral 14B) — EOL 2026-07-27 (HTTP 410 Gone)
-  ['thinkingmachines/inkling', 'Inkling', 'B+', '-', '32k'], // Added (2026-07-27)
+  // Removed (2026-08-30): thinkingmachines/inkling (Inkling) — 410 Gone per NVIDIA NIM TUI ping (per Model Deprecation Request 378412)
   // ── B tier — SWE-bench Verified 20–30% ──
   ['meta/llama-3.2-11b-vision-instruct', 'Llama 3.2 11B Vision', 'B', '28.0%', '128k'],
-  ['nvidia/nemotron-mini-4b-instruct', 'Nemotron Mini 4B', 'B', '-', '32k'], // Added (2026-07-27)
+  // Removed (2026-08-30): nvidia/nemotron-mini-4b-instruct (Nemotron Mini 4B) — 410 Gone per NVIDIA NIM TUI ping
   // ── C tier — lightweight/edge models ──
   // Removed (2026-07-27): microsoft/phi-4-mini-instruct (Phi 4 Mini) — EOL 2026-07-15 (HTTP 410 Gone)
 ]
@@ -340,8 +340,8 @@ export const cloudflare = [
   ['@cf/ibm-granite/granite-4.0-h-micro', 'Granite 4.0 Micro', 'B+', '30.0%', '128k'], // Fixed (2026-07-27): namespace 'ibm' → 'ibm-granite'
   // ── B tier — SWE-bench Verified 20–30% ──
   ['@cf/meta/llama-3.1-8b-instruct-fast', 'Llama 3.1 8B Instruct (Fast)', 'C', '18.0%', '128k'],
-  ['@cf/google/gemma-3-12b-it', 'Gemma 3 12B IT', 'A', '-', '128k'], // Added (2026-08-13)
-  ['@cf/moonshotai/kimi-k2.5', 'Kimi K2.5', 'S+', '-', '256k'], // Added (2026-08-13)
+  // Removed (2026-08-30): @cf/google/gemma-3-12b-it (Gemma 3 12B IT) — Deprecated 2026-05-30 per Cloudflare Workers AI docs (developers.cloudflare.com/workers-ai/models/gemma-3-12b-it)
+  // Removed (2026-08-30): @cf/moonshotai/kimi-k2.5 (Kimi K2.5) — Deprecated 2026-05-30 per Cloudflare changelog; replaced by @cf/moonshotai/kimi-k2.6 (developers.cloudflare.com/changelog/post/2026-05-08-planned-model-deprecations)
 ]
 
 // 📖 OVHcloud AI Endpoints - https://endpoints.ai.cloud.ovh.net
