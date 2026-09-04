@@ -162,6 +162,8 @@ export const PROVIDER_COLOR = new Proxy({}, {
  *     'models.dev': number,
  *   },
  *   modelsDevCacheCached?: boolean,  // t5: whether the models.dev cache is still within TTL
+ *   expandedRowKey?: string|null,    // 📖 issue #168: Space-expanded row ("provider/modelId"), renders a 2-line detail card under the cursor row
+ *   actionErrorMsg?: string|null,    // 📖 issue #168: non-fatal command/probe failure shown as a footer chip instead of crashing
  *   quota?: Record<string, {         // t2: live quota from response headers
  *     remaining: number, limit: number, percent: number,
  *     source: 'header'|'endpoint', lastUpdated: number, windowType?: string,
@@ -212,6 +214,8 @@ export function renderTable({
   probeTotal = 0,
   probeCompleted = 0,
   probeHiddenCount = 0,
+  expandedRowKey = null,         // 📖 issue #168: "providerKey/modelId" of the Space-expanded row (null = collapsed)
+  actionErrorMsg = null,         // 📖 issue #168: non-fatal command/probe failure for the footer chip
   probeCacheHits = 0,
   probeCacheMisses = 0,
   probeCacheBrokenHidden = 0,
@@ -650,9 +654,37 @@ export function renderTable({
   const hasCustomFilter = typeof customTextFilter === 'string' && customTextFilter.trim().length > 0
   const hasReleaseFooter = typeof lastReleaseDate === 'string' && lastReleaseDate.trim().length > 0
   const extraFooterLines = (versionStatus.isOutdated ? 1 : 0) + (hasCustomFilter ? 1 : 0) + (hasReleaseFooter ? 1 : 0)
+
+  // 📖 Expanded row detail (issue #168): Space toggles a 2-line card under the
+  // 📖 cursor row showing provider + model specifics that tight columns truncate.
+  // 📖 The card only renders when the expanded key still matches the cursor row
+  // 📖 (any cursor move clears state.expandedRowKey), and the viewport reserves
+  // 📖 2 lines up front so the footer never gets pushed off-screen.
+  const EXPANDED_DETAIL_LINES = 2
+  const cursorRow = cursor !== null ? sorted[cursor] : null
+  const expansionActive = !!expandedRowKey && !!cursorRow
+    && `${cursorRow.providerKey}/${cursorRow.modelId}` === expandedRowKey
   const vp = calculateViewport(terminalRows, scrollOffset, sorted.length, {
-    extraFixedLines: extraFooterLines,
+    extraFixedLines: extraFooterLines + (expansionActive ? EXPANDED_DETAIL_LINES : 0),
   })
+
+  // 📖 clipPlainWidth: Clip a PLAIN string (no ANSI codes) to a max display
+  // 📖 width, appending an ellipsis when truncated. Used by the Space detail
+  // 📖 card so long endpoint URLs and model IDs degrade gracefully on narrow
+  // 📖 terminals instead of wrapping the table.
+  const clipPlainWidth = (text, max) => {
+    if (max <= 0) return ''
+    const chars = [...String(text)]
+    let w = 0
+    let out = ''
+    for (const ch of chars) {
+      const cw = displayWidth(ch)
+      if (w + cw > max - 1) return out + '…'
+      out += ch
+      w += cw
+    }
+    return out
+  }
   const paintSweScore = (score, paddedText) => {
     if (score >= 70) return chalk.bold.rgb(...getTierRgb('S+'))(paddedText)
     if (score >= 60) return chalk.bold.rgb(...getTierRgb('S'))(paddedText)
@@ -1042,6 +1074,30 @@ export function renderTable({
       renderedRow = row
     }
     lines.push(isUnusable ? fadedRow(renderedRow, 0.8) : renderedRow)
+
+    // 📖 Expanded detail card (issue #168): 2 lines under the selected row so
+    // 📖 provider and model specifics stay readable even when tight columns
+    // 📖 truncate them. Plain text is built first, clipped to the terminal
+    // 📖 width, then colorized (same pattern as the table header).
+    if (isCursor && expansionActive) {
+      const maxDetailWidth = Math.max(0, (terminalCols || 80) - 4)
+      const keyText = r.hasApiKey ? 'key configured' : 'no key'
+      const endpoint = sources[r.providerKey]?.url ?? 'unknown endpoint'
+      const detailProvider = clipPlainWidth(
+        `  ↳ ${providerName} (${r.providerKey}) · ${keyText} · ${endpoint}`,
+        maxDetailWidth
+      )
+      const lastMsText = latestPing
+        ? (typeof latestPing.ms === 'number' ? `${latestPing.ms}ms` : String(latestPing.ms))
+        : 'no ping yet'
+      const lastCodeText = latestPing ? `HTTP ${latestPing.code}` : ''
+      const detailModel = clipPlainWidth(
+        `  ↳ ${r.modelId} · tier ${r.tier} · SWE ${r.sweScore ?? '-'} · ctx ${r.ctx ?? '-'} · last ${lastMsText}${lastCodeText ? ` ${lastCodeText}` : ''} · added ${r.addedDate ?? '-'}`,
+        maxDetailWidth
+      )
+      lines.push(themeColors.provider(r.providerKey, detailProvider))
+      lines.push(themeColors.dim(detailModel))
+    }
   }
 
   // 📖 Mouse support: record the 1-based terminal row range of model data rows.
@@ -1214,11 +1270,15 @@ export function renderTable({
   const speedTestLabel = chalk.bgRgb(...currentPalette().badgeSpeedTestBg).rgb(...currentPalette().badgeSpeedTestFg).bold(' NEW ⭐️ Ctrl+A 🤖 AI Speed Test ')
   const globalBenchmarkLabel = chalk.bgRgb(...currentPalette().badgeBenchmarkBg).rgb(...currentPalette().badgeBenchmarkFg).bold(' NEW Ctrl+U : Global AI Speed Test (Uses a lot of requests!) ')
 
-  // 📖 Probe badge: show progress when 404 probe is running or recently completed
+  // 📖 Probe badge: show progress when 404 probe is running or recently completed.
+  // 📖 Bar width is clamped to 0-20 cells (issue #168 kick-out fix): a transient
+  // 📖 counter hiccup must never reach String.repeat with a negative count - a
+  // 📖 RangeError here crashes the render interval and kills the whole TUI.
   let probeLabel = ''
   if (probeRunning) {
     const pct = probeTotal > 0 ? Math.round((probeCompleted / probeTotal) * 100) : 0
-    const bar = '█'.repeat(Math.floor(pct / 5)) + '░'.repeat(20 - Math.floor(pct / 5))
+    const filled = Math.max(0, Math.min(20, Math.floor(pct / 5)))
+    const bar = '█'.repeat(filled) + '░'.repeat(20 - filled)
     probeLabel = chalk.bgRgb(180, 40, 40).rgb(255, 255, 255).bold(` 🔍 Probe ${bar} ${probeCompleted}/${probeTotal} `)
   } else if (probeHiddenCount > 0 && probeTotal > 0) {
     probeLabel = chalk.bgRgb(120, 60, 60).rgb(255, 200, 200).bold(` 🔍 Probe done: ${probeHiddenCount} broken model${probeHiddenCount > 1 ? 's' : ''} hidden `)
@@ -1308,8 +1368,16 @@ export function renderTable({
     }
   }
 
+  // 📖 Action error chip (issue #168): non-fatal failures from command palette
+  // 📖 actions or the 404 probe land here instead of crashing the TUI. Red chip
+  // 📖 so it reads as an error, auto-expires (app.js passes null when stale).
+  let actionErrorLabel = ''
+  if (actionErrorMsg) {
+    actionErrorLabel = chalk.bgRgb(170, 30, 30).rgb(255, 220, 220).bold(` ⚠ ${actionErrorMsg} `)
+  }
+
   // 📖 Line 3: Speed Test + Global Benchmark + Probe + Probe-cache + Paused-providers + Enrichment + Quota + Last release
-  if (releaseLabel || speedTestLabel || globalBenchmarkLabel || probeLabel || probeCacheLabel || pausedProvidersLabel || enrichmentLabel || quotaLabel) {
+  if (releaseLabel || speedTestLabel || globalBenchmarkLabel || probeLabel || probeCacheLabel || pausedProvidersLabel || enrichmentLabel || quotaLabel || actionErrorLabel) {
     const parts = [
       { text: '  ', key: null },
       { text: speedTestLabel, key: 'a' },
@@ -1317,6 +1385,8 @@ export function renderTable({
       { text: globalBenchmarkLabel, key: 'u' },
       { text: probeLabel ? '  ' : '', key: null },
       { text: probeLabel, key: null },
+      { text: actionErrorLabel ? '  ' : '', key: null },
+      { text: actionErrorLabel, key: null },
       { text: probeCacheLabel ? '  ' : '', key: null },
       { text: probeCacheLabel, key: null },
       { text: pausedProvidersLabel ? '  ' : '', key: null },

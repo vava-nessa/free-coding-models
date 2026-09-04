@@ -409,6 +409,30 @@ export function filterByTier(results, tierLetter) {
   return results.filter(r => allowed.includes(r.tier))
 }
 
+// 📖 PROBE_FAILED_STATUSES: row health states that count as "failed" for the
+// 📖 Shift+P re-probe action (issue #168). Covers the errors a user actually sees
+// 📖 in the table: dead endpoints (404/410/5xx/ERR → 'down'), rate limits
+// 📖 (429 → 'down'), rejected keys ('auth_error') and network timeouts.
+// 📖 'noauth' is deliberately excluded: those rows have no API key, so an
+// 📖 authenticated probe cannot even run for them.
+export const PROBE_FAILED_STATUSES = new Set(['down', 'timeout', 'auth_error'])
+
+// 📖 isProbeFailedRow: True when a single result row is currently showing an
+// 📖 error state worth re-probing. Hidden rows are skipped on purpose: Shift+P
+// 📖 re-probes what the user can SEE failing, not rows the probe already hid.
+export function isProbeFailedRow(row) {
+  return !!row && !row.hidden && PROBE_FAILED_STATUSES.has(row.status)
+}
+
+// 📖 selectProbeFailedRows: Filter a results array down to the rows that are
+// 📖 currently failing (auth fail / 429 / 404 / timeout). Pure helper used by
+// 📖 the TUI Shift+P "re-probe failed rows only" action (issue #168) so users
+// 📖 can retry 1-2 flaky providers without burning quota on the whole list.
+export function selectProbeFailedRows(results) {
+  if (!Array.isArray(results)) return []
+  return results.filter(isProbeFailedRow)
+}
+
 // 📖 findBestModel: Pick the single best model from a results array.
 // 📖 Used by --fiable mode to output the most reliable model after 10s of analysis.
 //

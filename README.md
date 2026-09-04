@@ -295,6 +295,9 @@ Press **`G`** to cycle **Auto → Dark → Light**. Recolors the full interface 
 | **`;`** | Open the **Playground** chat overlay (chat with the FCM router) |
 | **`Ctrl+A`** | Run an AI Speed Test for the selected model |
 | **`Ctrl+U`** | Run the Global AI Speed Test (real provider requests) |
+| **`Shift+P`** | Re-probe failed rows only (auth fail / 429 / 404 / timeout) - no whole-list rescan |
+| **`Ctrl+Shift+P`** | Probe all configured models (404/410 check, auto-hides broken ones) |
+| **`Space`** | Expand the selected row: 2-line detail with provider, endpoint URL and the full model ID (press again or move the cursor to collapse) |
 | `R/S/C/M/O/L/A/H/V/B/U` | Sort by Rank / SWE / ContexT / Model / Origin / Last ping / Avg ping / Health / Verdict / staBility / Uptime |
 | `W` | Sort by real-world score (`Real` column — see [Runtime telemetry](#-runtime-telemetry-real-world-scores)) |
 | `Shift+W` | Open the Runtime Report overlay (per-model breakdown + recent calls) |

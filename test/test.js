@@ -38,7 +38,8 @@ import {
   sortResults, filterByTier, findBestModel, parseArgs,
   TIER_ORDER, VERDICT_ORDER, TIER_LETTER_MAP,
   scoreModelForTask, getTopRecommendations, TASK_TYPES, PRIORITY_TYPES, CONTEXT_BUDGETS,
-  formatCtxWindow, labelFromId, resolveSecurityAction
+  formatCtxWindow, labelFromId, resolveSecurityAction,
+  isProbeFailedRow, selectProbeFailedRows, PROBE_FAILED_STATUSES
 } from '../src/core/utils.js'
 import {
   _emptyProfileSettings,
@@ -1361,6 +1362,62 @@ describe('filterByTier', () => {
 
   it('returns null for invalid tier', () => {
     assert.equal(filterByTier(results, 'X'), null)
+  })
+})
+
+describe('selectProbeFailedRows (issue #168: Shift+P re-probe failed rows only)', () => {
+  it('selects rows with failed statuses (down, timeout, auth_error)', () => {
+    const results = [
+      mockResult({ label: 'Up', status: 'up' }),
+      mockResult({ label: 'Dead404', status: 'down', httpCode: '404' }),
+      mockResult({ label: 'RateLimited', status: 'down', httpCode: '429' }),
+      mockResult({ label: 'Timeout', status: 'timeout' }),
+      mockResult({ label: 'AuthFail', status: 'auth_error' }),
+    ]
+    const failed = selectProbeFailedRows(results)
+    assert.equal(failed.length, 4)
+    assert.ok(failed.every(r => r.label !== 'Up'))
+  })
+
+  it('excludes healthy, pending and no-key rows (they cannot be re-probed meaningfully)', () => {
+    const results = [
+      mockResult({ label: 'Up', status: 'up' }),
+      mockResult({ label: 'Pending', status: 'pending' }),
+      mockResult({ label: 'NoKey', status: 'noauth' }),
+    ]
+    assert.equal(selectProbeFailedRows(results).length, 0)
+  })
+
+  it('skips hidden rows: Shift+P re-probes what the user can see failing', () => {
+    const results = [
+      mockResult({ label: 'HiddenBroken', status: 'down', httpCode: '404', hidden: true }),
+      mockResult({ label: 'VisibleBroken', status: 'down', httpCode: '429' }),
+    ]
+    const failed = selectProbeFailedRows(results)
+    assert.equal(failed.length, 1)
+    assert.equal(failed[0].label, 'VisibleBroken')
+  })
+
+  it('isProbeFailedRow tolerates null/undefined rows and unknown statuses', () => {
+    assert.equal(isProbeFailedRow(null), false)
+    assert.equal(isProbeFailedRow(undefined), false)
+    assert.equal(isProbeFailedRow(mockResult({ status: 'weird' })), false)
+    assert.equal(isProbeFailedRow(mockResult({ status: 'auth_error' })), true)
+  })
+
+  it('returns an empty array for non-array input', () => {
+    assert.deepEqual(selectProbeFailedRows(null), [])
+    assert.deepEqual(selectProbeFailedRows(undefined), [])
+    assert.deepEqual(selectProbeFailedRows('nope'), [])
+  })
+
+  it('PROBE_FAILED_STATUSES covers the error states from the issue report (auth fail, 429, 404)', () => {
+    // 📖 'down' covers 404/410/429/5xx/ERR (httpCode distinguishes them),
+    // 📖 'auth_error' covers rejected keys, 'timeout' covers dead networks.
+    assert.ok(PROBE_FAILED_STATUSES.has('down'))
+    assert.ok(PROBE_FAILED_STATUSES.has('auth_error'))
+    assert.ok(PROBE_FAILED_STATUSES.has('timeout'))
+    assert.equal(PROBE_FAILED_STATUSES.size, 3)
   })
 })
 

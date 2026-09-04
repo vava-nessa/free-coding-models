@@ -294,11 +294,25 @@ export function createTuiState({
     globalBenchmarkTotal: 0,
     globalBenchmarkCompleted: 0,
 
-    // 📖 404 Probe state (Ctrl+Shift+P)
+    // 📖 404 Probe state (Ctrl+Shift+P / Shift+P)
     probeRunning: false,
     probeTotal: 0,
     probeCompleted: 0,
     probeHiddenCount: 0,
+
+    // 📖 Space-expanded row (issue #168): the selected row can blow up into a
+    // 📖 2-line detail card showing provider + model specifics that tight
+    // 📖 columns truncate. Stored as "providerKey/modelId" so the detail always
+    // 📖 follows the highlighted row; null = collapsed. Any cursor move clears it.
+    expandedRowKey: null,
+
+    // 📖 Non-fatal action error chip (footer): set when a command palette action
+    // 📖 or the 404 probe throws. Part of the issue #168 "kicked out" fix: those
+    // 📖 actions used to run fire-and-forget, so any rejection became an unhandled
+    // 📖 promise rejection and Node killed the whole TUI process. Failures now
+    // 📖 land here and render as a footer chip until actionErrorMsgUntil (epoch ms).
+    actionErrorMsg: null,
+    actionErrorMsgUntil: 0,
 
     // 📖 Persistent probe-cache (t1): TTL'd cross-session health cache.
     // 📖 - probeCacheHits / Misses: telemetry counters per session (footer chip).

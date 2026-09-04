@@ -51,6 +51,7 @@ import {
   handlePlaygroundKeypress,
 } from '../core/playground.js'
 import { benchmarkModel } from '../core/benchmark.js'
+import { selectProbeFailedRows } from '../core/utils.js'
 import { isPackageDevMode } from '../core/updater.js'
 import {
   runProviderKeyTest,
@@ -170,6 +171,11 @@ export function createKeyHandler(ctx) {
   } = ctx
 
   let userSelected = null
+
+  // 📖 Monotonic token for 404-probe runs (issue #168). Each probe start bumps it
+  // 📖 so stale reset timers from a previous run can detect they no longer own
+  // 📖 the probe counters and skip their reset instead of clobbering live values.
+  let probeRunSeq = 0
 
   function resetToolInstallPrompt() {
     state.toolInstallPromptOpen = false
@@ -967,94 +973,143 @@ export function createKeyHandler(ctx) {
     return Promise.all(workers).then(() => results)
   }
 
-  // 📖 runBrokenModelProbe: Probe all configured models for 404/broken endpoints.
+  // 📖 setActionNotice: Surface a non-fatal error/info message as a footer chip.
+  // 📖 Part of the issue #168 "kicked out" fix: palette commands and the 404 probe
+  // 📖 used to run fire-and-forget, so any rejection became an unhandled promise
+  // 📖 rejection and Node terminated the whole TUI process. Failures now land here
+  // 📖 and the app keeps running. Auto-expires after `ms` milliseconds.
+  function setActionNotice(st, msg, ms = 8000) {
+    st.actionErrorMsg = String(msg).slice(0, 120)
+    st.actionErrorMsgUntil = Date.now() + ms
+  }
+
+  // 📖 runBrokenModelProbe: Probe models for 404/broken endpoints.
   // 📖 Sends a real chat-completion request to each model with an API key.
   // 📖 Models returning 404 or 410 are auto-hidden when setting is enabled.
   // 📖 Results flash live in the TUI table — models flip status in real time.
-  async function runBrokenModelProbe(state) {
+  // 📖 opts.failedOnly (Shift+P, issue #168): probe ONLY rows currently showing
+  // 📖 errors (auth fail / 429 / 404 / timeout) so the user can retry 1-2 flaky
+  // 📖 providers without probing (and burning quota on) the whole list.
+  async function runBrokenModelProbe(state, { failedOnly = false } = {}) {
     if (state.probeRunning) return
 
     // 📖 Only probe models where the user has an API key configured
-    const probeable = state.results.filter(r => {
+    const candidates = failedOnly ? selectProbeFailedRows(state.results) : state.results
+    const probeable = candidates.filter(r => {
       const apiKey = getApiKey(state.config, r.providerKey)
       return !!apiKey
     })
 
-    if (probeable.length === 0) return
+    if (probeable.length === 0) {
+      // 📖 Tell the user there was nothing to re-probe instead of failing silently.
+      if (failedOnly) setActionNotice(state, 'No failed rows to re-probe - everything looks healthy')
+      return
+    }
 
     state.probeRunning = true
     state.probeTotal = probeable.length
     state.probeCompleted = 0
     state.probeHiddenCount = 0
+    // 📖 Run token (issue #168): lets a stale reset timer from an earlier probe
+    // 📖 detect that a NEWER probe owns the counters and leave them alone.
+    const runToken = ++probeRunSeq
 
     const autoHide = state.config.settings?.autoHideBrokenModels !== false
     const HTTP_CODES_404 = new Set([404, '404'])
     const HTTP_CODES_GONE = new Set([410, '410'])
 
-    const tasks = probeable.map(r => async () => {
-      const apiKey = getApiKey(state.config, r.providerKey) ?? null
-      const providerUrl = sources[r.providerKey]?.url ?? null
-      if (!apiKey || !providerUrl) {
-        state.probeCompleted++
-        return { model: r, ok: false, reason: 'no_key' }
-      }
+    try {
+      const tasks = probeable.map(r => async () => {
+        const apiKey = getApiKey(state.config, r.providerKey) ?? null
+        const providerUrl = sources[r.providerKey]?.url ?? null
+        if (!apiKey || !providerUrl) {
+          state.probeCompleted++
+          return { model: r, ok: false, reason: 'no_key' }
+        }
 
-      try {
-        const { code } = await ping(apiKey, r.modelId, r.providerKey, providerUrl)
+        // 📖 Single-increment rule (issue #168 kick-out fix): the old shape
+        // 📖 incremented probeCompleted after the ping AND again in the catch
+        // 📖 whenever a status update threw in between, so completed could
+        // 📖 exceed total. The footer progress bar then rendered
+        // 📖 '░'.repeat(negative) → RangeError → render loop crashed → the TUI
+        // 📖 process exited ("kicked me out"). Now the ping is settled in its
+        // 📖 own try/catch and the counter increments EXACTLY once per task,
+        // 📖 after all fallible work that could double-fire it.
+        let code = null
+        let probeError = null
+        try {
+          const res = await ping(apiKey, r.modelId, r.providerKey, providerUrl)
+          code = res.code
+        } catch (err) {
+          probeError = err?.message
+        }
+
         state.probeCompleted++
+
+        if (probeError) {
+          return { model: r, ok: false, reason: 'error', error: probeError }
+        }
 
         if (HTTP_CODES_404.has(code) || HTTP_CODES_GONE.has(code)) {
-          // 📖 Model is broken (404/410) — mark it
+          // 📖 Model is broken (404/410) - mark it
           r.status = 'down'
           r.httpCode = String(code)
 
           if (autoHide) {
-            const modelKey = `${r.providerKey}/${r.modelId}`
-            if (!state.config.hiddenModels) state.config.hiddenModels = new Set()
-            state.config.hiddenModels.add(modelKey)
-            r.hidden = true
-            state.probeHiddenCount++
+            try {
+              const modelKey = `${r.providerKey}/${r.modelId}`
+              if (!state.config.hiddenModels) state.config.hiddenModels = new Set()
+              state.config.hiddenModels.add(modelKey)
+              r.hidden = true
+              state.probeHiddenCount++
+            } catch { /* 📖 auto-hide must never kill the probe */ }
           }
 
           return { model: r, ok: false, code, reason: 'broken' }
-        } else if (code === '200') {
-          // 📖 Model is alive — unhide if it was previously hidden by probe
-          const modelKey = `${r.providerKey}/${r.modelId}`
-          if (state.config.hiddenModels?.has(modelKey)) {
-            state.config.hiddenModels.delete(modelKey)
-            r.hidden = false
-          }
+        }
+
+        if (code === '200') {
+          // 📖 Model is alive - unhide if it was previously hidden by probe
+          try {
+            const modelKey = `${r.providerKey}/${r.modelId}`
+            if (state.config.hiddenModels?.has(modelKey)) {
+              state.config.hiddenModels.delete(modelKey)
+              r.hidden = false
+            }
+          } catch { /* 📖 unhide must never kill the probe */ }
           r.status = 'up'
           return { model: r, ok: true, code }
-        } else {
-          // 📖 Other codes (401, 429, etc.) — leave status unchanged, don't hide
-          return { model: r, ok: false, code, reason: 'other' }
         }
-      } catch (err) {
-        state.probeCompleted++
-        return { model: r, ok: false, reason: 'error', error: err?.message }
+
+        // 📖 Other codes (401, 429, etc.) - leave status unchanged, don't hide
+        return { model: r, ok: false, code, reason: 'other' }
+      })
+
+      await runWithConcurrency(tasks, 5)
+
+      // 📖 Persist hidden models set to config
+      if (autoHide && state.probeHiddenCount > 0) {
+        saveConfig(state.config)
       }
-    })
-
-    await runWithConcurrency(tasks, 5)
-
-    // 📖 Persist hidden models set to config
-    if (autoHide && state.probeHiddenCount > 0) {
-      saveConfig(state.config)
+    } catch (err) {
+      // 📖 Never let a probe crash the TUI (issue #168): surface and keep running.
+      setActionNotice(state, `Probe failed: ${err?.message || 'unknown error'}`)
+    } finally {
+      state.probeRunning = false
+      // 📖 Keep totals visible for a few seconds so user can see results.
+      // 📖 The run token makes a STALE timer from a previous probe a no-op if a
+      // 📖 newer probe has started meanwhile (it owns the counters now).
+      setTimeout(() => {
+        if (runToken === probeRunSeq && !state.probeRunning) {
+          state.probeTotal = 0
+          state.probeCompleted = 0
+          // 📖 Don't reset probeHiddenCount immediately - user needs to see how many were hidden
+          setTimeout(() => {
+            if (runToken === probeRunSeq) state.probeHiddenCount = 0
+          }, 5000)
+        }
+      }, 3000)
     }
-
-    state.probeRunning = false
-    // 📖 Keep totals visible for a few seconds so user can see results
-    setTimeout(() => {
-      if (!state.probeRunning) {
-        state.probeTotal = 0
-        state.probeCompleted = 0
-        // 📖 Don't reset probeHiddenCount immediately — user needs to see how many were hidden
-        setTimeout(() => {
-          state.probeHiddenCount = 0
-        }, 5000)
-      }
-    }, 3000)
   }
 
   // 📖 runGlobalBenchmark: Benchmark all visible models with up to 5 concurrent requests.
@@ -1293,6 +1348,22 @@ export function createKeyHandler(ctx) {
     state.commandPaletteResults = []
   }
 
+  // 📖 runPaletteCommandSafe: Execute a palette entry without ever letting a
+  // 📖 rejection escape. ROOT CAUSE of the issue #168 "kicked out" bug: the
+  // 📖 palette used to call executeCommandPaletteEntry() fire-and-forget, so a
+  // 📖 rejected command promise (e.g. the async 404 probe hitting a save or
+  // 📖 network edge case) became an unhandled promise rejection and Node's
+  // 📖 default behavior (since v15) terminated the whole TUI process, dumping
+  // 📖 the user out of the alternate screen. Failures now surface as a footer
+  // 📖 notice and the TUI stays alive.
+  async function runPaletteCommandSafe(entry) {
+    try {
+      await executeCommandPaletteEntry(entry)
+    } catch (err) {
+      setActionNotice(state, `Command failed: ${err?.message || err}`)
+    }
+  }
+
   function executeCommandPaletteEntry(entry) {
     if (!entry?.id) return
 
@@ -1413,6 +1484,7 @@ export function createKeyHandler(ctx) {
       case 'action-toggle-favorite': return toggleFavoriteOnSelectedRow()
       case 'action-toggle-favorite-mode': return toggleFavoritesDisplayMode()
       case 'action-reset-view': return resetViewSettings()
+      case 'action-probe-failed': return runBrokenModelProbe(state, { failedOnly: true })
       case 'action-probe-404': return runBrokenModelProbe(state)
       case 'action-toggle-auto-hide-broken': return toggleAutoHideBrokenModels()
       default:
@@ -1429,7 +1501,10 @@ export function createKeyHandler(ctx) {
     if ((key.ctrl && key.name === 'c') || str === '\x03') { exit(0); return }
 
     // 📖 Ctrl+P toggles the command palette from the main table only.
-    if (key.ctrl && key.name === 'p') {
+    // 📖 The !key.shift guard matters (issue #168): many terminals report
+    // 📖 Ctrl+Shift+P as ctrl+p with shift set (or as plain ctrl+p), and without
+    // 📖 the guard the palette swallowed the 404 probe shortcut completely.
+    if (key.ctrl && key.name === 'p' && !key.shift) {
       if (state.commandPaletteOpen) {
         closeCommandPalette()
         return
@@ -1448,14 +1523,10 @@ export function createKeyHandler(ctx) {
       return
     }
 
-    // 📖 Ctrl+Shift+P: Probe all configured models for 404/broken endpoints.
-    // 📖 Sends a real chat-completion request to every model that has an API key.
-    // 📖 Models returning 404/410 are auto-hidden (when setting is enabled).
-    // 📖 Results flash live in the table — models flip from down→up in real time.
-    if (key.ctrl && key.shift && key.name === 'p') {
-      await runBrokenModelProbe(state)
-      return
-    }
+    // 📖 Note: the 404 probe keybindings (Shift+P = failed rows only, Ctrl+Shift+P
+    // 📖 = all models) live in the main-table section below, AFTER the overlay
+    // 📖 blocks, so overlays like the command palette swallow them instead of
+    // 📖 triggering a probe behind a frozen screen (issue #168).
 
     // 📖 Command palette captures the keyboard while active.
     if (state.commandPaletteOpen) {
@@ -1493,7 +1564,9 @@ export function createKeyHandler(ctx) {
           refreshCommandPaletteResults()
         } else if (selected?.type === 'command') {
           closeCommandPalette()
-          executeCommandPaletteEntry(selected)
+          // 📖 Awaited via safe wrapper: a rejected command must never become an
+          // 📖 unhandled promise rejection (issue #168 "kicked out" bug).
+          runPaletteCommandSafe(selected)
         }
         return
       }
@@ -1531,7 +1604,9 @@ export function createKeyHandler(ctx) {
           refreshCommandPaletteResults()
         } else {
           closeCommandPalette()
-          executeCommandPaletteEntry(selected)
+          // 📖 Awaited via safe wrapper: a rejected command must never become an
+          // 📖 unhandled promise rejection (issue #168 "kicked out" bug).
+          runPaletteCommandSafe(selected)
         }
         return
       }
@@ -2829,6 +2904,37 @@ export function createKeyHandler(ctx) {
       return // 📖 Swallow all other keys while settings is open
     }
 
+    // 📖 Space: toggle a 2-line detail card under the selected row (issue #168).
+    // 📖 When columns are tight, provider and model specifics get truncated; the
+    // 📖 detail card gives the selected row room to express them. Pressing Space
+    // 📖 again (or moving the cursor) collapses it. Cursor moves clear the key in
+    // 📖 the up/down handlers below, so the card always follows the highlight.
+    if (key.name === 'space' && !key.ctrl && !key.meta && !key.shift) {
+      const selected = state.visibleSorted[state.cursor]
+      if (!selected) return
+      const rowKey = `${selected.providerKey}/${selected.modelId}`
+      state.expandedRowKey = state.expandedRowKey === rowKey ? null : rowKey
+      return
+    }
+
+    // 📖 Shift+P: Re-probe ONLY the rows currently showing errors (auth fail,
+    // 📖 429, 404, timeout). Issue #168: users with 1-2 flaky rows want a cheap
+    // 📖 rescan without probing (and burning quota on) the whole list.
+    // 📖 Shift+P is the requested replacement for Ctrl+Shift+P, which most
+    // 📖 terminals cannot send as a distinct key.
+    if (key.name === 'p' && key.shift && !key.ctrl && !key.meta) {
+      await runBrokenModelProbe(state, { failedOnly: true })
+      return
+    }
+
+    // 📖 Ctrl+Shift+P: Probe ALL configured models for 404/broken endpoints
+    // 📖 (same as the "Probe all models" palette entry). Kept for terminals
+    // 📖 that can report Ctrl+Shift combos; Shift+P covers everyone else.
+    if (key.ctrl && key.shift && key.name === 'p') {
+      await runBrokenModelProbe(state)
+      return
+    }
+
     // 📖 P key: open settings screen
     if (key.name === 'p' && !key.shift && !key.ctrl && !key.meta) {
       openSettingsOverlay()
@@ -3066,6 +3172,9 @@ export function createKeyHandler(ctx) {
       const count = state.visibleSorted.length
       if (count === 0) return
       state.cursor = state.cursor > 0 ? state.cursor - 1 : count - 1
+      // 📖 Moving the cursor collapses the Space detail card (issue #168) so it
+      // 📖 always tracks the highlighted row instead of lingering on an old one.
+      state.expandedRowKey = null
       adjustScrollOffset(state)
       return
     }
@@ -3075,6 +3184,8 @@ export function createKeyHandler(ctx) {
       const count = state.visibleSorted.length
       if (count === 0) return
       state.cursor = state.cursor < count - 1 ? state.cursor + 1 : 0
+      // 📖 Moving the cursor collapses the Space detail card (see up handler).
+      state.expandedRowKey = null
       adjustScrollOffset(state)
       return
     }

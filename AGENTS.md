@@ -162,6 +162,9 @@ No setup needed — tmux is already installed. Just spawn sessions and send keys
 | `Enter` | Select model | Choose model |
 | `Ctrl+C` | Exit | Quit the TUI |
 | `Ctrl+P` | Command Palette | Open cmd palette |
+| `Shift+P` | Probe failed rows only | Re-probe rows showing auth fail / 429 / 404 / timeout (issue #168) |
+| `Ctrl+Shift+P` | Probe all models | 404/410 probe on every configured model (terminals that support the combo) |
+| `Space` | Expand selected row | Toggle a 2-line provider/model detail card under the cursor row; Space again or cursor move collapses |
 | `Esc` | Close modal/dialog | Close palette, settings, help |
 
 ### Example Test Flow

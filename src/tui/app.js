@@ -1043,6 +1043,10 @@ export async function runApp(cliArgs, config, startupOptions = {}) {
       probeTotal: state.probeTotal,
       probeCompleted: state.probeCompleted,
       probeHiddenCount: state.probeHiddenCount,
+      // 📖 Space-expanded row (issue #168): "providerKey/modelId" or null
+      expandedRowKey: state.expandedRowKey ?? null,
+      // 📖 Non-fatal action error chip (issue #168): only shown while fresh
+      actionErrorMsg: (state.actionErrorMsgUntil || 0) > Date.now() ? state.actionErrorMsg : null,
       // 📖 Probe-cache (t1): footer chip stats
       probeCacheHits: state.probeCacheHits || 0,
       probeCacheMisses: state.probeCacheMisses || 0,
