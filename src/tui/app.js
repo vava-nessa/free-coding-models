@@ -143,7 +143,6 @@ import {
   isProviderQuotaPaused,
   listPausedProviders,
 } from '../core/provider-cooldown.js'
-import { checkConfigSecurity } from '../core/security.js'
 import { buildCliHelpText } from './cli-help.js'
 import { detectActiveTheme, THEME_BG_RGB, getTheme, patchThemeBg } from './theme.js'
 
@@ -271,10 +270,9 @@ export async function runApp(cliArgs, config, startupOptions = {}) {
   detectActiveTheme(config.settings?.theme || 'auto')
 
   // 📖 Check config file security — warn and offer auto-fix if permissions are too open
-  const securityCheck = checkConfigSecurity()
-  if (!securityCheck.wasSecure && !securityCheck.wasFixed) {
-    // 📖 User declined auto-fix or it failed — continue anyway, just warned
-  }
+  // 📖 (issue #173): this moved to bin/free-coding-models.js BEFORE runApp so the
+  // 📖 warning + prompt are visible and resolved before the alternate screen / raw
+  // 📖 mode take over. Do not call checkConfigSecurity() here again.
 
   // 📖 Apply CLI overrides for settings
   if (cliArgs.sortColumn) config.settings.sortColumn = cliArgs.sortColumn

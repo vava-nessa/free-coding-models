@@ -38,7 +38,7 @@ import {
   sortResults, filterByTier, findBestModel, parseArgs,
   TIER_ORDER, VERDICT_ORDER, TIER_LETTER_MAP,
   scoreModelForTask, getTopRecommendations, TASK_TYPES, PRIORITY_TYPES, CONTEXT_BUDGETS,
-  formatCtxWindow, labelFromId
+  formatCtxWindow, labelFromId, resolveSecurityAction
 } from '../src/core/utils.js'
 import {
   _emptyProfileSettings,
@@ -54,6 +54,7 @@ import { renderTable, getLastLayout } from '../src/tui/render-table.js'
 import { createOverlayRenderers } from '../src/tui/overlays.js'
 import { buildProviderModelsUrl, parseProviderModelIds, listProviderTestModels, classifyProviderTestOutcome, buildProviderTestDetail } from '../src/tui/key-handler.js'
 import { buildCliHelpText, buildHowTheRouterWorksLines } from '../src/tui/cli-help.js'
+import { formatMode, formatModeRwx } from '../src/core/security.js'
 import { buildSyncCandidates } from '../src/core/sync-set.js'
 import { detectPackageManager, resolveCurrentNpmInstallTarget, getInstallArgs, getManualInstallCmd, buildOutdatedWarningMessage } from '../src/core/updater.js'
 import {
@@ -2182,6 +2183,73 @@ describe('parseArgs', () => {
     assert.equal(parseArgs(argv('--OpenCode')).openCodeMode, true)
     assert.equal(parseArgs(argv('--HELP')).helpMode, true)
   })
+
+  it('detects --fix-permissions, --yes and -y security auto-fix flags', () => {
+    assert.equal(parseArgs(argv('--fix-permissions')).fixPermissionsMode, true)
+    assert.equal(parseArgs(argv('--yes')).fixPermissionsMode, true)
+    assert.equal(parseArgs(argv('-y')).fixPermissionsMode, true)
+    assert.equal(parseArgs(argv()).fixPermissionsMode, false)
+  })
+
+  it('does not treat -y as an API key', () => {
+    const result = parseArgs(argv('-y'))
+    assert.equal(result.apiKey, null)
+    assert.equal(result.fixPermissionsMode, true)
+  })
+})
+
+describe('resolveSecurityAction (issue #173)', () => {
+  // 📖 Base case: config exists with insecure permissions on an interactive TUI surface
+  const insecureTui = {
+    configExists: true,
+    isSecure: false,
+    autoFixRequested: false,
+    stdinIsTTY: true,
+    promptAllowed: true,
+  }
+
+  it('returns none when there is no config file', () => {
+    assert.equal(resolveSecurityAction({ ...insecureTui, configExists: false }), 'none')
+  })
+
+  it('returns none when permissions are already secure', () => {
+    assert.equal(resolveSecurityAction({ ...insecureTui, isSecure: true }), 'none')
+  })
+
+  it('returns auto-fix when a yes flag is passed (even without a TTY)', () => {
+    assert.equal(resolveSecurityAction({ ...insecureTui, autoFixRequested: true }), 'auto-fix')
+    assert.equal(resolveSecurityAction({ ...insecureTui, autoFixRequested: true, stdinIsTTY: false }), 'auto-fix')
+    assert.equal(resolveSecurityAction({ ...insecureTui, autoFixRequested: true, promptAllowed: false }), 'auto-fix')
+  })
+
+  it('returns warn-only when stdin is not a TTY', () => {
+    assert.equal(resolveSecurityAction({ ...insecureTui, stdinIsTTY: false }), 'warn-only')
+  })
+
+  it('returns warn-only on daemon/web/JSON surfaces even with a TTY', () => {
+    assert.equal(resolveSecurityAction({ ...insecureTui, promptAllowed: false }), 'warn-only')
+  })
+
+  it('returns prompt only on an interactive TTY surface', () => {
+    assert.equal(resolveSecurityAction(insecureTui), 'prompt')
+  })
+})
+
+describe('security permission formatting (issue #173)', () => {
+  it('formatMode renders octal without prefix', () => {
+    assert.equal(formatMode(0o644), '644')
+    assert.equal(formatMode(0o600), '600')
+    assert.equal(formatMode(0o666), '666')
+    assert.equal(formatMode(0o007), '007')
+  })
+
+  it('formatModeRwx renders owner/group/others groups correctly', () => {
+    assert.equal(formatModeRwx(0o644), 'rw- / r-- / r--')
+    assert.equal(formatModeRwx(0o600), 'rw- / --- / ---')
+    assert.equal(formatModeRwx(0o666), 'rw- / rw- / rw-')
+    assert.equal(formatModeRwx(0o755), 'rwx / r-x / r-x')
+    assert.equal(formatModeRwx(0o000), '--- / --- / ---')
+  })
 })
 
 describe('cli help text', () => {
@@ -2209,6 +2277,7 @@ describe('cli help text', () => {
       '--daemon-bg',
       '--daemon-status',
       '--daemon-stop',
+      '--fix-permissions, --yes, -y',
       '--no-telemetry',
       '--help, -h',
     ]
@@ -2401,6 +2470,16 @@ describe('CLI entry point sanity', () => {
 
   it('imports from lib/utils.js', () => {
     assert.ok(binContent.includes("from '../src/core/utils.js'"), 'Should import lib/utils.js')
+  })
+
+  it('runs the config security check before launching any surface (issue #173)', () => {
+    assert.ok(binContent.includes("from '../src/core/security.js'"), 'Should import security.js')
+    const securityCall = binContent.indexOf('await checkConfigSecurity(')
+    const runAppCall = binContent.indexOf('await runApp(')
+    const webCall = binContent.indexOf('await startWebServer(')
+    assert.ok(securityCall !== -1, 'bin should await checkConfigSecurity()')
+    assert.ok(runAppCall !== -1 && securityCall < runAppCall, 'security check must run before the TUI')
+    assert.ok(webCall !== -1 && securityCall < webCall, 'security check must run before the web dashboard')
   })
 })
 

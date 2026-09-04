@@ -681,6 +681,7 @@ Flags combine freely in any order. Run `free-coding-models --help` to print the 
 | `--check-drift` | Diff `sources.js` against `models.dev`; exit 1 on mismatch |
 | `--no-telemetry` | Disable anonymous telemetry for this run |
 | `--config-dir <dir>` | Store `config.json` + `backups/` in `<dir>` (e.g. `--config-dir ~/.config/free-coding-models`) |
+| `--fix-permissions` / `--yes` / `-y` | Auto-fix insecure config file permissions (chmod 600) without prompting; never asked on piped stdin, daemon, web, or `--json` runs |
 
 **Tool launchers** — start the TUI pre-configured for a tool, then `Enter` writes the model into that tool's config and launches it:
 

@@ -460,6 +460,7 @@ export function findBestModel(results) {
 //     --daemon, --daemon-bg, --daemon-stop,
 //     --daemon-status, --no-telemetry, --json, --help/-h (case-insensitive)
 //     --playground / playground subcommand (open the in-TUI chat playground)
+//     --fix-permissions / --yes / -y (auto-fix config permissions without prompting)
 //   - Value flag: --tier <letter> (the next non-flag arg is the tier value)
 //   - Probe-cache flags (t1):
 //     --reprobe / --no-cache (boolean) — force-rebuild the probe cache this run
@@ -533,7 +534,8 @@ export function parseArgs(argv) {
   if (configDirValueIdx !== -1) skipIndices.add(configDirValueIdx)
 
   for (const [i, arg] of args.entries()) {
-    if (arg.startsWith('--') || arg === '-h') {
+    // 📖 -y is a boolean flag (security auto-fix), never an API key
+    if (arg.startsWith('--') || arg === '-h' || arg === '-y') {
       flags.push(arg.toLowerCase())
     } else if (skipIndices.has(i)) {
       // 📖 Skip — this is a value for --tier, not an API key
@@ -576,6 +578,11 @@ export function parseArgs(argv) {
   const daemonBackgroundMode = flags.includes('--daemon-bg')
   const daemonStopMode = flags.includes('--daemon-stop')
   const daemonStatusMode = flags.includes('--daemon-status')
+
+  // 📖 --fix-permissions / --yes / -y - auto-answer "yes" to the config-permission
+  // 📖 security prompt (chmod 600, best-effort on Windows) so scripts, CI and
+  // 📖 non-interactive terminals never hang on a hidden prompt. Issue #173.
+  const fixPermissionsMode = flags.includes('--fix-permissions') || flags.includes('--yes') || flags.includes('-y')
 
   // 📖 --sync-set [name] — auto-discover and populate a router set with best available models
   const syncSetMode = flags.includes('--sync-set')
@@ -686,7 +693,35 @@ export function parseArgs(argv) {
     clearRuntimeMode,
     // 📖 Config location flag — see src/core/config.js getConfigDir()
     configDir: configDirValueIdx !== -1 ? args[configDirValueIdx] : null,
+    // 📖 Security auto-fix flag - see src/core/security.js checkConfigSecurity()
+    fixPermissionsMode,
   }
+}
+
+// ─── Config Security Gating (issue #173) ─────────────────────────────────────
+
+// 📖 resolveSecurityAction: pure decision helper that tells the startup security
+// 📖 check what it should do about insecure config file permissions.
+//
+// 📖 Why: the security warning + "Fix permissions automatically?" prompt used to
+// 📖 run un-awaited while the TUI entered raw mode / the alternate screen, so the
+// 📖 prompt was invisible (worst on Windows) and the app looked frozen. This gate
+// 📖 guarantees: never prompt without an interactive surface, never prompt a
+// 📖 daemon/web/JSON surface, and always auto-fix when a yes-flag is passed.
+//
+// 📖 Params:
+//   configExists     - does the config file exist (no file = nothing to secure)
+//   isSecure         - are permissions already 0600
+//   autoFixRequested - user passed --fix-permissions / --yes / -y
+//   stdinIsTTY       - is stdin an interactive terminal
+//   promptAllowed    - is this an interactive surface (TUI)? false for daemon/web/JSON
+//
+// 📖 Returns one of: 'none' | 'auto-fix' | 'warn-only' | 'prompt'
+export function resolveSecurityAction({ configExists, isSecure, autoFixRequested, stdinIsTTY, promptAllowed }) {
+  if (!configExists || isSecure) return 'none'
+  if (autoFixRequested) return 'auto-fix'
+  if (!stdinIsTTY || !promptAllowed) return 'warn-only'
+  return 'prompt'
 }
 
 // ─── Smart Recommend — Scoring Engine ─────────────────────────────────────────

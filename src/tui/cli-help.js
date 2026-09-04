@@ -49,6 +49,7 @@ const CONFIG_FLAGS = [
   { flag: '--daemon-stop', description: 'Gracefully stop the FCM Router daemon' },
   { flag: '--sync-set [name]', description: 'Auto-discover and live-probe models into a router set' },
   { flag: '--config-dir <dir>', description: 'Store config.json + backups/ in <dir> (e.g. --config-dir ~/.config/free-coding-models for the XDG layout)' },
+  { flag: '--fix-permissions, --yes, -y', description: 'Auto-fix insecure config file permissions (chmod 600) without prompting; safe for scripts and CI' },
   { flag: '--no-telemetry', description: 'Disable anonymous telemetry for this run' },
   { flag: '--help, -h', description: 'Print this help and exit' },
 ]

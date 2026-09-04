@@ -8,27 +8,33 @@
  * 📖 This module:
  *    - Checks config file permissions on startup
  *    - Warns user if permissions are too open
- *    - Offers auto-fix option with user confirmation
+ *    - Offers auto-fix option with user confirmation (interactive TTY only)
  *    - Fixes permissions securely (chmod 600 = user read/write only)
+ *
+ * 📖 Issue #173: this check used to run un-awaited inside runApp, so the TUI
+ *    entered raw mode / the alternate screen while the prompt was still pending.
+ *    On Windows the warning + prompt were invisible and the app looked frozen.
+ *    Now checkConfigSecurity() is async, awaited by the bin entry BEFORE the TUI
+ *    starts, and it never prompts on non-TTY stdin or daemon/web/JSON surfaces.
  *
  * 📖 Secure permissions:
  *    - 0o600 (octal 600) = user:rw, group:---, world:---
  *    - Only the file owner can read or write
  *    - This is the standard for files containing secrets (SSH keys, API keys, etc.)
  *
- * 📖 Why this matters:
- *    - Shared systems: Other users could read your API keys
- *    - Git accidents: File could be committed with wrong permissions
- *    - Backup tools: Might copy files with permissions intact
+ * 📖 Windows note: Node's chmod on win32 is best-effort (it can only toggle the
+ *    read-only attribute, NTFS ACLs still govern real access). We still try,
+ *    and the manual hint points at icacls for a real fix.
  *
  * @functions
- *   → checkConfigSecurity() — Main security check, prompts for auto-fix if needed
- *   → getConfigPermissions() — Returns file mode object for config
- *   → isConfigSecure() — Boolean check if permissions are correct
- *   → fixConfigPermissions() — Applies chmod 600 to config file
- *   → promptSecurityFix() — Interactive prompt asking user to fix permissions
+ *   → checkConfigSecurity() - Async main security check; awaited before the TUI starts
+ *   → resolveSecurityAction() - Pure gate deciding auto-fix / prompt / warn-only (in utils.js)
+ *   → getConfigPermissions() - Returns file mode object for config
+ *   → isConfigSecure() - Boolean check if permissions are correct
+ *   → fixConfigPermissions() - Applies chmod 600 to config file (best-effort on Windows)
+ *   → promptSecurityFix() - Interactive prompt asking user to fix permissions
  *
- * @exports checkConfigSecurity, isConfigSecure, fixConfigPermissions
+ * @exports checkConfigSecurity, isConfigSecure, fixConfigPermissions, formatMode, formatModeRwx
  */
 
 import fs from 'node:fs'
@@ -36,8 +42,9 @@ import path from 'node:path'
 import os from 'node:os'
 import readline from 'node:readline'
 import { CONFIG_PATH } from './config.js'
+import { resolveSecurityAction } from './utils.js'
 
-// 📖 Config file path — matches the path used in config.js (honours the
+// 📖 Config file path - matches the path used in config.js (honours the
 // 📖 --config-dir / FCM_CONFIG_DIR override when set).
 function getConfigPath() {
   return CONFIG_PATH
@@ -46,6 +53,10 @@ function getConfigPath() {
 // 📖 Secure file permissions: user read/write only (0o600 = 384 in decimal)
 // 📖 This means: owner can read+write, group and others have no permissions
 const SECURE_MODE = 0o600
+
+// 📖 True on Windows, where chmod is best-effort (read-only bit only) and the
+// 📖 manual fix hint should point at icacls instead of chmod.
+const IS_WINDOWS = process.platform === 'win32'
 
 // 📖 Get file stats including permissions for the config file
 // 📖 Returns null if file doesn't exist
@@ -80,7 +91,7 @@ export function isConfigSecure() {
 }
 
 // 📖 Fix config file permissions to secure mode (chmod 600)
-// 📖 Returns true if successful, false otherwise
+// 📖 Best-effort on Windows (read-only bit); returns true if successful, false otherwise
 export function fixConfigPermissions() {
   const configPath = getConfigPath()
 
@@ -97,23 +108,21 @@ export function fixConfigPermissions() {
 }
 
 // 📖 Format permission mode in octal (e.g., 0o644 → "644")
-function formatMode(mode) {
+// 📖 Exported for unit tests
+export function formatMode(mode) {
   return (mode & 0o777).toString(8).padStart(3, '0')
 }
 
 // 📖 Format permission mode in human-readable rwx format (e.g., 0o644 → "rw-r--r--")
-function formatModeRwx(mode) {
-  const perms = []
+// 📖 Walks bits 8..0 in groups of three: owner rwx, group rwx, others rwx.
+// 📖 Bit 8 = owner read, bit 7 = owner write, bit 6 = owner exec, and so on.
+// 📖 Exported for unit tests
+export function formatModeRwx(mode) {
   const types = ['r', 'w', 'x']
+  const perms = []
 
-  for (let i = 6; i >= 0; i -= 3) {
-    for (let j = 0; j < 3; j++) {
-      if (mode & (1 << (i + j))) {
-        perms.push(types[j])
-      } else {
-        perms.push('-')
-      }
-    }
+  for (let i = 8; i >= 0; i--) {
+    perms.push(mode & (1 << i) ? types[(8 - i) % 3] : '-')
   }
 
   return [
@@ -123,10 +132,72 @@ function formatModeRwx(mode) {
   ].join(' / ')
 }
 
-// 📖 Check security and prompt for auto-fix if needed
-// 📖 Call this on startup before loading config
+// 📖 Print the insecure-permissions warning (stderr, so --json stdout stays clean)
+function printSecurityWarning(perms) {
+  const currentMode = formatMode(perms.mode)
+  const currentRwx = formatModeRwx(perms.mode)
+
+  console.error('')
+  console.error('⚠️  SECURITY WARNING ⚠️')
+  console.error('')
+  console.error(`Your config file has insecure permissions: ${currentMode} (${currentRwx})`)
+  console.error(`File: ${perms.path}`)
+  console.error('')
+  console.error('This means other users on this system may be able to read your API keys.')
+  console.error('')
+  console.error('Recommended: Fix permissions to 600 (rw-------) - owner read/write only')
+}
+
+// 📖 Print the manual fix hint. On Windows, point at icacls since Node's chmod
+// 📖 only toggles the read-only attribute there.
+function printManualFixHint() {
+  console.error('')
+  if (IS_WINDOWS) {
+    console.error('To fix manually (PowerShell), run:')
+    console.error(`  icacls "${getConfigPath()}" /inheritance:r /grant:r "$env:USERNAME:R,W"`)
+  } else {
+    console.error('To fix manually, run:')
+    console.error(`  chmod 600 ${getConfigPath()}`)
+  }
+  console.error('')
+}
+
+// 📖 Apply the fix and report the outcome. Shared by the prompt path (user said
+// 📖 yes) and the auto-fix path (--fix-permissions / --yes / -y).
+function applyFixAndReport() {
+  const success = fixConfigPermissions()
+
+  if (success) {
+    console.error('')
+    console.error('✅ Permissions fixed! Your API keys are now secure.')
+    console.error('')
+    if (IS_WINDOWS) {
+      console.error('Note: on Windows this is best-effort (read-only bit). See docs for NTFS ACLs.')
+      console.error('')
+    }
+    return { wasSecure: false, wasFixed: true }
+  }
+
+  console.error('')
+  console.error('❌ Failed to fix permissions automatically.')
+  printManualFixHint()
+  return { wasSecure: false, wasFixed: false, error: 'chmod_failed' }
+}
+
+// 📖 Check security and handle the fix flow if needed
+// 📖 Await this BEFORE starting any terminal UI (issue #173) so the warning and
+// 📖 the confirmation prompt are visible and fully resolved before raw mode /
+// 📖 the alternate screen take over.
+//
+// 📖 Options:
+//   autoFix       - true when --fix-permissions / --yes / -y was passed: apply the
+//                   fix without asking
+//   promptAllowed - false on daemon/web/JSON surfaces: never prompt there, at most
+//                   warn on stderr
+//   stdinIsTTY    - override the stdin TTY detection (tests); defaults to real detection
+//
 // 📖 Returns: { wasSecure: boolean, wasFixed: boolean, error?: string }
-export function checkConfigSecurity() {
+export async function checkConfigSecurity(options = {}) {
   const perms = getConfigPermissions()
 
   // 📖 No file yet = nothing to check
@@ -139,24 +210,38 @@ export function checkConfigSecurity() {
     return { wasSecure: true, wasFixed: false }
   }
 
-  // 📖 Security issue detected! Show warning and offer fix.
-  const currentMode = formatMode(perms.mode)
-  const currentRwx = formatModeRwx(perms.mode)
+  // 📖 Pure gate (see utils.js): decides auto-fix vs prompt vs warn-only.
+  const action = resolveSecurityAction({
+    configExists: true,
+    isSecure: false,
+    autoFixRequested: options.autoFix === true,
+    stdinIsTTY: options.stdinIsTTY ?? (process.stdin?.isTTY === true),
+    promptAllowed: options.promptAllowed !== false,
+  })
 
-  console.error('')
-  console.error('⚠️  SECURITY WARNING ⚠️')
-  console.error('')
-  console.error(`Your config file has insecure permissions: ${currentMode} (${currentRwx})`)
-  console.error(`File: ${perms.path}`)
-  console.error('')
-  console.error('This means other users on this system may be able to read your API keys.')
-  console.error('')
-  console.error('Recommended: Fix permissions to 600 (rw-------) — owner read/write only')
+  if (action === 'none') {
+    return { wasSecure: true, wasFixed: false }
+  }
+
+  // 📖 Security issue detected! Print the warning first so it is on screen
+  // 📖 no matter which path follows.
+  printSecurityWarning(perms)
+
+  if (action === 'auto-fix') {
+    return applyFixAndReport()
+  }
+
+  if (action === 'warn-only') {
+    console.error('Running non-interactively (piped stdin or daemon/web mode), so skipping the prompt.')
+    printManualFixHint()
+    return { wasSecure: false, wasFixed: false, error: 'non_interactive' }
+  }
 
   return promptSecurityFix()
 }
 
 // 📖 Interactive prompt asking user if they want to auto-fix
+// 📖 Only reached on a real interactive TTY (gated in checkConfigSecurity)
 // 📖 Returns: { wasSecure: boolean, wasFixed: boolean, error?: string }
 async function promptSecurityFix() {
   const rl = readline.createInterface({
@@ -165,37 +250,22 @@ async function promptSecurityFix() {
   })
 
   try {
-    const answer = await new Promise((resolve) => {
+    const rawAnswer = await new Promise((resolve) => {
       rl.question('Fix permissions automatically? (Y/n): ', resolve)
     })
 
     rl.close()
 
-    // 📖 Default to yes if user just presses Enter
-    if (answer.toLowerCase() === 'y' || answer === '') {
-      const success = fixConfigPermissions()
+    // 📖 Normalise: readline can resolve with undefined when stdin closes mid-prompt
+    const answer = String(rawAnswer ?? '').trim().toLowerCase()
 
-      if (success) {
-        console.error('')
-        console.error('✅ Permissions fixed! Your API keys are now secure.')
-        console.error('')
-        return { wasSecure: false, wasFixed: true }
-      } else {
-        console.error('')
-        console.error('❌ Failed to fix permissions automatically.')
-        console.error('')
-        console.error('Run this command manually:')
-        console.error(`  chmod 600 ${getConfigPath()}`)
-        console.error('')
-        return { wasSecure: false, wasFixed: false, error: 'chmod_failed' }
-      }
+    // 📖 Default to yes if user just presses Enter
+    if (answer === 'y' || answer === '') {
+      return applyFixAndReport()
     } else {
       console.error('')
       console.error('⚠️  Permissions not fixed. Your API keys may be at risk.')
-      console.error('')
-      console.error('To fix later, run:')
-      console.error(`  chmod 600 ${getConfigPath()}`)
-      console.error('')
+      printManualFixHint()
       return { wasSecure: false, wasFixed: false, error: 'user_declined' }
     }
   } catch (err) {
@@ -203,10 +273,7 @@ async function promptSecurityFix() {
     // 📖 If we can't prompt (e.g., non-interactive TTY), just warn and continue
     console.error('')
     console.error('⚠️  Unable to prompt for permission fix (non-interactive terminal?)')
-    console.error('')
-    console.error('To fix manually, run:')
-    console.error(`  chmod 600 ${getConfigPath()}`)
-    console.error('')
+    printManualFixHint()
     return { wasSecure: false, wasFixed: false, error: 'no_tty' }
   }
 }

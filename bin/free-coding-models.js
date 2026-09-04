@@ -37,6 +37,7 @@ import { ensureFavoritesConfig } from '../src/core/favorites.js';
 import { buildCliHelpText } from '../src/tui/cli-help.js';
 import { ALT_LEAVE } from '../src/core/constants.js';
 import { enforceMandatoryStartupUpdate, isPackageDevMode } from '../src/core/updater.js';
+import { checkConfigSecurity } from '../src/core/security.js';
 import { runApp } from '../src/tui/app.js';
 
 // Global error handlers to ensure terminal is restored if something crashes catastrophically
@@ -153,6 +154,25 @@ async function main() {
         await stopRouterDaemon();
       }
     } catch {}
+  }
+
+  // 📖 Config security check (issue #173): the insecure-permission warning and its
+  // 📖 "Fix permissions automatically?" prompt must fully resolve BEFORE any surface
+  // 📖 takes over the terminal. It used to run un-awaited inside runApp, so the TUI
+  // 📖 covered the prompt (invisible on Windows) and the app looked frozen.
+  // 📖 Daemon / web dashboard / JSON surfaces pass promptAllowed=false so at most a
+  // 📖 warning + manual hint goes to stderr, and the daemon can never hang on a prompt.
+  // 📖 --fix-permissions / --yes / -y auto-applies chmod 600 (best-effort on Windows).
+  const promptAllowed = !cliArgs.webMode
+    && !cliArgs.jsonMode
+    && !cliArgs.daemonMode
+    && !cliArgs.daemonBackgroundMode
+    && !cliArgs.daemonStopMode
+    && !cliArgs.daemonStatusMode;
+  try {
+    await checkConfigSecurity({ autoFix: cliArgs.fixPermissionsMode, promptAllowed });
+  } catch {
+    // 📖 A security-check failure must never block the app from starting.
   }
 
   // 📖 Standalone web dashboard: same full-catalog ping UI as the TUI, served
