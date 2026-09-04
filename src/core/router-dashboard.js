@@ -251,6 +251,9 @@ function normalizeRequestEntry(entry) {
     latency_ms: toFiniteNumber(item.latency_ms, null),
     tokens: toFiniteNumber(item.tokens, 0),
     failover: item.failover === true,
+    // 📖 failover_reason (t8) - 'family_failover' | 'set_order'; absent on
+    // older daemons, guarded so the dashboard renders fine either way.
+    failover_reason: safeString(item.failover_reason, null),
     stream: item.stream === true,
     error: safeString(item.error, null),
   }
@@ -1066,7 +1069,9 @@ export function renderRouterDashboard(state, deps = {}) {
       const statusColor = statusText.startsWith('2') ? themeColors.success : statusText === 'ERR' ? themeColors.error : themeColors.warning
       const latency = Number.isFinite(row.latency_ms) ? `${Math.round(row.latency_ms)}ms` : '—'
       const detail = [
-        row.failover ? 'failover' : '',
+        // 📖 t8 - family hops get their own tag so a same-family retry is
+        // visibly different from a plain set-order failover.
+        row.failover ? (row.failover_reason === 'family_failover' ? 'family' : 'failover') : '',
         row.stream ? 'stream' : '',
         row.error || '',
       ].filter(Boolean).join(', ') || '—'

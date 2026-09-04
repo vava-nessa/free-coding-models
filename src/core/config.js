@@ -410,6 +410,10 @@ function normalizeRouterSets(sets) {
       created: typeof rawSet.created === 'string' && rawSet.created.trim()
         ? rawSet.created
         : new Date().toISOString(),
+      // 📖 familyFailover (t8): when true (default), a failed request first
+      // retries the SAME model family on another provider before falling back
+      // to plain set order. See src/core/model-family.js.
+      familyFailover: rawSet.familyFailover !== false,
     }
   }
   return normalized

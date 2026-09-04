@@ -347,6 +347,9 @@ function buildRouterTestConfig(models, overrides = {}) {
         name: 'test-set',
         created: '2026-04-23T00:00:00.000Z',
         models,
+        // 📖 t8 - per-set family failover toggle. Undefined normalizes to true
+        // (default), false exercises the set-order fallback path.
+        familyFailover: overrides.familyFailover,
       },
     },
     failover: {
@@ -3046,6 +3049,78 @@ describe('router daemon integration hardening', () => {
             assert.equal(payload.id, 'chatcmpl-failover-529')
             assert.equal(groqProvider.requests.length, 1)
             assert.equal(nvidiaProvider.requests.length, 1)
+          })
+        })
+      })
+    })
+  })
+
+  // 📖 t8 - family-preserving failover: when the primary GPT-family model on
+  // nvidia fails, the router must hop to the SAME family on cerebras and skip
+  // the higher-priority Qwen entry on groq (a mid-conversation family switch
+  // changes the model's behaviour, a provider hop does not).
+  it('prefers a same-family model on another provider over the next set entry (t8)', async () => {
+    await withMockProvider(() => ({ status: 503, body: { error: { message: 'maintenance' } } }), async (nvidiaProvider) => {
+      await withMockProvider(() => ({ body: { id: 'should-not-serve-qwen', choices: [] } }), async (groqProvider) => {
+        await withMockProvider(() => ({ body: { id: 'chatcmpl-family-hop', choices: [] } }), async (cerebrasProvider) => {
+          await withSourceUrls({ nvidia: nvidiaProvider.url, groq: groqProvider.url, cerebras: cerebrasProvider.url }, async () => {
+            const config = buildRouterTestConfig([
+              { provider: 'nvidia', model: 'openai/gpt-oss-120b', priority: 1 },
+              { provider: 'groq', model: 'qwen/qwen3.6-27b', priority: 2 },
+              { provider: 'cerebras', model: 'gpt-oss-120b', priority: 3 },
+            ])
+            config.apiKeys.cerebras = 'cb-router-test'
+            await withRouterTestServer(config, async ({ baseUrl, runtime }) => {
+              const response = await postRouterChat(baseUrl)
+              const payload = await response.json()
+
+              assert.equal(response.status, 200)
+              assert.equal(response.headers.get('x-fcm-router-model'), 'cerebras/gpt-oss-120b', 'must stay in the GPT family on another provider')
+              assert.equal(payload.id, 'chatcmpl-family-hop')
+              assert.equal(nvidiaProvider.requests.length, 1, 'primary attempted once')
+              assert.equal(groqProvider.requests.length, 0, 'Qwen entry must be skipped by the family stage')
+              assert.equal(cerebrasProvider.requests.length, 1, 'family alternative served the request')
+
+              const servedEntry = runtime.requestLog.find((entry) => entry.model === 'cerebras/gpt-oss-120b')
+              assert.ok(servedEntry, 'served attempt must appear in the request log')
+              assert.equal(servedEntry.failover, true)
+              assert.equal(servedEntry.failover_reason, 'family_failover', 'request log must expose the family hop reason')
+            })
+          })
+        })
+      })
+    })
+  })
+
+  // 📖 t8 - with familyFailover:false the behaviour must match the historical
+  // set-order failover exactly (Qwen on groq is priority 2 and gets served).
+  it('keeps plain set-order failover when familyFailover is disabled (t8)', async () => {
+    await withMockProvider(() => ({ status: 503, body: { error: { message: 'maintenance' } } }), async (nvidiaProvider) => {
+      await withMockProvider(() => ({ body: { id: 'chatcmpl-set-order', choices: [] } }), async (groqProvider) => {
+        await withMockProvider(() => ({ body: { id: 'should-not-serve-cerebras', choices: [] } }), async (cerebrasProvider) => {
+          await withSourceUrls({ nvidia: nvidiaProvider.url, groq: groqProvider.url, cerebras: cerebrasProvider.url }, async () => {
+            const config = buildRouterTestConfig([
+              { provider: 'nvidia', model: 'openai/gpt-oss-120b', priority: 1 },
+              { provider: 'groq', model: 'qwen/qwen3.6-27b', priority: 2 },
+              { provider: 'cerebras', model: 'gpt-oss-120b', priority: 3 },
+            ], { familyFailover: false })
+            config.apiKeys.cerebras = 'cb-router-test'
+            await withRouterTestServer(config, async ({ baseUrl, runtime }) => {
+              const response = await postRouterChat(baseUrl)
+              const payload = await response.json()
+
+              assert.equal(response.status, 200)
+              assert.equal(response.headers.get('x-fcm-router-model'), 'groq/qwen/qwen3.6-27b', 'must follow plain set order (priority 2)')
+              assert.equal(payload.id, 'chatcmpl-set-order')
+              assert.equal(nvidiaProvider.requests.length, 1)
+              assert.equal(groqProvider.requests.length, 1)
+              assert.equal(cerebrasProvider.requests.length, 0)
+
+              const servedEntry = runtime.requestLog.find((entry) => entry.model === 'groq/qwen/qwen3.6-27b')
+              assert.ok(servedEntry, 'served attempt must appear in the request log')
+              assert.equal(servedEntry.failover, true)
+              assert.equal(servedEntry.failover_reason, 'set_order', 'request log must expose the set-order reason')
+            })
           })
         })
       })
