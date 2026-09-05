@@ -54,6 +54,7 @@ import { sendUsageTelemetry } from './telemetry.js'
 import { TIER_ORDER } from './utils.js'
 import { atomicWriteJson, safeJsonParse, sleep, maskApiKey, isRouteableProvider } from './shared-helpers.js'
 import { normalizeRequestBody } from './schema-normalizer.js'
+import { pickNextCandidate } from './model-family.js'
 import {
   loadCache as loadProbeCache,
   flushCache as flushProbeCache,
@@ -1429,6 +1430,14 @@ class RouterRuntime {
   }
 
   addRequestLog(entry) {
+    // 📖 failover_reason (t8) - WHY this attempt was picked ('family_failover'
+    // or 'set_order'). The failover loop stores it on the active request right
+    // after choosing the next candidate; every log entry of that attempt
+    // (requestLog, /stats, SSE 'request' event) carries it from here on.
+    if (entry.failover === true && entry.request_id && entry.failover_reason === undefined) {
+      const active = this.activeRequests.get(entry.request_id)
+      if (active?.failoverReason) entry.failover_reason = active.failoverReason
+    }
     this.requestLog.unshift({ ...entry, at: nowIso() })
     while (this.requestLog.length > MAX_REQUEST_LOG) this.requestLog.pop()
     this.broadcast('request', entry)
@@ -2085,8 +2094,12 @@ class RouterRuntime {
       const tried = []
       const blockedProviders = new Set()
       let attemptIndex = 0
-      for (const candidate of candidates) {
-        if (attemptIndex >= maxAttempts) break
+      // 📖 attemptChain is a private copy of the routing order: on a family
+      // failover (t8) the same-family candidate is swapped in as the NEXT
+      // attempt, so the iteration order itself follows the two-stage policy.
+      const attemptChain = candidates.slice()
+      for (let index = 0; index < attemptChain.length && attemptIndex < maxAttempts; index += 1) {
+        const candidate = attemptChain[index]
         if (blockedProviders.has(candidate.provider)) continue
 
         const activeReq = this.activeRequests.get(requestId)
@@ -2103,8 +2116,35 @@ class RouterRuntime {
         attemptIndex += 1
         if (result.authFailure) blockedProviders.add(candidate.provider)
         if (result.failoverToNext && attemptIndex < maxAttempts) {
-          const next = candidates.find((entry) => !tried.includes(entry.key) && !blockedProviders.has(entry.provider))
-          this.logger.warn(`Failover ${candidate.key}${next ? ` -> ${next.key}` : ''}`, { request_id: requestId, reason: result.reason })
+          // 📖 Two-stage failover (t8): prefer a healthy model of the SAME
+          // family on another provider (DeepSeek down on NIM -> DeepSeek on
+          // Together) so the user's output style doesn't change mid-request.
+          // Falls back to the historical set-order pick, and is disabled
+          // per-set via familyFailover: false.
+          const pick = pickNextCandidate({
+            candidates: attemptChain,
+            failedCandidate: candidate,
+            triedKeys: new Set(tried),
+            blockedProviders,
+            familyFailover: set.familyFailover !== false,
+          })
+          const next = pick?.candidate || null
+          // 📖 Reorder the remaining chain so `next` is genuinely the following
+          // attempt. With set-order picks this is already the case (or the
+          // skipped entries are blocked anyway), so behaviour is unchanged.
+          if (next && attemptChain[index + 1] !== next) {
+            const nextIndex = attemptChain.indexOf(next)
+            if (nextIndex > index) {
+              attemptChain.splice(nextIndex, 1)
+              attemptChain.splice(index + 1, 0, next)
+            }
+          }
+          const activeReqForReason = this.activeRequests.get(requestId)
+          if (next && activeReqForReason) activeReqForReason.failoverReason = pick.reason
+          this.logger.warn(
+            `Failover ${candidate.key}${next ? ` -> ${next.key}` : ''}${pick?.reason === 'family_failover' ? ' [family]' : ''}`,
+            { request_id: requestId, reason: result.reason },
+          )
           void sendUsageTelemetry(this.config, {}, {
             event: 'app_router_failover',
             mode: 'daemon',
@@ -2112,6 +2152,7 @@ class RouterRuntime {
               from_model: candidate.key,
               to_model: next?.key || null,
               reason: result.reason,
+              failover_reason: pick?.reason || null,
               attempt_number: attemptIndex,
             },
           })

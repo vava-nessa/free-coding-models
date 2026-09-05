@@ -304,6 +304,32 @@ export default function RouterView({ onClose, onToast, favorites }) {
     }
   }
 
+  // 📖 t8 - family failover keeps the user inside the same model family when a
+  // request fails (e.g. DeepSeek on NIM -> DeepSeek on Together) instead of
+  // hopping to a different family. Per-set toggle, persisted via PUT /sets/:name.
+  const handleToggleFamilyFailover = async () => {
+    if (!activeSetName) return
+    const next = !(activeSet?.familyFailover !== false)
+    setSaveStatus(SAVE_STATUS_SAVING)
+    try {
+      const resp = await fetch(`/api/router/sets/${encodeURIComponent(activeSetName)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ familyFailover: next }),
+      })
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}))
+        throw new Error(err.error || `HTTP ${resp.status}`)
+      }
+      setSaveStatus(SAVE_STATUS_SAVED)
+      onToast?.(`Family failover ${next ? 'enabled' : 'disabled'} for ${activeSetName}.`, 'info')
+      await fetchSets()
+    } catch (err) {
+      setSaveStatus(SAVE_STATUS_ERROR(err.message || String(err)))
+      onToast?.(`Failed to toggle family failover: ${err.message}`, 'error')
+    }
+  }
+
   const persistReorder = useCallback(async (nextModels) => {
     if (!activeSetName) return
     setSaveStatus(SAVE_STATUS_SAVING)
@@ -716,6 +742,15 @@ export default function RouterView({ onClose, onToast, favorites }) {
                       ))}
                     </select>
                   )}
+                  <button
+                    className={`${styles.smallBtn} ${(activeSet?.familyFailover !== false) ? styles.probeBtnActive : ''}`}
+                    onClick={handleToggleFamilyFailover}
+                    disabled={saveStatus.kind === 'saving'}
+                    title="When a model fails, first retry the same family on another provider (e.g. DeepSeek on NIM -> DeepSeek on Together) before falling back to set order"
+                  >
+                    <IconRoute size={11} />
+                    Family failover: {activeSet?.familyFailover !== false ? 'on' : 'off'}
+                  </button>
                 </div>
                 <div className={styles.setActions}>
                   <SaveBadge status={saveStatus} />
@@ -1041,7 +1076,9 @@ export default function RouterView({ onClose, onToast, favorites }) {
                         </span>
                         <span className={styles.logDetail}>
                           {[
-                            entry.failover ? 'failover' : '',
+                            // 📖 t8 - a family hop stays in the same model family
+                            // (e.g. DeepSeek on another host) and is tagged as such.
+                            entry.failover ? (entry.failover_reason === 'family_failover' ? 'family' : 'failover') : '',
                             entry.stream ? 'stream' : '',
                             entry.error || '',
                           ].filter(Boolean).join(', ')}
