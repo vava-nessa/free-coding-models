@@ -1019,9 +1019,9 @@ describe('provider key test model discovery', () => {
       [
         'deepseek-ai/deepseek-v4-flash-0731',
         'openai/gpt-oss-120b',
-        'moonshotai/kimi-k2.6',
         'nvidia/nemotron-3-ultra-550b-a55b',
         'poolside/laguna-xs-2.1',
+        'meta/muse-glimmer-30b',
       ]
     )
   })
@@ -3196,13 +3196,15 @@ describe('router daemon integration hardening', () => {
   // nvidia fails, the router must hop to the SAME family on cerebras and skip
   // the higher-priority Qwen entry on groq (a mid-conversation family switch
   // changes the model's behaviour, a provider hop does not).
+  // 📖 Primary is gpt-oss-20b: gpt-oss-120b was removed from the NVIDIA NIM
+  // catalog (deprecated 2026-09-02, audit 2026-09-05).
   it('prefers a same-family model on another provider over the next set entry (t8)', async () => {
     await withMockProvider(() => ({ status: 503, body: { error: { message: 'maintenance' } } }), async (nvidiaProvider) => {
       await withMockProvider(() => ({ body: { id: 'should-not-serve-qwen', choices: [] } }), async (groqProvider) => {
         await withMockProvider(() => ({ body: { id: 'chatcmpl-family-hop', choices: [] } }), async (cerebrasProvider) => {
           await withSourceUrls({ nvidia: nvidiaProvider.url, groq: groqProvider.url, cerebras: cerebrasProvider.url }, async () => {
             const config = buildRouterTestConfig([
-              { provider: 'nvidia', model: 'openai/gpt-oss-120b', priority: 1 },
+              { provider: 'nvidia', model: 'openai/gpt-oss-20b', priority: 1 },
               { provider: 'groq', model: 'qwen/qwen3.6-27b', priority: 2 },
               { provider: 'cerebras', model: 'gpt-oss-120b', priority: 3 },
             ])
@@ -3237,7 +3239,7 @@ describe('router daemon integration hardening', () => {
         await withMockProvider(() => ({ body: { id: 'should-not-serve-cerebras', choices: [] } }), async (cerebrasProvider) => {
           await withSourceUrls({ nvidia: nvidiaProvider.url, groq: groqProvider.url, cerebras: cerebrasProvider.url }, async () => {
             const config = buildRouterTestConfig([
-              { provider: 'nvidia', model: 'openai/gpt-oss-120b', priority: 1 },
+              { provider: 'nvidia', model: 'openai/gpt-oss-20b', priority: 1 },
               { provider: 'groq', model: 'qwen/qwen3.6-27b', priority: 2 },
               { provider: 'cerebras', model: 'gpt-oss-120b', priority: 3 },
             ], { familyFailover: false })
