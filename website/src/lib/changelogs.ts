@@ -51,6 +51,7 @@ export function getAllChangelogs(): ChangelogEntry[] {
     const fileMatch = path.match(/\/v([\d.]+)\.md$/)
     if (!fileMatch) continue
     const version = fileMatch[1]
+    if (!version) continue
 
     let rawContent = typeof rawText === 'string' ? rawText : String(rawText || '')
 
@@ -74,7 +75,8 @@ export function getAllChangelogs(): ChangelogEntry[] {
 
     // Find first descriptive bullet point or header for release name
     for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim()
+      const line = lines[i]?.trim()
+      if (!line) continue
       if (line.startsWith('- ') || line.startsWith('* ')) {
         name = cleanMarkdownText(line)
         break
