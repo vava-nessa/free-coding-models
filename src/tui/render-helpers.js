@@ -52,10 +52,11 @@ import chalk from 'chalk'
 import { OVERLAY_PANEL_WIDTH, TABLE_FIXED_LINES, TABLE_HEADER_LINES, TABLE_FOOTER_LINES } from '../core/constants.js'
 import { sortResults } from '../core/utils.js'
 
-// 📖 stripAnsi: Remove ANSI color/control sequences to estimate visible text width before padding.
-// 📖 Strips CSI sequences (SGR colors) and OSC sequences (hyperlinks).
+// 📖 stripAnsi: Remove ANSI control sequences to estimate visible text width before padding.
+// 📖 Strips ALL CSI sequences (SGR colors, \x1b[K clear, cursor moves) and OSC
+// 📖 sequences (hyperlinks) - every escape is zero-width for measurement purposes.
 export function stripAnsi(input) {
-  return String(input).replace(/\x1b\[[0-9;]*m/g, '').replace(/\x1b\][^\x1b]*\x1b\\/g, '')
+  return String(input).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\x1b\][^\x1b]*\x1b\\/g, '')
 }
 
 // 📖 fadedRow: Multiply every 24-bit RGB channel inside an ANSI-colored string by `factor`
@@ -156,6 +157,44 @@ export function padEndDisplay(str, width) {
   const dw = displayWidth(str)
   const need = Math.max(0, width - dw)
   return str + ' '.repeat(need)
+}
+
+// 📖 truncateAnsiWidth: Hard-clamp ANY string (plain or ANSI-styled) to a max
+// 📖 display width, appending an ellipsis when content is cut. ANSI escape
+// 📖 sequences are preserved (they cost 0 columns) so styled overlay rows can be
+// 📖 clamped as a final safety pass without breaking colors. A reset (\x1b[0m) is
+// 📖 inserted before the ellipsis so a cut inside a colored run cannot bleed the
+// 📖 color into the ellipsis or the following cells.
+export function truncateAnsiWidth(input, maxWidth, { ellipsis = '…' } = {}) {
+  const text = String(input)
+  const budget = Math.max(0, Math.floor(maxWidth) || 0)
+  if (budget === 0) return ''
+  if (displayWidth(text) <= budget) return text
+
+  // 📖 Split into ANSI sequences and visible characters so escapes are kept verbatim.
+  // 📖 Capturing group makes String.split keep the separators (ANSI tokens) in the result.
+  const ANSI_TOKEN = /(\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x1b]*(?:\x1b\\|\u0007)?|\x1b.)/g
+  const tokens = text.split(ANSI_TOKEN).filter((t) => t !== '')
+  let out = ''
+  let w = 0
+  const ellWidth = displayWidth(ellipsis)
+  // 📖 Reserve room for the ellipsis, but never let the reserve swallow the whole budget.
+  const cutBudget = Math.max(0, budget - Math.min(ellWidth, Math.max(0, budget - 1)))
+
+  let cut = false
+  for (const token of tokens) {
+    const isAnsi = token.startsWith('\x1b')
+    if (isAnsi) { out += token; continue }
+    // 📖 Walk visible characters code point by code point (emoji are 2 columns).
+    for (const ch of token) {
+      const cw = displayWidth(ch)
+      if (w + cw > cutBudget) { cut = true; break }
+      out += ch
+      w += cw
+    }
+    if (cut) break
+  }
+  return out + '\x1b[0m' + ellipsis
 }
 
 // 📖 tintOverlayLines: Tint overlay lines with a terminal width so the background is clearly visible.

@@ -39,6 +39,7 @@ import {
   TIER_ORDER, VERDICT_ORDER, TIER_LETTER_MAP,
   scoreModelForTask, getTopRecommendations, TASK_TYPES, PRIORITY_TYPES, CONTEXT_BUDGETS,
   formatCtxWindow, labelFromId, resolveSecurityAction,
+  detectTerminalCapabilities,
   isProbeFailedRow, selectProbeFailedRows, PROBE_FAILED_STATUSES
 } from '../src/core/utils.js'
 import {
@@ -81,7 +82,7 @@ import {
 } from '../src/core/tool-launchers.js'
 import { getToolInstallPlan, isToolInstalled, resolveToolBinaryPath } from '../src/core/tool-bootstrap.js'
 import { TOOL_METADATA, TOOL_MODE_ORDER, getCompatibleTools, isModelCompatibleWithTool, findSimilarCompatibleModels } from '../src/core/tool-metadata.js'
-import { sortResultsWithPinnedFavorites, stripAnsi, fadedRow } from '../src/tui/render-helpers.js'
+import { sortResultsWithPinnedFavorites, stripAnsi, fadedRow, displayWidth, padEndDisplay, keepOverlayTargetVisible, sliceOverlayLines, truncateAnsiWidth } from '../src/tui/render-helpers.js'
 import { parseMouseEvents, containsMouseSequence, createMouseHandler, MOUSE_ENABLE, MOUSE_DISABLE } from '../src/tui/mouse.js'
 import { COLUMN_SORT_MAP } from '../src/tui/render-table.js'
 import { startOpenClaw } from '../src/core/openclaw.js'
@@ -7108,5 +7109,251 @@ describe('Issue #146: per-model broken-cooldown backoff (probe-cache)', () => {
       assert.equal(isProbeCacheFresh('openrouter', 'm:free', { cache, now: now + n * 1000 + 5_000 }), true, `after ${n + 1} failures, 5s later must be fresh`)
       assert.ok(cooldown <= 300_000, 'cooldown always within the 5min plateau')
     }
+  })
+})
+
+// ─── Issue #169: command palette must degrade on limited terminals ────────────
+
+describe('detectTerminalCapabilities (issue #169)', () => {
+  const base = { TERM: 'xterm-256color', COLORTERM: 'truecolor' }
+
+  it('keeps color on a normal TTY', () => {
+    const caps = detectTerminalCapabilities({ env: base, cols: 120, rows: 40, isTTY: true })
+    assert.equal(caps.colorSupported, true)
+    assert.equal(caps.compact, false)
+  })
+
+  it('disables color when NO_COLOR is set', () => {
+    const caps = detectTerminalCapabilities({ env: { ...base, NO_COLOR: '1' }, cols: 120, rows: 40, isTTY: true })
+    assert.equal(caps.colorSupported, false)
+  })
+
+  it('treats an empty NO_COLOR as unset (no-color.org spec)', () => {
+    const caps = detectTerminalCapabilities({ env: { ...base, NO_COLOR: '' }, cols: 120, rows: 40, isTTY: true })
+    assert.equal(caps.colorSupported, true)
+  })
+
+  it('FORCE_COLOR overrides NO_COLOR (same precedence as chalk)', () => {
+    const caps = detectTerminalCapabilities({ env: { ...base, NO_COLOR: '1', FORCE_COLOR: '1' }, cols: 120, rows: 40, isTTY: true })
+    assert.equal(caps.colorSupported, true)
+  })
+
+  it('disables color for TERM=dumb, unknown, and missing', () => {
+    assert.equal(detectTerminalCapabilities({ env: { TERM: 'dumb' }, cols: 80, rows: 24, isTTY: true }).colorSupported, false)
+    assert.equal(detectTerminalCapabilities({ env: { TERM: 'unknown' }, cols: 80, rows: 24, isTTY: true }).colorSupported, false)
+    assert.equal(detectTerminalCapabilities({ env: {}, cols: 80, rows: 24, isTTY: true }).colorSupported, false)
+  })
+
+  it('COLORTERM alone (missing TERM) still enables color', () => {
+    const caps = detectTerminalCapabilities({ env: { COLORTERM: 'truecolor' }, cols: 80, rows: 24, isTTY: true })
+    assert.equal(caps.colorSupported, true)
+  })
+
+  it('plain TERM=xterm without COLORTERM keeps degraded (16-color) support', () => {
+    // 📖 Most plain SSH sessions look like this; chalk downgrades truecolor to
+    // 📖 ANSI16 for them. Killing color entirely would regress the common case.
+    const caps = detectTerminalCapabilities({ env: { TERM: 'xterm' }, cols: 80, rows: 24, isTTY: true })
+    assert.equal(caps.colorSupported, true)
+  })
+
+  it('non-TTY output disables color', () => {
+    const caps = detectTerminalCapabilities({ env: base, cols: 120, rows: 40, isTTY: false })
+    assert.equal(caps.colorSupported, false)
+  })
+
+  it('flags compact for tiny sizes (cols < 90 or rows < 24)', () => {
+    assert.equal(detectTerminalCapabilities({ env: base, cols: 89, rows: 40, isTTY: true }).compact, true)
+    assert.equal(detectTerminalCapabilities({ env: base, cols: 90, rows: 40, isTTY: true }).compact, false)
+    assert.equal(detectTerminalCapabilities({ env: base, cols: 120, rows: 23, isTTY: true }).compact, true)
+    assert.equal(detectTerminalCapabilities({ env: base, cols: 120, rows: 24, isTTY: true }).compact, false)
+    // 📖 The reporting terminal from issue #169: basic 80x24 server console
+    assert.equal(detectTerminalCapabilities({ env: { TERM: 'xterm' }, cols: 80, rows: 24, isTTY: true }).compact, true)
+  })
+})
+
+describe('truncateAnsiWidth (issue #169)', () => {
+  it('returns short strings untouched', () => {
+    assert.equal(truncateAnsiWidth('hello', 10), 'hello')
+    assert.equal(truncateAnsiWidth('hello', 5), 'hello')
+  })
+
+  it('truncates plain text with an ellipsis inside the budget', () => {
+    const out = truncateAnsiWidth('Probe All Models for 404 errors', 10)
+    assert.ok(displayWidth(out) <= 10, `width ${displayWidth(out)} must be <= 10`)
+    assert.ok(out.endsWith('…'))
+  })
+
+  it('returns empty string for zero budget', () => {
+    assert.equal(truncateAnsiWidth('anything', 0), '')
+  })
+
+  it('supports disabling the ellipsis', () => {
+    const out = truncateAnsiWidth('abcdefgh', 4, { ellipsis: '' })
+    assert.equal(displayWidth(out), 4)
+    assert.ok(out.startsWith('abcd'))
+  })
+
+  it('clamps styled (ANSI) strings and keeps them valid', () => {
+    const styled = chalk.bgRgb(14, 20, 36).white('Test all configured models for 404/410 errors. Auto-hides broken models.')
+    const out = truncateAnsiWidth(styled, 20)
+    assert.ok(displayWidth(out) <= 20, `width ${displayWidth(out)} must be <= 20`)
+    // 📖 A reset must be present so the cut cannot bleed color past the ellipsis.
+    assert.ok(out.includes('\x1b[0m'))
+    assert.ok(stripAnsi(out).endsWith('…'))
+  })
+
+  it('counts emoji as 2 columns when clamping', () => {
+    const out = truncateAnsiWidth('🔍🔍🔍🔍🔍', 7)
+    assert.equal(displayWidth(out), 7)
+  })
+})
+
+describe('renderCommandPalette limited terminals (issue #169)', () => {
+  // 📖 Real width helpers are mandatory here: the geometry IS the fix.
+  function paletteDeps() {
+    return {
+      chalk,
+      sources: { groq: sources.groq },
+      PROVIDER_METADATA: {},
+      PROVIDER_COLOR: {},
+      LOCAL_VERSION: '0.0.0',
+      getApiKey: () => null,
+      resolveApiKeys: () => [],
+      isProviderEnabled: () => true,
+      TIER_CYCLE: ['All'],
+      OVERLAY_PANEL_WIDTH: 120,
+      keepOverlayTargetVisible,
+      sliceOverlayLines,
+      tintOverlayLines: (lines) => lines,
+      TASK_TYPES: [],
+      PRIORITY_TYPES: [],
+      CONTEXT_BUDGETS: [],
+      FRAMES: ['-'],
+      TIER_COLOR: () => '',
+      getAvg: () => 0,
+      getStabilityScore: () => 0,
+      toFavoriteKey: () => '',
+      getTopRecommendations: () => [],
+      adjustScrollOffset: () => {},
+      getPingModel: () => null,
+      getConfiguredInstallableProviders: () => [],
+      getInstallTargetModes: () => [],
+      getProviderCatalogModels: () => [],
+      getToolMeta: () => null,
+      getToolInstallPlan: () => null,
+      padEndDisplay,
+      displayWidth,
+    }
+  }
+
+  // 📖 Real width helpers are mandatory here: the geometry IS the fix.
+  function buildPaletteRenderer({ cols, rows, cursor = 0, query = '' }) {
+    const state = {
+      commandPaletteOpen: true,
+      commandPaletteResults: buildCommandPaletteEntries([]),
+      commandPaletteCursor: cursor,
+      commandPaletteScrollOffset: 0,
+      commandPaletteQuery: query,
+      terminalRows: rows,
+      terminalCols: cols,
+      config: { apiKeys: {}, providers: {}, settings: {} },
+    }
+    return createOverlayRenderers(state, paletteDeps()).renderCommandPalette
+  }
+
+  // 📖 Split the positioned-segment stream into { row, col, visibleWidth } records.
+  function parsePositionedLines(output) {
+    const lines = []
+    for (const m of output.matchAll(/\x1b\[(\d+);(\d+)H([\s\S]*?)(?=\x1b\[\d+;\d+H|$)/g)) {
+      lines.push({ row: Number(m[1]), col: Number(m[2]), width: displayWidth(stripAnsi(m[3])) })
+    }
+    return lines
+  }
+
+  // 📖 The core regression: before the fix a palette row ended at col 127 on an
+  // 📖 80-col terminal (wrap + garble), and the panel fell off a 12-row screen.
+  for (const [cols, rows] of [[80, 24], [40, 12], [40, 8], [100, 30], [120, 40]]) {
+    it(`never overflows ${cols}x${rows}`, () => {
+      const render = buildPaletteRenderer({ cols, rows })
+      const lines = parsePositionedLines(render())
+      assert.ok(lines.length > 0, 'palette should emit positioned lines')
+      for (const line of lines) {
+        assert.ok(line.col >= 1, `start col must be >= 1, got ${line.col}`)
+        assert.ok(line.col + line.width - 1 <= cols, `row ${line.row} ends at col ${line.col + line.width - 1} > ${cols}`)
+        assert.ok(line.row <= rows, `row ${line.row} renders below the ${rows}-row screen`)
+      }
+    })
+  }
+
+  it('truncates long descriptions with an ellipsis on an 80-col terminal', () => {
+    const render = buildPaletteRenderer({ cols: 80, rows: 24 })
+    const output = stripAnsi(render().replace(/\x1b\[\d+;\d+H/g, ''))
+    assert.ok(output.includes('…'), 'long descriptions should be truncated with an ellipsis')
+  })
+
+  it('keeps entries readable and header/footer intact at 80x24', () => {
+    const render = buildPaletteRenderer({ cols: 80, rows: 24 })
+    const output = stripAnsi(render().replace(/\x1b\[\d+;\d+H/g, ''))
+    assert.ok(output.includes('Command Palette'), 'title must survive')
+    assert.ok(output.includes('Esc'), 'Esc hint must survive')
+    assert.ok(output.includes('Filters'), 'category labels must survive')
+    assert.ok(output.includes('All tiers'), 'entry labels must survive')
+    assert.ok(output.includes('Select'), 'footer hints must survive')
+  })
+
+  it('renders plain text without any SGR codes when NO_COLOR is set', () => {
+    const prevNoColor = process.env.NO_COLOR
+    process.env.NO_COLOR = '1'
+    try {
+      const render = buildPaletteRenderer({ cols: 80, rows: 24 })
+      // 📖 Strip ALL CSI sequences (cursor positioning + \x1b[K clears): what must
+      // 📖 remain is zero escapes, i.e. no SGR color codes at all.
+      const withoutCsi = render().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
+      assert.ok(!withoutCsi.includes('\x1b'), `expected no ANSI escapes, got ${JSON.stringify(withoutCsi.slice(0, 120))}`)
+    } finally {
+      if (prevNoColor === undefined) delete process.env.NO_COLOR
+      else process.env.NO_COLOR = prevNoColor
+    }
+  })
+
+  it('renders plain text without any SGR codes when TERM=dumb', () => {
+    const prevTerm = process.env.TERM
+    process.env.TERM = 'dumb'
+    try {
+      const render = buildPaletteRenderer({ cols: 80, rows: 24 })
+      const withoutCsi = render().replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '')
+      assert.ok(!withoutCsi.includes('\x1b'), 'TERM=dumb must produce a colorless palette')
+    } finally {
+      if (prevTerm === undefined) delete process.env.TERM
+      else process.env.TERM = prevTerm
+    }
+  })
+
+  it('palette stays inside the screen with a long typed query at 40x12', () => {
+    const render = buildPaletteRenderer({ cols: 40, rows: 12, query: 'filter models by provider groq fast' })
+    for (const line of parsePositionedLines(render())) {
+      assert.ok(line.col + line.width - 1 <= 40, `query row ends at col ${line.col + line.width - 1} > 40`)
+      assert.ok(line.row <= 12, `row ${line.row} below the 12-row screen`)
+    }
+  })
+
+  it('mouse click layout rect stays inside the screen at 40x12', () => {
+    const state = {
+      commandPaletteOpen: true,
+      commandPaletteResults: buildCommandPaletteEntries([]),
+      commandPaletteCursor: 0,
+      commandPaletteScrollOffset: 0,
+      commandPaletteQuery: '',
+      terminalRows: 12,
+      terminalCols: 40,
+      config: { apiKeys: {}, providers: {}, settings: {} },
+    }
+    const renderers = createOverlayRenderers(state, paletteDeps())
+    renderers.renderCommandPalette()
+    const l = renderers.overlayLayout
+    assert.ok(l.commandPaletteLeft >= 1, 'left edge on screen')
+    assert.ok(l.commandPaletteRight <= 40, `right edge ${l.commandPaletteRight} must be <= 40`)
+    assert.ok(l.commandPaletteTop >= 1, 'top edge on screen')
+    assert.ok(l.commandPaletteBottom <= 12, `bottom edge ${l.commandPaletteBottom} must be <= 12`)
   })
 })

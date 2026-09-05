@@ -748,6 +748,34 @@ export function resolveSecurityAction({ configExists, isSecure, autoFixRequested
   return 'prompt'
 }
 
+// 📖 detectTerminalCapabilities: PURE terminal capability probe for TUI overlays.
+// 📖 WHY: basic server consoles (IPMI/KVM viewers, ASPEED framebuffer, serial
+// 📖 terminals) often run 80x24 or smaller with no or limited color support, and
+// 📖 the palette/overlays must degrade instead of overflowing or painting garbage.
+// 📖 Everything is injected by the caller (env, size, TTY) so tests never touch
+// 📖 process.env and the function stays deterministic.
+//
+// 📖 Rules:
+//   - FORCE_COLOR wins over NO_COLOR (same precedence chalk uses).
+//   - NO_COLOR (non-empty, per no-color.org spec) disables color.
+//   - Not a TTY, TERM missing / "dumb" / "unknown" disables color, unless
+//     COLORTERM is set (some terminals export only COLORTERM).
+//   - compact = size too tight for the roomy overlay layout (cols < 90 or rows < 24,
+//     thresholds chosen so a plain 80x24 console gets the space-saving layout).
+//
+// 📖 Returns { colorSupported: boolean, compact: boolean }
+export function detectTerminalCapabilities({ env = {}, cols = 80, rows = 24, isTTY = true } = {}) {
+  const term = String(env.TERM ?? '').trim().toLowerCase()
+  const colorterm = String(env.COLORTERM ?? '').trim().toLowerCase()
+  const force = env.FORCE_COLOR
+  const forceOn = force !== undefined && force !== '' && force !== '0' && force !== 'false'
+  const noColor = env.NO_COLOR !== undefined && env.NO_COLOR !== ''
+  const termUsable = term !== '' && term !== 'dumb' && term !== 'unknown'
+  const colorSupported = forceOn || (!noColor && isTTY !== false && (termUsable || colorterm !== ''))
+  const compact = Math.floor(cols) < 90 || Math.floor(rows) < 24
+  return { colorSupported, compact }
+}
+
 // ─── Smart Recommend — Scoring Engine ─────────────────────────────────────────
 
 // 📖 Task types for the Smart Recommend questionnaire.

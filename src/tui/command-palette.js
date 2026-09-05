@@ -45,7 +45,7 @@ const TOOL_MODE_DESCRIPTIONS = {
   hermes: 'Launch Hermes Agent with the selected model.',
   'continue': 'Launch Continue CLI with the selected model.',
   cline: 'Launch Cline CLI with the selected model.',
-  caveman: 'Caveman Code — token-efficient coding agent (launch with Caveman tool only).',
+  caveman: 'Caveman Code - token-efficient coding agent (launch with Caveman tool only).',
   jcode: 'Launch jcode coding agent with the selected model.',
 }
 

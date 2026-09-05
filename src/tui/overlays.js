@@ -25,6 +25,8 @@ import { renderRouterDashboard as renderRouterDashboardOverlay } from '../core/r
 import { renderPlayground as renderPlaygroundOverlay } from '../core/playground.js'
 import { themeColors, getThemeStatusLabel, getProviderRgb } from './theme.js'
 import { getProviderBillingNote, getProviderLabelWithBilling } from '../core/provider-metadata.js'
+import { detectTerminalCapabilities } from '../core/utils.js'
+import { truncateAnsiWidth } from './render-helpers.js'
 
 export function createOverlayRenderers(state, deps) {
   const {
@@ -725,29 +727,48 @@ export function createOverlayRenderers(state, deps) {
   // ─── Command palette renderer ──────────────────────────────────────────────
   // 📖 renderCommandPalette draws a centered floating modal over the live table.
   // 📖 Supports hierarchical categories with expand/collapse and rich colors.
+  // 📖 Degrades gracefully on limited terminals (issue #169): width is clamped to
+  // 📖 the screen, long descriptions truncate with an ellipsis, and colors are
+  // 📖 dropped entirely when the terminal cannot render them.
   function renderCommandPalette() {
     const terminalRows = state.terminalRows || 24
     const terminalCols = state.terminalCols || 80
-    const panelWidth = Math.max(52, Math.min(100, terminalCols - 8))
-    const panelInnerWidth = Math.max(32, panelWidth - 4)
+    const caps = detectTerminalCapabilities({ env: process.env, cols: terminalCols, rows: terminalRows, isTTY: true })
+
+    // 📖 Style set: identity wrappers when color is unsupported so the palette
+    // 📖 renders as plain default text (no SGR noise on dumb/mono terminals).
+    const id = (x) => x
+    const sty = caps.colorSupported ? themeColors : {
+      dim: id,
+      infoBold: id,
+      headerBold: id,
+      textBold: id,
+      accentBold: id,
+      bgCursor: id,
+      provider: (_key, text) => text,
+      tier: (_tier, text) => text,
+      overlayBgCommandPalette: id,
+    }
+
+    // 📖 Width budget: never wider than the screen. Outer = inner content + 2 cols
+    // 📖 padding per side. The floors shrink with the terminal so outer width stays
+    // 📖 <= cols for any terminal >= 20 columns (below that the whole TUI is unusable).
+    const panelWidth = Math.min(100, Math.max(16, terminalCols - 8))
+    const panelInnerWidth = Math.max(10, panelWidth - 4)
     const panelPad = 2
     const panelOuterWidth = panelWidth + (panelPad * 2)
-    const headerRowCount = 4
-    const bodyRows = Math.max(8, Math.min(18, terminalRows - 12))
 
-    const truncatePlain = (text, width) => {
-      if (width <= 1) return ''
-      if (displayWidth(text) <= width) return text
-      if (width <= 2) return text.slice(0, width)
-      return text.slice(0, width - 1) + '…'
-    }
+    // 📖 Height budget: compact terminals (cols<90 or rows<24) drop the decorative
+    // 📖 blank frame and merge footer hints so bodyRows always leaves room for
+    // 📖 header + footer inside the screen.
+    const bodyRows = Math.max(1, Math.min(18, terminalRows - (caps.compact ? 5 : 10)))
 
     const highlightMatch = (label, positions = []) => {
       if (!Array.isArray(positions) || positions.length === 0) return label
       const posSet = new Set(positions)
       let out = ''
       for (let i = 0; i < label.length; i++) {
-        out += posSet.has(i) ? themeColors.accentBold(label[i]) : label[i]
+        out += posSet.has(i) ? sty.accentBold(label[i]) : label[i]
       }
       return out
     }
@@ -756,64 +777,78 @@ export function createOverlayRenderers(state, deps) {
     const panelLines = []
     const cursorLineByRow = {}
 
+    // 📖 Compose one entry row inside `budget` display columns: prefix and label are
+    // 📖 prioritized, shortcut is kept when it fits, description is truncated last.
+    const composeRow = (budget, { prefixPlain, prefixStyled, label, labelStyled, shortcut, description }) => {
+      const prefixW = displayWidth(prefixPlain)
+      const avail = Math.max(0, budget - prefixW)
+      const shortcutW = shortcut ? displayWidth(` (${shortcut})`) : 0
+      // 📖 Keep at least 6 columns of label so the entry name stays readable.
+      const labelMax = avail - shortcutW
+      let usedShortcut = shortcut
+      let labelPlain = label
+      if (labelMax >= 6) {
+        labelPlain = truncateAnsiWidth(label, labelMax, { ellipsis: '' })
+      } else {
+        usedShortcut = ''
+        labelPlain = truncateAnsiWidth(label, Math.max(1, avail), { ellipsis: '' })
+      }
+      let row = `${prefixStyled}${labelStyled(labelPlain)}`
+      if (usedShortcut) row += sty.dim(` (${usedShortcut})`)
+      if (description) {
+        const descRoom = budget - prefixW - displayWidth(labelPlain) - (usedShortcut ? displayWidth(` (${usedShortcut})`) : 0) - 3
+        // 📖 Below 8 columns a truncated description reads as garbage; drop it instead.
+        if (descRoom >= 8) row += sty.dim(` - ${truncateAnsiWidth(description, descRoom, { ellipsis: '…' })}`)
+      }
+      return truncateAnsiWidth(row, budget)
+    }
+
     if (allResults.length === 0) {
-      panelLines.push(themeColors.dim('  No commands found. Try a different search.'))
+      panelLines.push(sty.dim('  No commands found. Try a different search.'))
     } else {
       for (let idx = 0; idx < allResults.length; idx++) {
         const entry = allResults[idx]
         const isCursor = idx === state.commandPaletteCursor
-        
+
         const indent = '  '.repeat(entry.depth || 0)
         const expandIndicator = entry.hasChildren
-          ? (entry.isExpanded ? themeColors.infoBold('▼') : themeColors.dim('▶'))
-          : themeColors.dim('•')
-        
-        // 📖 Only use icon from entry, label should NOT include emoji
-        const iconPrefix = entry.icon ? `${entry.icon} ` : ''
-        const plainLabel = truncatePlain(entry.label, panelInnerWidth - indent.length - iconPrefix.length - 4)
-        const label = entry.matchPositions ? highlightMatch(plainLabel, entry.matchPositions) : plainLabel
-        
-        let rowLine
-        if (entry.type === 'category') {
-          rowLine = `${indent}${expandIndicator} ${iconPrefix}${themeColors.headerBold(label)}`
-        } else if (entry.type === 'subcategory') {
-          rowLine = `${indent}${expandIndicator} ${iconPrefix}${themeColors.textBold(label)}`
-        } else if (entry.type === 'page') {
-          // 📖 Pages are at root level with icon + label + shortcut + description
-          const shortcut = entry.shortcut ? themeColors.dim(` (${entry.shortcut})`) : ''
-          const description = entry.description ? themeColors.dim(` — ${entry.description}`) : ''
-          rowLine = `${expandIndicator} ${iconPrefix}${themeColors.textBold(label)}${shortcut}${description}`
-        } else if (entry.type === 'action') {
-          // 📖 Actions are at root level with icon + label + shortcut + description
-          const shortcut = entry.shortcut ? themeColors.dim(` (${entry.shortcut})`) : ''
-          const description = entry.description ? themeColors.dim(` — ${entry.description}`) : ''
-          rowLine = `${expandIndicator} ${iconPrefix}${themeColors.textBold(label)}${shortcut}${description}`
-        } else {
-          // 📖 Regular commands in submenus
-          const shortcut = entry.shortcut ? themeColors.dim(` (${entry.shortcut})`) : ''
-          const description = entry.description ? themeColors.dim(` — ${entry.description}`) : ''
-          // 📖 Color tiers and providers
-          let coloredLabel = label
-          let prefixWithIcon = iconPrefix
-          
-          if (entry.providerKey && !entry.icon) {
-            // 📖 Model filter: add provider icon
-            const providerIcon = '🏢'
-            prefixWithIcon = `${providerIcon} `
-            coloredLabel = themeColors.provider(entry.providerKey, label, { bold: false })
-          } else if (entry.tier) {
-            coloredLabel = themeColors.tier(entry.tier, label)
-          } else if (entry.providerKey) {
-            coloredLabel = themeColors.provider(entry.providerKey, label, { bold: false })
-          }
-          
-          rowLine = `${indent}  ${expandIndicator} ${prefixWithIcon}${coloredLabel}${shortcut}${description}`
-        }
+          ? (entry.isExpanded ? sty.infoBold('▼') : sty.dim('▶'))
+          : sty.dim('•')
+
+        // 📖 Only use icon from entry, label should NOT include emoji.
+        // 📖 Model filter rows without an icon keep their provider building glyph.
+        const iconPrefix = entry.icon
+          ? `${entry.icon} `
+          : (entry.providerKey && entry.type === 'command' ? '🏢 ' : '')
+        // 📖 Submenu commands keep their extra 2-space indent inside the tree.
+        const rowGap = entry.type === 'command' ? '  ' : ''
+        const prefixPlain = `${indent}${rowGap}  ${iconPrefix}`
+        const prefixStyled = `${indent}${rowGap}${expandIndicator} ${iconPrefix}`
+
+        // 📖 Width of prefixPlain and prefixStyled match (indicator is 1 column).
+        const rowLine = composeRow(panelInnerWidth, {
+          prefixPlain,
+          prefixStyled,
+          label: entry.label,
+          labelStyled: (plainLabel) => {
+            const highlighted = entry.matchPositions ? highlightMatch(plainLabel, entry.matchPositions) : plainLabel
+            if (entry.type === 'category') return sty.headerBold(highlighted)
+            if (entry.type === 'subcategory') return sty.textBold(highlighted)
+            if (entry.providerKey && !entry.icon) return sty.provider(entry.providerKey, highlighted, { bold: false })
+            if (entry.tier) return sty.tier(entry.tier, highlighted)
+            if (entry.providerKey) return sty.provider(entry.providerKey, highlighted, { bold: false })
+            return sty.textBold(highlighted)
+          },
+          shortcut: entry.shortcut || '',
+          description: entry.description || '',
+        })
 
         cursorLineByRow[idx] = panelLines.length
-        
+
         if (isCursor) {
-          panelLines.push(themeColors.bgCursor(rowLine))
+          // 📖 Without color the bg highlight is invisible, so mark the cursor row
+          // 📖 with an ASCII '>' (safe on dumb/mono consoles where ❯ may not exist).
+          panelLines.push(caps.colorSupported ? sty.bgCursor(rowLine) : `> ${rowLine}`)
         } else {
           panelLines.push(rowLine)
         }
@@ -827,42 +862,43 @@ export function createOverlayRenderers(state, deps) {
       panelLines.length,
       bodyRows
     )
-    const { visible, offset } = sliceOverlayLines(panelLines, state.commandPaletteScrollOffset, bodyRows)
-    state.commandPaletteScrollOffset = offset
+    const { visible } = sliceOverlayLines(panelLines, state.commandPaletteScrollOffset, bodyRows)
 
     const query = state.commandPaletteQuery || ''
     const queryWithCursor = query.length > 0
-      ? `${query}${themeColors.accentBold('▏')}`
-      : themeColors.accentBold('▏') + themeColors.dim(' Search commands…')
+      ? `${query}${sty.accentBold('▏')}`
+      : sty.accentBold('▏') + sty.dim(' Search commands…')
 
-    const headerLines = []
-    const title = themeColors.headerBold('⚡️ Command Palette')
-    const titleLeft = ` ${title}`
-    const titleRight = themeColors.dim('Esc')
-    const titleWidth = Math.max(1, panelInnerWidth - 1 - displayWidth('Esc'))
-    headerLines.push(`${padEndDisplay(titleLeft, titleWidth)} ${titleRight}`)
-    headerLines.push(` ${padEndDisplay(`> ${queryWithCursor}`, panelInnerWidth)}`)
-    headerLines.push(themeColors.dim(` ${'─'.repeat(Math.max(1, panelInnerWidth))}`))
-
-    const footerLines = [
-      themeColors.dim(` ${'─'.repeat(Math.max(1, panelInnerWidth))}`),
-      ` ${padEndDisplay(themeColors.dim('↵ Select • ← → Expand'), panelInnerWidth)}`,
-      ` ${padEndDisplay(themeColors.dim('↑↓ Navigate • Type search'), panelInnerWidth)}`,
+    // 📖 Header: title left, Esc hint right, search input, separator. Each piece is
+    // 📖 width-budgeted so the header can never push past the panel on tiny screens.
+    const escHint = sty.dim('Esc')
+    const titleBudget = Math.max(1, panelInnerWidth - 1 - displayWidth('Esc'))
+    const queryBudget = Math.max(1, panelInnerWidth - 1)
+    const headerLines = [
+      ` ${padEndDisplay(truncateAnsiWidth(sty.headerBold('⚡️ Command Palette'), titleBudget, { ellipsis: '…' }), titleBudget)} ${escHint}`,
+      ` ${padEndDisplay(truncateAnsiWidth(`> ${queryWithCursor}`, queryBudget, { ellipsis: '…' }), queryBudget)}`,
+      sty.dim(` ${'─'.repeat(Math.max(1, panelInnerWidth - 1))}`),
     ]
 
-    const allPanelLines = [...headerLines, ...visible, ...footerLines]
-    
-    while (allPanelLines.length < bodyRows + headerRowCount + 3) {
-      allPanelLines.splice(headerLines.length + visible.length, 0, ` ${' '.repeat(panelInnerWidth)}`)
-    }
+    const sepLine = sty.dim(` ${'─'.repeat(Math.max(1, panelInnerWidth - 1))}`)
+    const footerLines = caps.compact
+      ? [sepLine, ` ${sty.dim(truncateAnsiWidth('↵ Select • ↑↓ Navigate • Type search', panelInnerWidth - 1))}`]
+      : [
+          sepLine,
+          ` ${padEndDisplay(sty.dim('↵ Select • ← → Expand'), panelInnerWidth - 1)}`,
+          ` ${padEndDisplay(sty.dim('↑↓ Navigate • Type search'), panelInnerWidth - 1)}`,
+        ]
 
-    const blankPaddedLine = ' '.repeat(panelOuterWidth)
+    // 📖 Compact mode skips the decorative blank frame above/below the panel.
+    // 📖 truncateAnsiWidth is a final safety clamp: rows are already budgeted to
+    // 📖 panelInnerWidth, this only catches emoji width miscounts so a line can
+    // 📖 never wrap and corrupt the frame on an 80-col console.
+    const blankFrameRows = caps.compact ? 0 : 2
+    const allPanelLines = [...headerLines, ...visible, ...footerLines]
     const paddedPanelLines = [
-      blankPaddedLine,
-      blankPaddedLine,
-      ...allPanelLines.map((line) => `${' '.repeat(panelPad)}${padEndDisplay(line, panelWidth)}${' '.repeat(panelPad)}`),
-      blankPaddedLine,
-      blankPaddedLine,
+      ...Array.from({ length: blankFrameRows }, () => ' '.repeat(panelOuterWidth)),
+      ...allPanelLines.map((line) => `${' '.repeat(panelPad)}${padEndDisplay(truncateAnsiWidth(line, panelWidth), panelWidth)}${' '.repeat(panelPad)}`),
+      ...Array.from({ length: blankFrameRows }, () => ' '.repeat(panelOuterWidth)),
     ]
 
     const panelHeight = paddedPanelLines.length
@@ -870,8 +906,8 @@ export function createOverlayRenderers(state, deps) {
     const left = Math.max(1, Math.floor((terminalCols - panelOuterWidth) / 2) + 1)
 
     // 📖 Mouse support: record CP layout so clicks inside the modal can select items.
-    // 📖 Body rows start after 2 blank-padding lines + headerLines (3).
-    const bodyStartRow = top + 2 + headerLines.length // 📖 1-based terminal row of first body line
+    // 📖 Body rows start after the blank frame + headerLines (3).
+    const bodyStartRow = top + blankFrameRows + headerLines.length // 📖 1-based terminal row of first body line
     overlayLayout.commandPaletteCursorToLine = { ...cursorLineByRow }
     overlayLayout.commandPaletteScrollOffset = state.commandPaletteScrollOffset
     overlayLayout.commandPaletteBodyStartRow = bodyStartRow
@@ -883,11 +919,14 @@ export function createOverlayRenderers(state, deps) {
 
     const tintedLines = paddedPanelLines.map((line) => {
       const padded = padEndDisplay(line, panelOuterWidth)
-      return themeColors.overlayBgCommandPalette(padded)
+      return sty.overlayBgCommandPalette(padded)
     })
 
+    // 📖 Emit each row from column 1 and clear to end of line so stale table cells
+    // 📖 in the margins beside the panel can never bleed through (the artifacts
+    // 📖 reported in issue #169). \x1b[K never wraps: panel right edge <= cols.
     return tintedLines
-      .map((line, idx) => `\x1b[${top + idx};${left}H${line}`)
+      .map((line, idx) => `\x1b[${top + idx};1H${' '.repeat(left - 1)}${line}\x1b[K`)
       .join('')
   }
 
