@@ -12,11 +12,15 @@
  * 📖 Columns are user-resizable: drag the right edge of any header to resize.
  * 📖 Custom widths persist in localStorage via the useColumnSizing hook and survive reloads.
  * 📖 A "Reset columns" button appears in the toolbar only when the user has custom widths.
+ * 📖 TanStack Table v9: only the features the table actually uses are registered
+ * 📖 (core row model + column sizing/resizing); sorting is fully external (useFilter).
  */
 import { useMemo, useEffect, useState, useCallback, useRef } from 'react'
 import {
-  useReactTable,
-  getCoreRowModel,
+  useTable,
+  createCoreRowModel,
+  columnSizingFeature,
+  columnResizingFeature,
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table'
@@ -356,14 +360,6 @@ export const DEFAULT_COLUMN_SIZING = PLACEHOLDER_COLUMNS.reduce((acc, c) => {
 const COLUMN_RESIZE_MIN = 24
 const COLUMN_RESIZE_MAX = 1200
 
-// ─── Sort icon component ────────────────────────────────────────────────────
-function SortIcon({ column }) {
-  if (!column.getCanSort()) return null
-  const sorted = column.getIsSorted()
-  if (!sorted) return <span className={styles.sortIcon}>⇅</span>
-  return <span className={styles.sortIconActive}>{sorted === 'asc' ? '↑' : '↓'}</span>
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function ModelTable({
   filtered, onSelectModel, onBenchmarkRow, onLaunch, favorites,
@@ -418,12 +414,18 @@ export default function ModelTable({
   const { columnSizing, setColumnSizing, resetColumnSizing, hasCustomSizing } =
     useColumnSizing(DEFAULT_COLUMN_SIZING)
 
-  // TanStack Table — no getSortedRowModel, sorting lives in useFilter
-  const table = useReactTable({
+  // 📖 TanStack Table v9: features are explicit. The dashboard needs only the
+  // 📖 core row model plus the two column-width features (sizing state and
+  // 📖 drag-resize). Sorting lives in useFilter, so the row-sorting feature
+  // 📖 stays unregistered and the table never sorts internally.
+  const table = useTable({
     data: filtered,
     columns,
-    defaultColumn: { enableSorting: true },
-    getCoreRowModel: getCoreRowModel(),
+    features: {
+      coreRowModel: createCoreRowModel(),
+      columnSizingFeature,
+      columnResizingFeature,
+    },
     columnResizeMode: 'onChange',
     state: { columnSizing },
     onColumnSizingChange: setColumnSizing,
@@ -479,7 +481,9 @@ export default function ModelTable({
   // 📖 Global cursor lock: when the user is dragging a resize handle, the cursor
   // 📖 can leave the handle briefly. Adding a body class keeps the col-resize
   // 📖 cursor visible AND blocks accidental text selection until the drag ends.
-  const isResizing = Boolean(table.getState().columnSizingInfo?.isResizingColumn)
+  // 📖 v9 moved the live drag state from `columnSizingInfo` to the
+  // 📖 `columnResizing` slice (registered via columnResizingFeature above).
+  const isResizing = Boolean(table.state.columnResizing?.isResizingColumn)
   useEffect(() => {
     if (typeof document === 'undefined') return
     if (isResizing) {
@@ -599,7 +603,7 @@ export default function ModelTable({
                   data-index={vi.index}
                   ref={rowVirtualizer.measureElement}
                 >
-                  <td colSpan={item.row.getVisibleCells().length} className={styles.expandRowCell}>
+                  <td colSpan={item.row.getAllCells().length} className={styles.expandRowCell}>
                     <ExpandedDetailRow
                       model={item.row.original}
                       favorites={favorites}
@@ -643,7 +647,7 @@ export default function ModelTable({
                 data-index={vi.index}
                 ref={rowVirtualizer.measureElement}
               >
-                {row.getVisibleCells().map(cell => {
+                {row.getAllCells().map(cell => {
                   const sizePx = `${cell.column.getSize()}px`
                   return (
                     <td
