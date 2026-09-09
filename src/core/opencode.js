@@ -517,7 +517,7 @@ export async function startOpenCode(model, fcmConfig) {
       const cloudflareAccountId = getCloudflareAccountIdSync() || ''
       if (!cloudflareAccountId) {
         console.log(chalk.yellow('  Cloudflare Workers AI needs an account id for OpenCode integration.'))
-        console.log(chalk.dim('    Export CLOUDFLARE_ACCOUNT_ID (or configure your Cloudflare API key) and retry.'))
+        console.log(chalk.dim('    Export CLOUDFLARE_ACCOUNT_ID and retry (or ping a Cloudflare model once so the account id is auto-discovered from your API key).'))
         console.log()
         return
       }
@@ -917,7 +917,7 @@ export async function startOpenCodeDesktop(model, fcmConfig) {
       const cloudflareAccountId = getCloudflareAccountIdSync() || ''
       if (!cloudflareAccountId) {
         console.log(chalk.yellow('  Cloudflare Workers AI needs an account id for OpenCode integration.'))
-        console.log(chalk.dim('    Export CLOUDFLARE_ACCOUNT_ID (or configure your Cloudflare API key) and retry.'))
+        console.log(chalk.dim('    Export CLOUDFLARE_ACCOUNT_ID and retry (or ping a Cloudflare model once so the account id is auto-discovered from your API key).'))
         console.log()
         return
       }

@@ -27,7 +27,7 @@
  *          runProviderKeyTest, PROVIDER_AUTH_ENDPOINTS
  */
 
-import { ping, getProviderSessionHeaders } from './ping.js'
+import { ping, getProviderSessionHeaders, resolveCloudflareUrl } from './ping.js'
 import { sleep } from './shared-helpers.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -295,7 +295,12 @@ export async function runProviderKeyTest(apiKey, providerKey, source, options = 
 
   // 📖 Slow path: ping-based verification (providers without auth endpoint or timeouts).
   const discoveredModelIds = []
-  const modelsUrl = buildProviderModelsUrl(source?.url)
+  // 📖 Cloudflare's models URL is account-scoped (issue #181): resolve the
+  // 📖 {$CLOUDFLARE_ACCOUNT_ID} placeholder so discovery reaches the real API
+  // 📖 instead of 404ing on the raw catalog URL and silently falling back.
+  const modelsUrl = providerKey === 'cloudflare'
+    ? resolveCloudflareUrl(buildProviderModelsUrl(source?.url) || '')
+    : buildProviderModelsUrl(source?.url)
   let discoveryNote = ''
 
   if (modelsUrl) {
