@@ -37,7 +37,7 @@ import { sources, MODELS } from '../sources.js'
 import { loadConfig, getApiKey, saveConfig, isProviderEnabled } from '../src/core/config.js'
 import { getProviderBillingNote, getProviderLabelWithBilling, PROVIDER_METADATA } from '../src/core/provider-metadata.js'
 import { ensureFavoritesConfig } from '../src/core/favorites.js'
-import { ping, getProviderQuotaPercentCached } from '../src/core/ping.js'
+import { ping, getProviderQuotaPercentCached, getProviderSessionHeaders } from '../src/core/ping.js'
 import { runProviderKeyTest } from '../src/core/provider-key-tester.js'
 import { loadChangelog } from '../src/core/changelog-loader.js'
 import { checkForUpdateDetailed, checkForUpdate, runUpdate, fetchLastReleaseDate } from '../src/core/updater.js'
@@ -1345,6 +1345,10 @@ async function handleRequest(req, res) {
             upstreamHeaders['X-Title'] = 'free-coding-models'
           }
 
+          // 📖 Mandatory per-provider headers (issue #181): OpenCode Zen rejects
+          // 📖 every request without `x-opencode-session` (HTTP 400 MissingSessionID).
+          Object.assign(upstreamHeaders, getProviderSessionHeaders(result.providerKey))
+
           const reqBody = {
             model: apiModelId,
             messages: [{ role: 'user', content: BENCHMARK_PROMPT }],
@@ -1876,6 +1880,9 @@ async function handleRequest(req, res) {
             upstreamHeaders['HTTP-Referer'] = 'https://github.com/vava-nessa/free-coding-models'
             upstreamHeaders['X-Title'] = 'free-coding-models'
           }
+          // 📖 Mandatory per-provider headers (issue #181): OpenCode Zen rejects
+          // 📖 every request without `x-opencode-session` (HTTP 400 MissingSessionID).
+          Object.assign(upstreamHeaders, getProviderSessionHeaders(providerKey))
         }
 
         const controller = new AbortController()

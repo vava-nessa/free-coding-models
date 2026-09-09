@@ -8,7 +8,8 @@
  *   endpoint quota polling with caching.
  *
  *   🎯 Key features:
- *   - Provider-specific request building (handles Replicate, Cloudflare, OpenRouter)
+ *   - Provider-specific request building (handles Replicate, Cloudflare, OpenRouter,
+ *     OpenCode Zen mandatory session header)
  *   - Async ping with timeout and abort controller
  *   - Quota extraction from rate limit headers (multiple variants supported)
  *   - Cached provider quota polling with TTL and error backoff
@@ -18,6 +19,7 @@
  *     hammering the user's daily quota while the provider's retry window is active.
  *
  *   → Functions:
+ *   - `getProviderSessionHeaders`: Extra mandatory headers per provider (e.g. OpenCode Zen session id)
  *   - `resolveCloudflareUrl`: Resolve {account_id} placeholder from CLOUDFLARE_ACCOUNT_ID env var
  *   - `buildChatCompletionPingBody`: Build minimal chat-completion probe payloads with thinking disabled
  *   - `markDisabledThinkingUnsupported`: Cache strict providers that reject the optional thinking control
@@ -44,6 +46,7 @@
  *   @see {@link ../src/quota-capabilities.js} Quota telemetry + Usage behavior detection
  */
 
+import { randomUUID } from 'node:crypto'
 import { PING_TIMEOUT } from './constants.js'
 import { fetchProviderQuota as _fetchProviderQuotaFromModule, extractQuota as _extractQuotaFromModule, processResponseHeaders as _processResponseHeadersFromModule } from './provider-quota-fetchers.js'
 import { supportsUsagePercent } from './quota-capabilities.js'
@@ -97,6 +100,25 @@ export function shouldUseDisabledThinkingForProvider(providerKey) {
   return !disabledThinkingUnsupportedProviders.has(providerKey)
 }
 
+// 📖 getProviderSessionHeaders: extra mandatory headers a provider requires beyond
+// 📖 the standard Content-Type/Authorization pair, centralised so probes (ping.js),
+// 📖 the router daemon and the web dashboard all send identical headers instead of
+// 📖 duplicating per-provider knowledge (issue #181).
+// 📖 OpenCode Zen rejects every request without an `x-opencode-session` header with
+// 📖 HTTP 400 MissingSessionID ("OpenCode's free tier can only be used in OpenCode").
+// 📖 The Zen docs describe a stable per-conversation session id, so we generate ONE
+// 📖 uuid per process at module load: every request this process sends shares the
+// 📖 same identity, mirroring how the real OpenCode client behaves and keeping the
+// 📖 value stable across repeated probes.
+const OPENCODE_ZEN_SESSION_ID = randomUUID()
+
+export function getProviderSessionHeaders(providerKey) {
+  if (providerKey === 'opencode-zen') {
+    return { 'x-opencode-session': OPENCODE_ZEN_SESSION_ID }
+  }
+  return {}
+}
+
 // 📖 buildPingRequest: Build provider-specific ping request.
 // 📖 Handles Replicate's /v1/predictions format, Cloudflare's account_id in URL,
 // 📖 and standard OpenAI-compliant chat completions with provider-specific headers.
@@ -128,7 +150,7 @@ export function buildPingRequest(apiKey, modelId, providerKey, url, options = {}
     }
   }
 
-  const headers = { 'Content-Type': 'application/json' }
+  const headers = { 'Content-Type': 'application/json', ...getProviderSessionHeaders(providerKey) }
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`
   if (providerKey === 'openrouter') {
     // 📖 OpenRouter recommends optional app identification headers.

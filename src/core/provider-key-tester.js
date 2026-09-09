@@ -27,7 +27,7 @@
  *          runProviderKeyTest, PROVIDER_AUTH_ENDPOINTS
  */
 
-import { ping } from './ping.js'
+import { ping, getProviderSessionHeaders } from './ping.js'
 import { sleep } from './shared-helpers.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -300,7 +300,9 @@ export async function runProviderKeyTest(apiKey, providerKey, source, options = 
 
   if (modelsUrl) {
     try {
-      const headers = { Authorization: `Bearer ${apiKey}` }
+      // 📖 Mandatory per-provider headers (issue #181): OpenCode Zen gates every
+      // 📖 request (model discovery included) behind `x-opencode-session`.
+      const headers = { Authorization: `Bearer ${apiKey}`, ...getProviderSessionHeaders(providerKey) }
       if (providerKey === 'openrouter') {
         headers['HTTP-Referer'] = 'https://github.com/vava-nessa/free-coding-models'
         headers['X-Title'] = 'free-coding-models'

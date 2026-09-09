@@ -129,7 +129,7 @@ import {
   buildBenchmarkRequest,
   benchmarkModel,
 } from '../src/core/benchmark.js'
-import { buildChatCompletionPingBody, buildPingRequest, ping, extractQuotaPercent } from '../src/core/ping.js'
+import { buildChatCompletionPingBody, buildPingRequest, ping, extractQuotaPercent, getProviderSessionHeaders } from '../src/core/ping.js'
 
 // ─── Helper: create a mock model result ──────────────────────────────────────
 // 📖 Builds a minimal result object matching the shape used by the main script
@@ -340,6 +340,51 @@ describe('buildPingRequest', () => {
     } finally {
       globalThis.fetch = originalFetch
     }
+  })
+})
+
+describe('opencode-zen mandatory session header (issue #181)', () => {
+  // 📖 OpenCode Zen now rejects every request without `x-opencode-session` with
+  // 📖 HTTP 400 MissingSessionID. The fix sends one stable uuid per process.
+  const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  const ZEN_URL = 'https://opencode.ai/zen/v1/chat/completions'
+
+  it('adds a UUID-shaped x-opencode-session header to opencode-zen ping requests', () => {
+    const req = buildPingRequest('zen-key', 'big-pickle', 'opencode-zen', ZEN_URL)
+
+    assert.match(req.headers['x-opencode-session'], UUID_V4_RE)
+  })
+
+  it('keeps the session id stable across repeated requests in the same process', () => {
+    const first = buildPingRequest('zen-key', 'big-pickle', 'opencode-zen', ZEN_URL)
+    const second = buildPingRequest('zen-key', 'nemotron-3-ultra-free', 'opencode-zen', ZEN_URL)
+    const viaHelper = getProviderSessionHeaders('opencode-zen')
+
+    assert.equal(second.headers['x-opencode-session'], first.headers['x-opencode-session'])
+    assert.equal(viaHelper['x-opencode-session'], first.headers['x-opencode-session'])
+    assert.match(viaHelper['x-opencode-session'], UUID_V4_RE)
+  })
+
+  it('does not send the session header to other providers', () => {
+    const groq = buildPingRequest('groq-key', 'test/model', 'groq', 'https://api.groq.com/v1/chat/completions')
+    const openrouter = buildPingRequest('or-key', 'test/model', 'openrouter', 'https://openrouter.ai/api/v1/chat/completions')
+
+    assert.equal(groq.headers['x-opencode-session'], undefined)
+    assert.equal(openrouter.headers['x-opencode-session'], undefined)
+    assert.deepEqual(getProviderSessionHeaders('groq'), {})
+    assert.deepEqual(getProviderSessionHeaders(undefined), {})
+  })
+
+  it('router upstream headers carry the session header for opencode-zen only', () => {
+    const zen = cloneHeadersForUpstream({}, 'zen-key', 'opencode-zen')
+    const groq = cloneHeadersForUpstream({}, 'groq-key', 'groq')
+
+    assert.match(zen['x-opencode-session'], UUID_V4_RE)
+    assert.equal(groq['x-opencode-session'], undefined)
+    // 📖 The router probe path and the forwarded-traffic path share this builder,
+    // 📖 so the session value must match what a direct ping() would send too.
+    const probeReq = buildPingRequest('zen-key', 'big-pickle', 'opencode-zen', ZEN_URL)
+    assert.equal(zen['x-opencode-session'], probeReq.headers['x-opencode-session'])
   })
 })
 

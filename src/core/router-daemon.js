@@ -47,7 +47,7 @@ import {
   normalizeRouterConfig,
   saveConfig,
 } from './config.js'
-import { buildChatCompletionPingBody, ping, resolveCloudflareUrl, shouldUseDisabledThinkingForProvider } from './ping.js'
+import { buildChatCompletionPingBody, ping, resolveCloudflareUrl, shouldUseDisabledThinkingForProvider, getProviderSessionHeaders } from './ping.js'
 import { benchmarkModel, BENCHMARK_TIMEOUT_MS } from './benchmark.js'
 import { loadChangelog } from './changelog-loader.js'
 import { sendUsageTelemetry } from './telemetry.js'
@@ -689,6 +689,11 @@ export function cloneHeadersForUpstream(reqHeaders, apiKey, providerKey) {
     headers['HTTP-Referer'] = 'https://github.com/vava-nessa/free-coding-models'
     headers['X-Title'] = 'free-coding-models'
   }
+  // 📖 Mandatory per-provider headers (issue #181): OpenCode Zen rejects every
+  // 📖 request without `x-opencode-session` with HTTP 400 MissingSessionID.
+  // 📖 This function builds headers for BOTH health probes and real forwarded
+  // 📖 traffic, so applying it here covers every upstream call in one place.
+  Object.assign(headers, getProviderSessionHeaders(providerKey))
   return headers
 }
 
@@ -4378,6 +4383,9 @@ export function createDefaultProbeFn(apiKeys) {
         headers['HTTP-Referer'] = 'https://github.com/vava-nessa/free-coding-models'
         headers['X-Title'] = 'free-coding-models'
       }
+      // 📖 Mandatory per-provider headers (issue #181): OpenCode Zen 400s without
+      // 📖 `x-opencode-session`, so default-set probes must carry it too.
+      Object.assign(headers, getProviderSessionHeaders(provider))
     }
     const started = Date.now()
     try {
