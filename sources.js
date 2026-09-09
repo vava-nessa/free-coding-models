@@ -40,6 +40,10 @@
 
 // 📖 NIM source - https://build.nvidia.com
 export const nvidiaNim = [
+  // Audit (2026-09-09): GET /v1/models lists 80 ids but most are ghost catalog entries that
+  // answer 404 "Function not found" to a 1-token chat completion on the free integrate API.
+  // All 46 chat-capable candidates were probed live: only the models kept below respond, so
+  // ghost ids stay out even though the public catalog lists them (issue #181).
   // ── S+ tier — SWE-bench Verified ≥70% ──
   // Removed (2026-08-23): z-ai/glm-5.2 (GLM 5.1) — no longer in integrate.api.nvidia.com/v1/models (102 models live)
   // Removed (2026-09-05): moonshotai/kimi-k2.6 (Kimi K2.6) - Model page returns 404 and model is absent from the NVIDIA model catalog; could not verify existence
@@ -55,8 +59,7 @@ export const nvidiaNim = [
   // Removed (2026-07-27): meta/llama-4-maverick-17b-128e-instruct (Llama 4 Maverick) — EOL 2026-07-27 (HTTP 410 Gone)
   // Removed (2026-08-23): mistralai/mistral-medium-3.5-128b (Mistral Medium 3.5) — no longer in integrate.api.nvidia.com/v1/models (still on Mistral LP directly)
   // Removed (2026-07-27): mistralai/mistral-small-4-119b-2603 (Mistral Small 4) — EOL 2026-07-27 (HTTP 410 Gone)
-  // ⚠️ DEPRECATED - NVIDIA shutdown 2026-09-08
-  ['minimaxai/minimax-m3', 'MiniMax M3', 'S+', '78.4%', '1M'],
+  // Removed (2026-09-09): minimaxai/minimax-m3 (MiniMax M3) - 410 Gone per live chat probe: reached end of life 2026-09-09T09:00:00Z (shutdown was announced in-file on 2026-09-08)
   ['moonshotai/kimi-k3', 'Kimi K3', 'S', '-', '1M'], // Added (2026-09-02) — new in NIM catalog
   ['mistralai/mistral-nemotron', 'Mistral Nemotron', 'S', '-', '128k'], // Fixed ID (2026-07-27): nvidia/mistral-nemotron → mistralai/mistral-nemotron
   // Removed (2026-07-27): deepseek-ai/deepseek-v3.2 (DeepSeek V3.2) — HTTP 404

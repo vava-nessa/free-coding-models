@@ -2,7 +2,7 @@
 
 # Provider Catalog
 
-**24 providers / 229 live models**, generated from [`sources.js`](../sources.js), the same catalog the TUI, the Web Dashboard and the Smart Model Router read. Counts update only when this script is re-run, so they always match the shipped catalog.
+**24 providers / 228 live models**, generated from [`sources.js`](../sources.js), the same catalog the TUI, the Web Dashboard and the Smart Model Router read. Counts update only when this script is re-run, so they always match the shipped catalog.
 
 Sign up on any one provider to grab a free API key: **one key is enough to start**. Add more at any time from inside the app (press `P` in the TUI, or the Web Dashboard Settings page). A few providers (`Kilo`, `LLM7`, OVHcloud sandbox) even answer without a key, with tighter shared limits.
 
@@ -15,7 +15,7 @@ Sign up on any one provider to grab a free API key: **one key is enough to start
 | [OpenRouter](https://openrouter.ai/keys) | 19 | S+ | 50 free req/day · 1000 with $10 credit | `OPENROUTER_API_KEY` |
 | [Cloudflare AI](https://dash.cloudflare.com) | 15 | S | Free · 10k neurons/day | `CLOUDFLARE_API_TOKEN` |
 | [Kilo](https://kilo.ai) | 14 | S+ | Free · no key needed | `KILO_API_KEY` |
-| [NVIDIA NIM](https://build.nvidia.com) | 14 | S+ | Free · 1000 req/month | `NVIDIA_API_KEY` |
+| [NVIDIA NIM](https://build.nvidia.com) | 13 | S+ | Free · 1000 req/month | `NVIDIA_API_KEY` |
 | [Pollinations AI](https://enter.pollinations.ai) | 13 | S+ | Free · daily Pollen grants · key at enter.pollinations.ai | `POLLINATIONS_API_KEY` |
 | [OVHcloud AI](https://endpoints.ai.cloud.ovh.net) | 12 | S+ | Free sandbox · 2 RPM no key · 400 RPM with key | `OVH_AI_ENDPOINTS_ACCESS_TOKEN` |
 | [Requesty](https://app.requesty.ai/api-keys) | 12 | S+ | Free · 200 req/day · no card | `REQUESTY_API_KEY` |

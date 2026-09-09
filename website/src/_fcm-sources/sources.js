@@ -40,6 +40,10 @@
 
 // 📖 NIM source - https://build.nvidia.com
 export const nvidiaNim = [
+  // Audit (2026-09-09): GET /v1/models lists 80 ids but most are ghost catalog entries that
+  // answer 404 "Function not found" to a 1-token chat completion on the free integrate API.
+  // All 46 chat-capable candidates were probed live: only the models kept below respond, so
+  // ghost ids stay out even though the public catalog lists them (issue #181).
   // ── S+ tier — SWE-bench Verified ≥70% ──
   // Removed (2026-08-23): z-ai/glm-5.2 (GLM 5.1) — no longer in integrate.api.nvidia.com/v1/models (102 models live)
   // Removed (2026-09-05): moonshotai/kimi-k2.6 (Kimi K2.6) - Model page returns 404 and model is absent from the NVIDIA model catalog; could not verify existence
@@ -55,9 +59,8 @@ export const nvidiaNim = [
   // Removed (2026-07-27): meta/llama-4-maverick-17b-128e-instruct (Llama 4 Maverick) — EOL 2026-07-27 (HTTP 410 Gone)
   // Removed (2026-08-23): mistralai/mistral-medium-3.5-128b (Mistral Medium 3.5) — no longer in integrate.api.nvidia.com/v1/models (still on Mistral LP directly)
   // Removed (2026-07-27): mistralai/mistral-small-4-119b-2603 (Mistral Small 4) — EOL 2026-07-27 (HTTP 410 Gone)
-  // ⚠️ DEPRECATED - NVIDIA shutdown 2026-09-08
-  ['minimaxai/minimax-m3', 'MiniMax M3', 'S+', '78.4%', '1M'],
-  ['moonshotai/kimi-k3', 'Kimi K3', 'S', '-', '1M'], // Added (2026-09-02) - new in NIM catalog
+  // Removed (2026-09-09): minimaxai/minimax-m3 (MiniMax M3) - 410 Gone per live chat probe: reached end of life 2026-09-09T09:00:00Z (shutdown was announced in-file on 2026-09-08)
+  ['moonshotai/kimi-k3', 'Kimi K3', 'S', '-', '1M'], // Added (2026-09-02) — new in NIM catalog
   ['mistralai/mistral-nemotron', 'Mistral Nemotron', 'S', '-', '128k'], // Fixed ID (2026-07-27): nvidia/mistral-nemotron → mistralai/mistral-nemotron
   // Removed (2026-07-27): deepseek-ai/deepseek-v3.2 (DeepSeek V3.2) — HTTP 404
   // ── A+ tier — SWE-bench Verified 50–60% ──
@@ -126,7 +129,7 @@ export const cerebras = [
 export const sambanova = [
   // ── S+ tier ──
   ['MiniMax-M2.7',                         'MiniMax M2.7',       'S+', '78.0%', '196k'], // Fixed (2026-07-27): ctx '192k' → '196k' (API exact 196608)
-  ['MiniMax-M3', 'MiniMax M3', 'S+', '78.4%', '1M'], // Added (2026-09-02) - verified live 2026-09-05 via /v1/models
+  ['MiniMax-M3', 'MiniMax M3', 'S+', '78.4%', '1M'], // Added (2026-09-02) — verified live 2026-09-05 via /v1/models
   // ── S tier ──
   ['DeepSeek-V3.1',                        'DeepSeek V3.1',      'S',  '66.0%', '131k'], // Fixed (2026-07-27): ctx '128k' → '131k' (API exact 131072)
   ['DeepSeek-V3.2',                        'DeepSeek V3.2',      'S+', '70.0%', '32k'],
@@ -396,7 +399,7 @@ export const opencodeZen = [
   // Removed (2026-09-05): hy3-free (Tencent Hy3 Free) — absent from live /v1/models (66 models checked)
   ['nemotron-3.5-lightning-free', 'Nemotron 3.5 Lightning Free', 'S+', '-', '262k'], // Added (2026-08-13)
   // Removed (2026-09-05): laguna-s-2.1-free (Laguna S 2.1 Free) - deprecated: marked status=deprecated in the models.dev registry (2026-09-05) and absent from both the Zen /v1/models endpoint and the docs free-models list; the limited-time promo ended
-  ['ling-3.0-flash-fin-free', 'Ling 3.0 Flash Fin Free', 'B+', '-', '262k'], // Added (2026-09-05) - new id in live /v1/models (was ling-3.0-flash-free)
+  ['ling-3.0-flash-fin-free', 'Ling 3.0 Flash Fin Free', 'B+', '-', '262k'], // Added (2026-09-05) — new id in live /v1/models (was ling-3.0-flash-free)
   ['muse-spark-1.2-contributor-free', 'Muse Spark 1.2 Contributor Free', 'A+', '-', '1M'],
   ['muse-spark-1.3-contributor-free', 'Muse Spark 1.3 Contributor Free', 'S+', '-', '1M'],
 ]
@@ -444,7 +447,7 @@ export const llm7 = [
 // 📖 Live catalog checked 2026-06-11; only chat-completions models with free pricing are listed.
 export const routeway = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
-  ['deepseek-v4-flash:free', 'DeepSeek V4 Flash', 'S+', '79.0%', '42k'], // Restored (2026-09-02) - back in zero-price catalog
+  ['deepseek-v4-flash:free', 'DeepSeek V4 Flash', 'S+', '79.0%', '42k'], // Restored (2026-09-02) — back in zero-price catalog
   // Removed (2026-09-05): step-3.7-flash:free (Step 3.7 Flash) - free variant discontinued, only paid step-3.7-flash remains ($0.20/$1.15 per M)
   ['minimax-m2.7:free', 'MiniMax M2.7', 'S+', '78.0%', '42k'], // Added (2026-09-02)
   ['muse-glimmer-30b:free', 'Muse Glimmer 30B', 'B+', '-', '131k'], // Added (2026-09-02)

@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Find the fastest free coding model in seconds.</strong><br>
-  Live latency, stability and verdicts for 229 models from 24 free AI providers, then install the one you pick straight into your favorite coding tool.<br><br>
+  Live latency, stability and verdicts for 228 models from 24 free AI providers, then install the one you pick straight into your favorite coding tool.<br><br>
   <strong>Works with:</strong> OpenCode CLI / Desktop / WebUI, OpenClaw, Crush, Goose, Aider, Kilo CLI, Qwen Code, OpenHands, Amp, Hermes, Continue, Cline, Xcode, Pi, ZCode, ForgeCode, Copilot, jcode, Caveman Code and more.
 </p>
 
@@ -35,7 +35,7 @@ free-coding-models
 
 ## 💡 Why this tool?
 
-There is a large catalog of free and free-limited coding models (**24 providers / 229 live models**, generated from [`sources.js`](./sources.js)). Which one is fastest *right now*? Which one is actually stable, versus just lucky on the last ping?
+There is a large catalog of free and free-limited coding models (**24 providers / 228 live models**, generated from [`sources.js`](./sources.js)). Which one is fastest *right now*? Which one is actually stable, versus just lucky on the last ping?
 
 `free-coding-models` (FCM) answers that by pinging every model in parallel, showing live latency, and computing a **live Stability Score (0-100)** combining p95 latency, jitter, spike rate and uptime. Average latency alone is misleading: a model that randomly spikes to 6 seconds is not reliable.
 
@@ -87,7 +87,7 @@ free-coding-models --fiable              # print the single most reliable model 
 
 ## 🟢 Providers
 
-**24 active providers / 229 live models**, sorted by live model count. Top 8:
+**24 active providers / 228 live models**, sorted by live model count. Top 8:
 
 | Provider | Models | Best tier | Env var |
 |----------|--------|-----------|---------|
@@ -96,7 +96,7 @@ free-coding-models --fiable              # print the single most reliable model 
 | [OpenRouter](https://openrouter.ai/keys) | 19 | S+ | `OPENROUTER_API_KEY` |
 | [Cloudflare AI](https://dash.cloudflare.com) | 15 | S | `CLOUDFLARE_API_TOKEN` |
 | [Kilo](https://kilo.ai) | 14 | S+ | `KILO_API_KEY` |
-| [NVIDIA NIM](https://build.nvidia.com) | 14 | S+ | `NVIDIA_API_KEY` |
+| [NVIDIA NIM](https://build.nvidia.com) | 13 | S+ | `NVIDIA_API_KEY` |
 | [Pollinations AI](https://enter.pollinations.ai) | 13 | S+ | `POLLINATIONS_API_KEY` |
 | [OVHcloud AI](https://endpoints.ai.cloud.ovh.net) | 12 | S+ | `OVH_AI_ENDPOINTS_ACCESS_TOKEN` |
 
