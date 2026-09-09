@@ -1,9 +1,9 @@
 ---
 id: t18
 title: Fix issue #181: opencode-zen session header + cloudflare account URL + nvidia catalog
-status: Review
+status: Done
 created: 2026-09-09
-updated: 2026-09-09T15:07:48Z
+updated: 2026-09-09T17:08:03Z
 ---
 
 ## Checklist
