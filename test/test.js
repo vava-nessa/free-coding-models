@@ -7996,3 +7996,376 @@ describe('parseArgs value-flag forms', () => {
     assert.equal(result.apiKey, null)
   })
 })
+
+// ─── Cloudflare account-scoped endpoint resolution (issue #181) ──────────────
+// 📖 Cloudflare's OpenAI-compatible endpoint is per-account, so the catalog URL's
+// 📖 {$CLOUDFLARE_ACCOUNT_ID} placeholder must be resolved on EVERY request path.
+// 📖 All tests are hermetic: dependencies (env, settings, fetch, persistence) are
+// 📖 injected, no real network and no real config file is touched.
+import {
+  CLOUDFLARE_ACCOUNTS_URL,
+  pickAccountIdFromEnv,
+  pickAccountIdFromSettings,
+  pickAccountIdFromDiscoveryResponse,
+  applyCloudflareAccountId,
+  getCloudflareAccountIdSync,
+  ensureCloudflareAccountId,
+  resolveCloudflareUrlAsync,
+  resetCloudflareAccountStateForTests,
+} from '../src/core/cloudflare-account.js'
+import { resolveCloudflareUrl } from '../src/core/ping.js'
+
+describe('cloudflare account-id pure helpers (issue #181)', () => {
+  it('pickAccountIdFromEnv trims and returns the id', () => {
+    assert.equal(pickAccountIdFromEnv({ CLOUDFLARE_ACCOUNT_ID: '  abc123  ' }), 'abc123')
+  })
+
+  it('pickAccountIdFromEnv returns null when unset, empty or whitespace', () => {
+    assert.equal(pickAccountIdFromEnv({}), null)
+    assert.equal(pickAccountIdFromEnv({ CLOUDFLARE_ACCOUNT_ID: '' }), null)
+    assert.equal(pickAccountIdFromEnv({ CLOUDFLARE_ACCOUNT_ID: '   ' }), null)
+  })
+
+  it('pickAccountIdFromSettings reads the stored config value', () => {
+    assert.equal(pickAccountIdFromSettings({ cloudflareAccountId: ' stored-id ' }), 'stored-id')
+    assert.equal(pickAccountIdFromSettings({}), null)
+    assert.equal(pickAccountIdFromSettings(undefined), null)
+    assert.equal(pickAccountIdFromSettings({ cloudflareAccountId: 42 }), null)
+  })
+
+  it('pickAccountIdFromDiscoveryResponse takes the first account id', () => {
+    assert.equal(
+      pickAccountIdFromDiscoveryResponse({ success: true, result: [{ id: 'aaa' }, { id: 'bbb' }] }),
+      'aaa',
+    )
+  })
+
+  it('pickAccountIdFromDiscoveryResponse skips entries without ids', () => {
+    assert.equal(
+      pickAccountIdFromDiscoveryResponse({ success: true, result: [{ name: 'x' }, { id: 'bbb' }] }),
+      'bbb',
+    )
+  })
+
+  it('pickAccountIdFromDiscoveryResponse fails safe on bad payloads', () => {
+    assert.equal(pickAccountIdFromDiscoveryResponse(null), null)
+    assert.equal(pickAccountIdFromDiscoveryResponse('nope'), null)
+    assert.equal(pickAccountIdFromDiscoveryResponse({ success: false, result: [{ id: 'x' }] }), null)
+    assert.equal(pickAccountIdFromDiscoveryResponse({ success: true }), null)
+    assert.equal(pickAccountIdFromDiscoveryResponse({ success: true, result: 'not-an-array' }), null)
+  })
+})
+
+describe('applyCloudflareAccountId (issue #181)', () => {
+  const CF_URL = 'https://api.cloudflare.com/client/v4/accounts/{$CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions'
+
+  it('resolves the {$CLOUDFLARE_ACCOUNT_ID} form', () => {
+    assert.equal(
+      applyCloudflareAccountId(CF_URL, 'abc123'),
+      'https://api.cloudflare.com/client/v4/accounts/abc123/ai/v1/chat/completions',
+    )
+  })
+
+  it('resolves the {account_id} form', () => {
+    assert.equal(
+      applyCloudflareAccountId('https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions', 'abc123'),
+      'https://api.cloudflare.com/client/v4/accounts/abc123/ai/v1/chat/completions',
+    )
+  })
+
+  it('URL-encodes the account id', () => {
+    assert.equal(
+      applyCloudflareAccountId(CF_URL, 'weird id/x?y'),
+      'https://api.cloudflare.com/client/v4/accounts/weird%20id%2Fx%3Fy/ai/v1/chat/completions',
+    )
+  })
+
+  it('falls back to missing-account-id when no id resolves', () => {
+    const out = applyCloudflareAccountId(CF_URL, null)
+    assert.ok(out.includes('/accounts/missing-account-id/'), out)
+    assert.ok(!out.includes('{$CLOUDFLARE_ACCOUNT_ID}'), out)
+  })
+
+  it('leaves URLs without a placeholder untouched (even with a null id)', () => {
+    const plain = 'https://api.cloudflare.com/client/v4/accounts/already-real/ai/v1/chat/completions'
+    assert.equal(applyCloudflareAccountId(plain, null), plain)
+  })
+})
+
+describe('resolveCloudflareUrl resolution chain (issue #181)', () => {
+  const ENV_KEYS = ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_API_KEY']
+  let savedEnv
+
+  beforeEach(() => {
+    resetCloudflareAccountStateForTests()
+    savedEnv = {}
+    for (const k of ENV_KEYS) {
+      savedEnv[k] = process.env[k]
+      delete process.env[k]
+    }
+  })
+
+  afterEach(() => {
+    for (const k of ENV_KEYS) {
+      if (savedEnv[k] === undefined) delete process.env[k]
+      else process.env[k] = savedEnv[k]
+    }
+    resetCloudflareAccountStateForTests()
+  })
+
+  it('resolves from the CLOUDFLARE_ACCOUNT_ID env var', () => {
+    const out = resolveCloudflareUrl(
+      'https://api.cloudflare.com/client/v4/accounts/{$CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions',
+      { env: { CLOUDFLARE_ACCOUNT_ID: 'env-id' }, settingsProvider: () => { throw new Error('should not read settings') } },
+    )
+    assert.ok(out.includes('/accounts/env-id/'), out)
+  })
+
+  it('falls back to the stored config settings when env is unset', () => {
+    const out = resolveCloudflareUrl(
+      'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions',
+      { env: {}, settingsProvider: () => 'stored-id' },
+    )
+    assert.ok(out.includes('/accounts/stored-id/'), out)
+  })
+
+  it('env var wins over the stored config', () => {
+    const out = resolveCloudflareUrl(
+      'https://api.cloudflare.com/client/v4/accounts/{$CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions',
+      { env: { CLOUDFLARE_ACCOUNT_ID: 'env-id' }, settingsProvider: () => 'stored-id' },
+    )
+    assert.ok(out.includes('/accounts/env-id/'), out)
+  })
+
+  it('behaves sanely when nothing resolves (missing-account-id)', () => {
+    const out = resolveCloudflareUrl(
+      'https://api.cloudflare.com/client/v4/accounts/{$CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions',
+      { env: {}, settingsProvider: () => null },
+    )
+    assert.ok(out.includes('/accounts/missing-account-id/'), out)
+  })
+
+  it('leaves non-cloudflare URLs untouched', () => {
+    const groq = 'https://api.groq.com/v1/chat/completions'
+    assert.equal(
+      resolveCloudflareUrl(groq, { env: { CLOUDFLARE_ACCOUNT_ID: 'env-id' } }),
+      groq,
+    )
+  })
+
+  it('caches the stored id so later reads skip the settings provider', () => {
+    const url = 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions'
+    let reads = 0
+    const first = resolveCloudflareUrl(url, {
+      env: {},
+      settingsProvider: () => { reads++; return 'stored-id' },
+    })
+    const second = resolveCloudflareUrl(url, {
+      env: {},
+      settingsProvider: () => { reads++; return 'other-id' },
+    })
+    assert.ok(first.includes('/accounts/stored-id/'))
+    assert.ok(second.includes('/accounts/stored-id/'))
+    assert.equal(reads, 1)
+  })
+})
+
+describe('ensureCloudflareAccountId discovery (issue #181)', () => {
+  beforeEach(() => {
+    resetCloudflareAccountStateForTests()
+  })
+
+  afterEach(() => {
+    resetCloudflareAccountStateForTests()
+  })
+
+  it('returns the env id without any network call', async () => {
+    const id = await ensureCloudflareAccountId({
+      env: { CLOUDFLARE_ACCOUNT_ID: 'env-id' },
+      fetchImpl: async () => { throw new Error('network must not be touched') },
+    })
+    assert.equal(id, 'env-id')
+  })
+
+  it('returns a stored config id without any network call', async () => {
+    const id = await ensureCloudflareAccountId({
+      env: {},
+      settingsProvider: () => 'stored-id',
+      fetchImpl: async () => { throw new Error('network must not be touched') },
+    })
+    assert.equal(id, 'stored-id')
+  })
+
+  it('gives up safely when no API key is available (no fetch)', async () => {
+    const id = await ensureCloudflareAccountId({
+      env: {},
+      settingsProvider: () => null,
+      storedApiKeyProvider: () => null,
+      fetchImpl: async () => { throw new Error('network must not be touched') },
+    })
+    assert.equal(id, null)
+  })
+
+  it('discovers, caches and persists the first account id', async () => {
+    const fetchCalls = []
+    const persisted = []
+    const id = await ensureCloudflareAccountId({
+      env: { CLOUDFLARE_API_TOKEN: 'tok' },
+      settingsProvider: () => null,
+      fetchImpl: async (url, init) => {
+        fetchCalls.push({ url, auth: init?.headers?.Authorization })
+        return new Response(JSON.stringify({ success: true, result: [{ id: 'discovered-1' }, { id: 'discovered-2' }] }), { status: 200 })
+      },
+      persist: (accountId) => persisted.push(accountId),
+    })
+    assert.equal(id, 'discovered-1')
+    assert.equal(fetchCalls.length, 1)
+    assert.equal(fetchCalls[0].url, CLOUDFLARE_ACCOUNTS_URL)
+    assert.equal(fetchCalls[0].auth, 'Bearer tok')
+    assert.deepEqual(persisted, ['discovered-1'])
+    // 📖 The cache is warm: a sync resolution now succeeds with the same id.
+    assert.equal(getCloudflareAccountIdSync({ env: {}, settingsProvider: () => null }), 'discovered-1')
+  })
+
+  it('returns null on an auth failure and does not persist', async () => {
+    const persisted = []
+    const id = await ensureCloudflareAccountId({
+      env: { CLOUDFLARE_API_TOKEN: 'bad-tok' },
+      settingsProvider: () => null,
+      fetchImpl: async () => new Response(JSON.stringify({ success: false, errors: [{ code: 1000, message: 'Invalid API Token' }] }), { status: 401 }),
+      persist: (accountId) => persisted.push(accountId),
+    })
+    assert.equal(id, null)
+    assert.deepEqual(persisted, [])
+  })
+
+  it('backs off after a failed discovery instead of hammering /accounts', async () => {
+    let fetchCount = 0
+    const opts = {
+      env: { CLOUDFLARE_API_TOKEN: 'tok' },
+      settingsProvider: () => null,
+      fetchImpl: async () => { fetchCount++; return new Response('{}', { status: 500 }) },
+      persist: () => {},
+    }
+    const first = await ensureCloudflareAccountId(opts)
+    const second = await ensureCloudflareAccountId(opts)
+    assert.equal(first, null)
+    assert.equal(second, null)
+    assert.equal(fetchCount, 1)
+  })
+
+  it('shares one in-flight discovery across concurrent callers', async () => {
+    let fetchCount = 0
+    const opts = {
+      env: { CLOUDFLARE_API_TOKEN: 'tok' },
+      settingsProvider: () => null,
+      fetchImpl: async () => {
+        fetchCount++
+        await new Promise((r) => setTimeout(r, 10))
+        return new Response(JSON.stringify({ success: true, result: [{ id: 'discovered-x' }] }), { status: 200 })
+      },
+      persist: () => {},
+    }
+    const [a, b] = await Promise.all([ensureCloudflareAccountId(opts), ensureCloudflareAccountId(opts)])
+    assert.equal(a, 'discovered-x')
+    assert.equal(b, 'discovered-x')
+    assert.equal(fetchCount, 1)
+  })
+
+  it('retries after the failure cooldown expires', async () => {
+    let fetchCount = 0
+    const opts = (nowOverride) => ({
+      env: { CLOUDFLARE_API_TOKEN: 'tok' },
+      settingsProvider: () => null,
+      fetchImpl: async () => { fetchCount++; return new Response('{}', { status: 500 }) },
+      persist: () => {},
+      now: () => nowOverride,
+    })
+    await ensureCloudflareAccountId(opts(1000))
+    // 📖 Still inside the 5 minute cooldown: no second fetch.
+    await ensureCloudflareAccountId(opts(1000 + 60 * 1000))
+    assert.equal(fetchCount, 1)
+    // 📖 After the cooldown: discovery is attempted again.
+    await ensureCloudflareAccountId(opts(1000 + 6 * 60 * 1000))
+    assert.equal(fetchCount, 2)
+  })
+})
+
+describe('resolveCloudflareUrlAsync end-to-end (issue #181)', () => {
+  beforeEach(() => {
+    resetCloudflareAccountStateForTests()
+  })
+
+  afterEach(() => {
+    resetCloudflareAccountStateForTests()
+  })
+
+  it('resolves the catalog URL with a discovered account id', async () => {
+    const out = await resolveCloudflareUrlAsync(
+      'https://api.cloudflare.com/client/v4/accounts/{$CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions',
+      {
+        env: { CLOUDFLARE_API_TOKEN: 'tok' },
+        settingsProvider: () => null,
+        fetchImpl: async () => new Response(JSON.stringify({ success: true, result: [{ id: 'auto-id' }] }), { status: 200 }),
+        persist: () => {},
+      },
+    )
+    assert.equal(
+      out,
+      'https://api.cloudflare.com/client/v4/accounts/auto-id/ai/v1/chat/completions',
+    )
+  })
+
+  it('keeps the missing-account-id fallback when discovery is impossible', async () => {
+    const out = await resolveCloudflareUrlAsync(
+      'https://api.cloudflare.com/client/v4/accounts/{$CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions',
+      {
+        env: {},
+        settingsProvider: () => null,
+        storedApiKeyProvider: () => null,
+        fetchImpl: async () => { throw new Error('network must not be touched') },
+      },
+    )
+    assert.ok(out.includes('/accounts/missing-account-id/'), out)
+  })
+})
+
+describe('cloudflare probe request integration (issue #181)', () => {
+  const ENV_KEYS = ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_API_KEY']
+  let savedEnv
+
+  beforeEach(() => {
+    resetCloudflareAccountStateForTests()
+    savedEnv = {}
+    for (const k of ENV_KEYS) {
+      savedEnv[k] = process.env[k]
+      delete process.env[k]
+    }
+    // 📖 Simulate a correctly exported env var, like a working user shell would.
+    process.env.CLOUDFLARE_ACCOUNT_ID = 'acc-42'
+  })
+
+  afterEach(() => {
+    for (const k of ENV_KEYS) {
+      if (savedEnv[k] === undefined) delete process.env[k]
+      else process.env[k] = savedEnv[k]
+    }
+    resetCloudflareAccountStateForTests()
+  })
+
+  it('buildPingRequest emits a fully resolved account-scoped URL', () => {
+    const req = buildPingRequest('cf-key', '@cf/meta/llama-3.1-8b-instruct', 'cloudflare', 'https://api.cloudflare.com/client/v4/accounts/{$CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions')
+    assert.equal(
+      req.url,
+      'https://api.cloudflare.com/client/v4/accounts/acc-42/ai/v1/chat/completions',
+    )
+  })
+
+  it('the real catalog URL round-trips to a resolved endpoint', () => {
+    const catalogUrl = sources.cloudflare.url
+    const req = buildPingRequest('cf-key', sources.cloudflare.models[0][0], 'cloudflare', catalogUrl)
+    assert.ok(!req.url.includes('{$CLOUDFLARE_ACCOUNT_ID}'), req.url)
+    assert.ok(!req.url.includes('missing-account-id'), req.url)
+    assert.ok(req.url.includes('/accounts/acc-42/'), req.url)
+  })
+})

@@ -228,7 +228,7 @@ export const PROVIDER_METADATA = {
     label: 'Cloudflare Workers AI',
     color: chalk.rgb(255, 204, 128),
     signupUrl: 'https://dash.cloudflare.com',
-    signupHint: 'Create AI API token + set CLOUDFLARE_ACCOUNT_ID',
+    signupHint: 'Create AI API token (account id auto-discovered; CLOUDFLARE_ACCOUNT_ID optional)',
     rateLimits: 'Free: 10k neurons/day, text-gen 300 RPM',
   },
   perplexity: {

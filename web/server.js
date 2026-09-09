@@ -38,6 +38,7 @@ import { loadConfig, getApiKey, saveConfig, isProviderEnabled } from '../src/cor
 import { getProviderBillingNote, getProviderLabelWithBilling, PROVIDER_METADATA } from '../src/core/provider-metadata.js'
 import { ensureFavoritesConfig } from '../src/core/favorites.js'
 import { ping, getProviderQuotaPercentCached, getProviderSessionHeaders } from '../src/core/ping.js'
+import { resolveCloudflareUrlAsync } from '../src/core/cloudflare-account.js'
 import { runProviderKeyTest } from '../src/core/provider-key-tester.js'
 import { loadChangelog } from '../src/core/changelog-loader.js'
 import { checkForUpdateDetailed, checkForUpdate, runUpdate, fetchLastReleaseDate } from '../src/core/updater.js'
@@ -1328,6 +1329,14 @@ async function handleRequest(req, res) {
             upstreamUrl = upstreamUrl.replace(/\/+$/, '') + '/v1/chat/completions'
           }
 
+          // 📖 Cloudflare's endpoint is account-scoped (issue #181): the catalog
+          // 📖 URL carries an {$CLOUDFLARE_ACCOUNT_ID} placeholder, so it must be
+          // 📖 resolved (env > stored config > auto-discovery) before this fetch,
+          // 📖 otherwise Cloudflare answers 404 for every model.
+          if (result.providerKey === 'cloudflare') {
+            upstreamUrl = await resolveCloudflareUrlAsync(upstreamUrl)
+          }
+
           // 📖 ZAI provider: strip the "zai/" prefix from modelId for the API
           let apiModelId = result.modelId
           if (result.providerKey === 'zai' && apiModelId.startsWith('zai/')) {
@@ -1827,6 +1836,12 @@ async function handleRequest(req, res) {
               let baseUrl = source.url
               if (!baseUrl.includes('/chat/completions')) {
                 baseUrl = baseUrl.replace(/\/+$/, '') + '/v1/chat/completions'
+              }
+              // 📖 Cloudflare's endpoint is account-scoped (issue #181): resolve
+              // 📖 the {$CLOUDFLARE_ACCOUNT_ID} placeholder (env > stored config >
+              // 📖 auto-discovery) or the API would 404 every direct chat.
+              if (providerKey === 'cloudflare') {
+                baseUrl = await resolveCloudflareUrlAsync(baseUrl)
               }
               directUrl = baseUrl
               directModelId = modelId

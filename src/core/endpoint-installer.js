@@ -45,6 +45,7 @@ import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { MODELS, sources } from '../../sources.js'
 import { getApiKey, saveConfig } from './config.js'
+import { getCloudflareAccountIdSync } from './cloudflare-account.js'
 import { ENV_VAR_NAMES, PROVIDER_METADATA } from './provider-metadata.js'
 import { getToolMeta } from './tool-metadata.js'
 import { ensureDir, readJson as sharedReadJson, shellSingleQuote, atomicWriteJson } from './shared-helpers.js'
@@ -180,7 +181,9 @@ function resolveProviderBaseUrl(providerKey) {
   if (!providerUrl) return null
 
   if (providerKey === 'cloudflare') {
-    const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim()
+    // 📖 Shared account-id resolution (issue #181): env var, in-process cache or
+    // 📖 stored config settings, so installs work without exporting the env var.
+    const accountId = getCloudflareAccountIdSync() || ''
     if (!accountId) return null
     return providerUrl
       .replace(/\{\$CLOUDFLARE_ACCOUNT_ID\}/g, encodeURIComponent(accountId))
@@ -201,7 +204,8 @@ function resolveGooseBaseUrl(providerKey) {
   const providerUrl = sources[providerKey]?.url
   if (!providerUrl) return null
   if (providerKey === 'cloudflare') {
-    const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim()
+    // 📖 Shared account-id resolution (issue #181): env var, cache or stored config.
+    const accountId = getCloudflareAccountIdSync() || ''
     if (!accountId) return null
     return providerUrl
       .replace(/\{\$CLOUDFLARE_ACCOUNT_ID\}/g, encodeURIComponent(accountId))
@@ -218,8 +222,8 @@ function getDirectInstallSupport(providerKey) {
   if (DIRECT_INSTALL_UNSUPPORTED_PROVIDERS.has(providerKey)) {
     return { supported: false, reason: 'This provider still needs a dedicated runtime bridge' }
   }
-  if (providerKey === 'cloudflare' && !(process.env.CLOUDFLARE_ACCOUNT_ID || '').trim()) {
-    return { supported: false, reason: 'CLOUDFLARE_ACCOUNT_ID is required for direct installs' }
+  if (providerKey === 'cloudflare' && !getCloudflareAccountIdSync()) {
+    return { supported: false, reason: 'Cloudflare account id required: set CLOUDFLARE_ACCOUNT_ID (or let auto-discovery find it from your API key)' }
   }
   return { supported: true, reason: null }
 }

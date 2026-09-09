@@ -13,14 +13,15 @@
  *   - Async ping with timeout and abort controller
  *   - Quota extraction from rate limit headers (multiple variants supported)
  *   - Cached provider quota polling with TTL and error backoff
- *   - Cloudflare account ID resolution from environment
+ *   - Cloudflare account-id resolution from env var, stored config or zero-setup
+ *     auto-discovery via the /accounts endpoint (see ./cloudflare-account.js)
  *   - Per-provider circuit-breaker on 429 (issue #146): pauses ALL models of a provider
  *     when the provider returns a quota-exhausted response, so the ping loop stops
  *     hammering the user's daily quota while the provider's retry window is active.
  *
  *   → Functions:
  *   - `getProviderSessionHeaders`: Extra mandatory headers per provider (e.g. OpenCode Zen session id)
- *   - `resolveCloudflareUrl`: Resolve {account_id} placeholder from CLOUDFLARE_ACCOUNT_ID env var
+ *   - `resolveCloudflareUrl`: Resolve {account_id} placeholders (env > cache > stored config, issue #181)
  *   - `buildChatCompletionPingBody`: Build minimal chat-completion probe payloads with thinking disabled
  *   - `markDisabledThinkingUnsupported`: Cache strict providers that reject the optional thinking control
  *   - `shouldUseDisabledThinkingForProvider`: Decide whether a provider should receive disabled-thinking probes
@@ -40,7 +41,9 @@
  *
  *   ⚙️ Configuration:
  *   - PING_TIMEOUT: Timeout in ms for ping requests (default: 15000)
- *   - CLOUDFLARE_ACCOUNT_ID: Env var for Cloudflare Workers AI account ID
+ *   - CLOUDFLARE_ACCOUNT_ID: Env var for the Cloudflare Workers AI account id
+ *     (fallbacks: stored settings.cloudflareAccountId, then auto-discovery via
+ *     the /accounts endpoint, handled in ./cloudflare-account.js)
  *
  *   @see {@link ../src/provider-quota-fetchers.js} Quota fetching implementation
  *   @see {@link ../src/quota-capabilities.js} Quota telemetry + Usage behavior detection
@@ -48,6 +51,11 @@
 
 import { randomUUID } from 'node:crypto'
 import { PING_TIMEOUT } from './constants.js'
+import {
+  applyCloudflareAccountId,
+  getCloudflareAccountIdSync,
+  ensureCloudflareAccountId,
+} from './cloudflare-account.js'
 import { fetchProviderQuota as _fetchProviderQuotaFromModule, extractQuota as _extractQuotaFromModule, processResponseHeaders as _processResponseHeadersFromModule } from './provider-quota-fetchers.js'
 import { supportsUsagePercent } from './quota-capabilities.js'
 import {
@@ -59,17 +67,15 @@ const DISABLED_THINKING_RETRY_STATUSES = new Set([400, 422])
 const disabledThinkingUnsupportedProviders = new Set()
 
 // 📖 resolveCloudflareUrl: Cloudflare's OpenAI-compatible endpoint is account-scoped.
-// 📖 We resolve the placeholder from the CLOUDFLARE_ACCOUNT_ID env var so provider
-// 📖 setup can stay simple in config. Supports both the `{account_id}` placeholder
-// 📖 and the explicit `{$CLOUDFLARE_ACCOUNT_ID}` form used in sources.js.
-export function resolveCloudflareUrl(url) {
-  const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim()
-  const hasPlaceholder = url.includes('{$CLOUDFLARE_ACCOUNT_ID}') || url.includes('{account_id}')
-  if (!hasPlaceholder) return url
-  const replacement = accountId ? encodeURIComponent(accountId) : 'missing-account-id'
-  return url
-    .replace(/\{\$CLOUDFLARE_ACCOUNT_ID\}/g, replacement)
-    .replace(/\{account_id\}/g, replacement)
+// 📖 We resolve the placeholder from the CLOUDFLARE_ACCOUNT_ID env var, the
+// 📖 in-process cache or the stored config settings (issue #181), so provider
+// 📖 setup can stay simple. Supports both the `{account_id}` placeholder and
+// 📖 the explicit `{$CLOUDFLARE_ACCOUNT_ID}` form used in sources.js.
+// 📖 When nothing resolves, the historical 'missing-account-id' segment keeps
+// 📖 verdicts stable. Async paths should call ensureCloudflareAccountId() first
+// 📖 so zero-setup auto-discovery can populate the cache (see ping()).
+export function resolveCloudflareUrl(url, options = {}) {
+  return applyCloudflareAccountId(url, getCloudflareAccountIdSync(options))
 }
 
 // 📖 buildChatCompletionPingBody: Use the smallest useful chat-completion probe.
@@ -200,6 +206,14 @@ async function isDisabledThinkingRejected(resp, req) {
 // 📖 A 401 response still tells us the server is UP and gives us real latency.
 // 📖 Returns { code, ms, quotaPercent }
 export async function ping(apiKey, modelId, providerKey, url) {
+  // 📖 Cloudflare zero-setup (issue #181): before building the request, give the
+  // 📖 account-id resolver a chance to auto-discover the id from the stored API
+  // 📖 key. Done BEFORE the timer starts so a one-time discovery round-trip never
+  // 📖 pollutes the measured latency or races PING_TIMEOUT. No-op when the id is
+  // 📖 already known from env/cache/config.
+  if (providerKey === 'cloudflare') {
+    await ensureCloudflareAccountId()
+  }
   const ctrl  = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), PING_TIMEOUT)
   const t0    = performance.now()

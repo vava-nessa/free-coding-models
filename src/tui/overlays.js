@@ -25,6 +25,7 @@ import { renderRouterV2Dashboard as renderRouterV2DashboardOverlay } from '../co
 import { renderPlayground as renderPlaygroundOverlay } from '../core/playground.js'
 import { themeColors, getThemeStatusLabel, getProviderRgb } from './theme.js'
 import { getProviderBillingNote, getProviderLabelWithBilling } from '../core/provider-metadata.js'
+import { pickAccountIdFromSettings } from '../core/cloudflare-account.js'
 import { detectTerminalCapabilities } from '../core/utils.js'
 import { truncateAnsiWidth, loadChangelogCached } from './render-helpers.js'
 import { COMMAND_PALETTE_MAX_RESULTS } from './command-palette.js'
@@ -222,9 +223,14 @@ export function createOverlayRenderers(state, deps) {
       lines.push(themeColors.dim(`  2) ${selectedMeta.signupHint || 'Generate an API key and paste it with Enter on this row'}`))
       lines.push(themeColors.dim(`  3) Press ${themeColors.hotkey('T')} to test your key. Status: ${setupStatus}`))
       if (selectedProviderKey === 'cloudflare') {
-        const hasAccountId = Boolean((process.env.CLOUDFLARE_ACCOUNT_ID || '').trim())
-        const accountIdStatus = hasAccountId ? themeColors.success('CLOUDFLARE_ACCOUNT_ID detected ✅') : themeColors.warning('Set CLOUDFLARE_ACCOUNT_ID ⚠')
-        lines.push(themeColors.dim(`  4) Export ${themeColors.hotkey('CLOUDFLARE_ACCOUNT_ID')} in your shell. Status: ${accountIdStatus}`))
+        // 📖 Account id resolution has fallbacks since issue #181: env var,
+        // 📖 stored config setting, or zero-setup auto-discovery from the API key.
+        const hasEnvAccountId = Boolean((process.env.CLOUDFLARE_ACCOUNT_ID || '').trim())
+        const hasStoredAccountId = Boolean(pickAccountIdFromSettings(state.config?.settings))
+        const accountIdStatus = (hasEnvAccountId || hasStoredAccountId)
+          ? themeColors.success('account id detected ✅')
+          : themeColors.warning('will be auto-discovered from your API key (or export CLOUDFLARE_ACCOUNT_ID) ⚠')
+        lines.push(themeColors.dim(`  4) Cloudflare's endpoint is account-scoped. Account id: ${accountIdStatus}`))
       }
       const testDetail = state.settingsTestDetails?.[selectedProviderKey]
       if (testDetail) {

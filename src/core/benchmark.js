@@ -25,12 +25,14 @@
  *
  *   📦 Dependencies:
  *   - ./ping.js: buildPingRequest, resolveCloudflareUrl
+ *   - ./cloudflare-account.js: ensureCloudflareAccountId (Cloudflare account discovery)
  *
  *   @see {@link ./ping.js} Provider-specific request building
  *   @see {@link ./render-table.js} AI Latency + TPS column rendering
  */
 
 import { buildPingRequest, resolveCloudflareUrl } from './ping.js'
+import { ensureCloudflareAccountId } from './cloudflare-account.js'
 
 // 📖 BENCHMARK_PROMPT: A deterministic one-paragraph task that any model can answer.
 // 📖 The longer target gives latency + TPS measurements enough generated tokens to be reliable.
@@ -257,6 +259,13 @@ async function benchmarkSingleAttempt({ apiKey, modelId, providerKey, url, timeo
 // 📖 Returns on failure (all attempts exhausted):
 // 📖   { ok: false, code, totalMs, error, retries }
 export async function benchmarkModel({ apiKey, modelId, providerKey, url, timeoutMs = BENCHMARK_TIMEOUT_MS, maxRetries = BENCHMARK_MAX_RETRIES, retryDelayMs = BENCHMARK_RETRY_DELAY_MS }) {
+
+  // 📖 Cloudflare zero-setup (issue #181): let the account-id resolver run its
+  // 📖 one-time auto-discovery before any attempt so buildBenchmarkRequest's
+  // 📖 sync URL substitution sees a real account id instead of 'missing-account-id'.
+  if (providerKey === 'cloudflare') {
+    await ensureCloudflareAccountId()
+  }
 
   let lastResult = null
 

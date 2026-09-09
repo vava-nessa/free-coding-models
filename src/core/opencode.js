@@ -32,6 +32,7 @@ import { PROVIDER_COLOR } from '../tui/render-table.js'
 import { sources } from '../../sources.js'
 import { loadOpenCodeConfig, saveOpenCodeConfig } from './opencode-config.js'
 import { getApiKey } from './config.js'
+import { getCloudflareAccountIdSync } from './cloudflare-account.js'
 import { ENV_VAR_NAMES, OPENCODE_MODEL_MAP, isWindows, isMac, isLinux } from './provider-metadata.js'
 import { resolveToolBinaryPath } from './tool-bootstrap.js'
 
@@ -512,10 +513,11 @@ export async function startOpenCode(model, fcmConfig) {
         models: {}
       }
     } else if (providerKey === 'cloudflare') {
-      const cloudflareAccountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim()
+      // 📖 Shared account-id resolution (issue #181): env var, cache or stored config.
+      const cloudflareAccountId = getCloudflareAccountIdSync() || ''
       if (!cloudflareAccountId) {
-        console.log(chalk.yellow('  Cloudflare Workers AI requires CLOUDFLARE_ACCOUNT_ID for OpenCode integration.'))
-        console.log(chalk.dim('    Export CLOUDFLARE_ACCOUNT_ID and retry this selection.'))
+        console.log(chalk.yellow('  Cloudflare Workers AI needs an account id for OpenCode integration.'))
+        console.log(chalk.dim('    Export CLOUDFLARE_ACCOUNT_ID (or configure your Cloudflare API key) and retry.'))
         console.log()
         return
       }
@@ -911,10 +913,11 @@ export async function startOpenCodeDesktop(model, fcmConfig) {
         models: {}
       }
     } else if (providerKey === 'cloudflare') {
-      const cloudflareAccountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim()
+      // 📖 Shared account-id resolution (issue #181): env var, cache or stored config.
+      const cloudflareAccountId = getCloudflareAccountIdSync() || ''
       if (!cloudflareAccountId) {
-        console.log(chalk.yellow('  Cloudflare Workers AI requires CLOUDFLARE_ACCOUNT_ID for OpenCode integration.'))
-        console.log(chalk.dim('    Export CLOUDFLARE_ACCOUNT_ID and retry this selection.'))
+        console.log(chalk.yellow('  Cloudflare Workers AI needs an account id for OpenCode integration.'))
+        console.log(chalk.dim('    Export CLOUDFLARE_ACCOUNT_ID (or configure your Cloudflare API key) and retry.'))
         console.log()
         return
       }
