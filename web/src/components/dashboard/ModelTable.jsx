@@ -351,7 +351,11 @@ const buildColumns = ({ favorites, onBenchmarkRow, onSelectModel, onLaunch, tool
 // 📖 We build a placeholder columns list (no callbacks needed) to extract sizes.
 const PLACEHOLDER_COLUMNS = buildColumns({ favorites: { isFavorite: () => false, toggle: () => {} }, onBenchmarkRow: null, onSelectModel: null, onLaunch: null, toolMode: 'opencode' })
 export const DEFAULT_COLUMN_SIZING = PLACEHOLDER_COLUMNS.reduce((acc, c) => {
-  if (c.id) acc[c.id] = c.size ?? 80
+  // 📖 accessor() defs only carry their key in accessorKey; TanStack assigns the
+  // 📖 id later when building the table. Without this fallback the accessor
+  // 📖 columns are missing from the map and double-click reset becomes a no-op.
+  const id = c.id ?? c.accessorKey
+  if (id) acc[id] = c.size ?? 80
   return acc
 }, {})
 
