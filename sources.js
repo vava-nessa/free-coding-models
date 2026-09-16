@@ -203,21 +203,28 @@ export const githubModels = [
 // 📖 Mistral La Plateforme source - https://console.mistral.ai
 // 📖 Experiment plan is free for evaluation/prototyping and exposes general + coding models.
 // 📖 Keep Codestral as a separate provider key for backward compatibility with existing configs.
+// 📖 Fixed (2026-09-16): every id below re-verified against the live
+// 📖 GET https://api.mistral.ai/v1/models on a real Experiment-plan key.
+// 📖 The 2026-09-15 audit had rewritten the working ids into a date-stamped
+// 📖 form that Mistral does not accept, so ALL nine entries returned
+// 📖 400 invalid_model and the whole provider was dead. Context windows now
+// 📖 come from each model's `max_context_length` instead of a blanket 256k.
 export const mistral = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
-  ['mistral-large-3-25-12', 'Mistral Large 3', 'S+', '70.0%', '256k'], // Fixed ID (2026-09-15): mistral-large-2512 → mistral-large-3-25-12 (docs.mistral.ai/models)
-  ['mistral-medium-3-5-26-04', 'Mistral Medium 3.5', 'S+', '77.6%', '256k'], // Fixed ID (2026-09-15): mistral-medium-3-5 → mistral-medium-3-5-26-04 (docs.mistral.ai/models)
+  ['mistral-medium-3-5', 'Mistral Medium 3.5', 'S+', '77.6%', '256k'], // Fixed (2026-09-16): mistral-medium-3-5-26-04 → mistral-medium-3-5 (live /v1/models, ctx 262144)
   // Removed (2026-08-13): devstral-2512 (Devstral 2) — Mistral deprecation, full retirement 2026-07-31
-  ['zai-glm-5-2', 'Z.ai GLM 5.2', 'S+', '82.8%', '1M'],
+  // Removed (2026-09-16): mistral-large-3-25-12 (Mistral Large 3) — no `large` model exists in the live catalog at all
+  // Removed (2026-09-16): zai-glm-5-2 (Z.ai GLM 5.2) — absent from /v1/models; a direct call returns 403 tier_not_allowed (paid tier only), so it never belonged in a free catalog
+  // ── A+ tier ──
+  ['magistral-medium-latest', 'Magistral Medium', 'A+', '-', '256k'], // Fixed (2026-09-16): magistral-medium-1-2-25-09 → magistral-medium-latest (only the -latest alias exists upstream)
   // ── A tier — SWE-bench Verified 40–50% ──
-  ['mistral-small-4-0-26-03', 'Mistral Small 4', 'A', '48.0%', '256k'], // Fixed ID (2026-09-15): mistral-small-2603 → mistral-small-4-0-26-03 (docs.mistral.ai/models)
+  ['mistral-small-2603', 'Mistral Small 4', 'A', '48.0%', '256k'], // Fixed (2026-09-16): mistral-small-4-0-26-03 → mistral-small-2603 (live /v1/models, ctx 262144)
   // ── B+ tier — SWE-bench Verified 30–35% ──
-  ['ministral-3-14b-25-12', 'Ministral 3 14B', 'B+', '-', '256k'], // Fixed (2026-08-13): id 'ministral-3-14b-25-12' → 'ministral-14b-2512' (API model ID per Mistral docs JSON) // Fixed ID (2026-09-15): ministral-14b-2512 → ministral-3-14b-25-12 (docs.mistral.ai/models)
+  ['ministral-14b-2512', 'Ministral 3 14B', 'B+', '-', '256k'], // Fixed (2026-09-16): ministral-3-14b-25-12 → ministral-14b-2512 (live /v1/models, ctx 262144)
   // ── B tier — SWE-bench Verified 20–30% ──
-  ['ministral-3-8b-25-12', 'Ministral 3 8B', 'B', '-', '256k'], // Fixed (2026-08-13): id 'ministral-3-8b-25-12' → 'ministral-8b-2512' // Fixed ID (2026-09-15): ministral-8b-2512 → ministral-3-8b-25-12 (docs.mistral.ai/models)
-  ['ministral-3-3b-25-12', 'Ministral 3 3B', 'B', '-', '256k'], // Fixed (2026-08-13): id 'ministral-3-3b-25-12' → 'ministral-3b-2512' // Fixed ID (2026-09-15): ministral-3b-2512 → ministral-3-3b-25-12 (docs.mistral.ai/models)
-  ['mistral-small-creative-25-12', 'Mistral Small Creative (Labs)', 'B', '-', '256k'], // Added (2026-09-15) — verified via live audit
-  ['magistral-medium-1-2-25-09', 'Magistral Medium 1.2', 'A+', '-', '256k'], // Added (2026-09-15) — verified via live audit
+  ['ministral-8b-2512', 'Ministral 3 8B', 'B', '-', '256k'], // Fixed (2026-09-16): ministral-3-8b-25-12 → ministral-8b-2512 (live /v1/models, ctx 262144)
+  ['ministral-3b-2512', 'Ministral 3 3B', 'B', '-', '128k'], // Fixed (2026-09-16): ministral-3-3b-25-12 → ministral-3b-2512; ctx 256k → 128k (max_context_length 131072)
+  // Removed (2026-09-16): mistral-small-creative-25-12 (Mistral Small Creative) — absent from the live catalog
 ]
 
 // 📖 Mistral Codestral source - https://codestral.mistral.ai

@@ -3304,11 +3304,13 @@ describe('router daemon integration hardening', () => {
       body: { id: 'chatcmpl-mistral', choices: [{ message: { role: 'assistant', content: 'ok' } }] },
     }), async (mistralProvider) => {
       await withSourceUrls({ mistral: mistralProvider.url }, async () => {
-        // 📖 'mistral-large-3-25-12' is a real catalog model — the router only
+        // 📖 'mistral-medium-3-5' is a real catalog model — the router only
         // 📖 routes to models it can find in sources.js (anything else is
         // 📖 marked stale by definition and never picked).
+        // 📖 Updated (2026-09-16): was 'mistral-large-3-25-12', dropped from the
+        // 📖 catalog because no `large` model exists in Mistral's live /v1/models.
         const config = buildRouterTestConfig([
-          { provider: 'mistral', model: 'mistral-large-3-25-12', priority: 1 },
+          { provider: 'mistral', model: 'mistral-medium-3-5', priority: 1 },
         ], { maxRetries: 1 })
         config.apiKeys.mistral = 'mistral-test-key'
         await withRouterTestServer(config, async ({ baseUrl }) => {
