@@ -67,6 +67,7 @@ export const ENV_VAR_NAMES = {
   requesty:   'REQUESTY_API_KEY',
   orcarouter: 'ORCAROUTER_API_KEY',
   'vercel-gateway': 'VERCEL_AI_GATEWAY_API_KEY',
+  onomeo:     'ONOMEO_API_KEY',
   // 📖 Providers whose OpenCode/Kilo config writers reference {env:VAR} - names
   // 📖 must match those tables exactly (see opencode.js / kilo.js).
   huggingface: 'HUGGINGFACE_API_KEY',
@@ -357,6 +358,14 @@ export const PROVIDER_METADATA = {
     signupHint: 'AI Gateway → API Keys ($5 credits/30 days, no card)',
     rateLimits: 'Free tier · $5 credits/30 days + $0 models',
     detailedLimits: 'Official Vercel gateway at list prices, zero markup.\nEvery account gets $5 of credits every 30 days, no card required.\nThe monthly credit covers a subset of the catalog; the explicit $0 models stay free.\nCaution: purchasing credits once permanently moves the account to the paid tier and the monthly free credit stops.',
+  },
+  onomeo: {
+    label: 'onomeo',
+    color: chalk.rgb(240, 120, 60),
+    signupUrl: 'https://onomeo.com/dashboard',
+    signupHint: 'Sign in (email, Google or GitHub, no card) → check in daily → Dashboard → API key',
+    rateLimits: 'Daily check-in credits (1,200-3,500/day) · 12 req/min per key · 60 req/5h per account',
+    detailedLimits: 'Credits come from a daily check-in: 1,200/day, rising to 3,500/day with a streak. No card needed.\nEvery call spends credits, counted by characters sent + received (CJK: 1 char = 1 credit, other text: 4 chars = 1 credit), so this is a small allowance, not unlimited.\nLimits: 12 req/min per key, 60 req per 5 hours per account, 450 per 5 hours site-wide. Health probes count against them.\nSome upstreams may train on prompts; each model page on onomeo.com says which.',
   },
   'ollama-cloud': {
     label: 'Ollama Cloud',

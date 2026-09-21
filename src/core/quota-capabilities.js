@@ -67,6 +67,8 @@ export const PROVIDER_CAPABILITIES = {
   orcarouter: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'unknown' },
   // 📖 Vercel AI Gateway exposes GET /v1/credits but no fetcher is wired yet; treat as monthly reset.
   'vercel-gateway': { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'monthly' },
+  // 📖 onomeo: daily check-in credits; balance is at GET /api/me but no fetcher is wired yet.
+  onomeo: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'daily' },
 }
 
 /** Fallback for unrecognized providers */

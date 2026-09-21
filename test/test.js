@@ -931,6 +931,15 @@ describe('sources.js data integrity', () => {
       assert.ok(m[0].endsWith('-free'), `vercel-gateway model ${m[0]} should be an explicit $0 model`)
     }
   })
+
+  it('sources object has onomeo with correct structure', () => {
+    assert.ok(sources.onomeo, 'sources.onomeo should exist')
+    assert.equal(sources.onomeo.name, 'onomeo')
+    assert.equal(sources.onomeo.url, 'https://onomeo.com/v1/chat/completions')
+    // 📖 Credits come from a daily check-in and every call spends them, so the badge is 'limited'.
+    assert.equal(sources.onomeo.quotaCode, 'limited')
+    assert.ok(Array.isArray(sources.onomeo.models) && sources.onomeo.models.length > 0)
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════

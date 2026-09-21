@@ -29,7 +29,7 @@
  *   📖 Secondary: https://swe-rebench.com (independent evals, scores are lower)
  *   📖 Leaderboard tracker: https://www.marc0.dev/en/leaderboard
  *
- *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, githubModels, mistral, codestral, scaleway, googleai, zai, qwen, cloudflare, ovhcloud, opencodeZen, kilo, llm7, routeway, novita, ollamaCloud, pollinations, siliconflow, requesty, orcarouter, vercelGateway — model arrays per active provider
+ *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, githubModels, mistral, codestral, scaleway, googleai, zai, qwen, cloudflare, ovhcloud, opencodeZen, kilo, llm7, routeway, novita, ollamaCloud, pollinations, siliconflow, requesty, orcarouter, vercelGateway, onomeo — model arrays per active provider
  *   @exports sources — map of active free/free-limited providers, each with { name, url, models }
 
  *   @exports MODELS — flat array of [modelId, label, tier, sweScore, ctx, providerKey]
@@ -692,6 +692,37 @@ export const ollamaCloud = [
   ['nemotron-3-nano:30b', 'Nemotron 3 Nano 30B', 'A-', '38.8%', '1M'],
 ]
 
+// 📖 onomeo source - https://onomeo.com/docs
+// 📖 OpenAI-compatible gateway: https://onomeo.com/v1/chat/completions (streaming + tool calls)
+// 📖 Free credits come from a daily check-in: 1,200/day, rising to 3,500/day with a streak, no card.
+// 📖 Every call spends credits, counted by characters sent + received (CJK: 1 char = 1 credit,
+// 📖 other text: 4 chars = 1 credit), so this is a small allowance, not unlimited: at 3,500
+// 📖 credits a day glm-5.2 gives about 4 replies. Premium models cost many times more and are
+// 📖 not listed. Limits: 12 req/min per key, 60 req per 5 hours per account, 450 per 5 hours site-wide.
+// 📖 Some upstreams may train on prompts; each model page (https://onomeo.com/models/<id>) says which.
+// 📖 Ids and 30-day average credits per reply checked 2026-09-21 against the public
+// 📖 https://onomeo.com/api/info (/v1/models needs a key). ctx is '-' because onomeo does not
+// 📖 publish per-model context limits.
+export const onomeo = [
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['deepseek-v4-flash', 'DeepSeek V4 Flash', 'S+', '79.0%', '-'], // ~23 credits/reply
+  ['glm-5.2', 'GLM 5.2', 'S+', '82.8%', '-'], // ~750 credits/reply
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['gemini-3.1-flash-lite', 'Gemini 3.1 Flash Lite', 'S', '62.8%', '-'], // ~16 credits/reply
+  ['@cf/openai/gpt-oss-120b', 'GPT OSS 120B', 'S', '62.4%', '-'], // ~16 credits/reply
+  ['nvidia/nemotron-3-super-120b-a12b', 'Nemotron 3 Super', 'S', '60.5%', '-'], // ~3 credits/reply
+  // ── A+ tier — SWE-bench Verified 50–60% ──
+  ['openai/gpt-oss-20b', 'GPT OSS 20B', 'A+', '50.3%', '-'], // ~567 credits/reply
+  ['z-ai/glm-5.3-flash-free', 'GLM-5.3 Flash', 'A+', '-', '-'], // ~195 credits/reply
+  ['stepfun/step-3.7-flash:free', 'Step 3.7 Flash', 'A+', '-', '-'], // ~48 credits/reply
+  // ── A tier — SWE-bench Verified 40–50% ──
+  ['codestral-latest', 'Codestral Latest', 'A', '40.0%', '-'], // ~60 credits/reply
+  // ── B+ tier — SWE-bench Verified 30–35% ──
+  ['Qwen/Qwen3-8B', 'Qwen3 8B', 'B+', '30.0%', '-'], // ~490 credits/reply
+  // ── B tier — SWE-bench Verified 20–30% ──
+  ['ministral-8b-latest', 'Ministral 8B', 'B', '-', '-'], // ~10 credits/reply
+]
+
 // 📖 All sources combined - used by the main script
 // 📖 Each source has: name (display), url (API endpoint), models (array of model tuples)
 // 📖 Providers ordered by generosity of free tier (most generous first)
@@ -883,6 +914,13 @@ export const sources = {
     quota: 'Free plan · session + weekly caps',
     quotaCode: 'free',
     models: ollamaCloud,
+  },
+  onomeo: {
+    name: 'onomeo',
+    url: 'https://onomeo.com/v1/chat/completions',
+    quota: 'Daily check-in credits · 12 RPM · 60 req/5h',
+    quotaCode: 'limited',
+    models: onomeo,
   },
 }
 

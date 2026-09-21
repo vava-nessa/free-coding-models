@@ -196,6 +196,7 @@ const PROVIDER_PALETTES = {
     requesty: [100, 149, 255],
     orcarouter: [255, 138, 64],
     'vercel-gateway': [170, 190, 230],
+    onomeo: [240, 120, 60],
     'ollama-cloud': [230, 230, 230],
   },
   light: {
@@ -230,6 +231,7 @@ const PROVIDER_PALETTES = {
     requesty: [0, 72, 170],
     orcarouter: [170, 74, 0],
     'vercel-gateway': [60, 80, 130],
+    onomeo: [150, 55, 10],
     'ollama-cloud': [88, 88, 88],
   },
 }
