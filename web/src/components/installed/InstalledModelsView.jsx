@@ -6,20 +6,22 @@
 import { useInstalledModels } from '../../hooks/useInstalledModels.js'
 import { IconFolders, IconTrash, IconRefresh } from '@tabler/icons-react'
 import styles from './InstalledModelsView.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 export default function InstalledModelsView({ onClose, onToast }) {
+  const { t } = useI18n()
   const { results, loading, refresh, disableModel } = useInstalledModels()
 
   const handleDisable = async (toolMode, modelId) => {
     try {
       const result = await disableModel(toolMode, modelId)
       if (result.success) {
-        onToast?.(`Disabled ${modelId} in ${toolMode}.`, 'success')
+        onToast?.(t('installed.disabled', { model: modelId, tool: toolMode }), 'success')
       } else {
-        onToast?.(`Failed: ${result.error || 'unknown error'}`, 'error')
+        onToast?.(t('installed.failed', { error: result.error || t('common.unknown') }), 'error')
       }
     } catch (err) {
-      onToast?.(`Error: ${err.message}`, 'error')
+      onToast?.(t('installed.failed', { error: err.message }), 'error')
     }
   }
 
@@ -31,11 +33,11 @@ export default function InstalledModelsView({ onClose, onToast }) {
         <div className={styles.header}>
           <h2 className={styles.title}>
             <IconFolders size={20} stroke={1.5} />
-            Installed Models
+            {t('installed.title')}
             {!loading && <span className={styles.count}>{totalModels}</span>}
           </h2>
           <div className={styles.headerActions}>
-            <button className={styles.refreshBtn} onClick={refresh} title="Refresh">
+            <button className={styles.refreshBtn} onClick={refresh} title={t('installed.refresh')} aria-label={t('installed.refresh')}>
               <IconRefresh size={14} />
             </button>
             <button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
@@ -43,13 +45,13 @@ export default function InstalledModelsView({ onClose, onToast }) {
         </div>
 
         <div className={styles.body}>
-          {loading && <div className={styles.empty}>Scanning tool configs…</div>}
+          {loading && <div className={styles.empty}>{t('installed.scanning')}</div>}
 
           {!loading && totalModels === 0 && (
             <div className={styles.empty}>
-              No models found in tool configs.
+              {t('installed.noModels')}
               <br />
-              <span className={styles.hint}>Use "Install Endpoints" to configure models for your tools.</span>
+              <span className={styles.hint}>{t('installed.configureHint')}</span>
             </div>
           )}
 
@@ -58,8 +60,8 @@ export default function InstalledModelsView({ onClose, onToast }) {
               <div className={styles.toolHeader}>
                 <span className={styles.toolEmoji}>{tool.toolEmoji}</span>
                 <span className={styles.toolLabel}>{tool.toolLabel}</span>
-                <span className={styles.toolCount}>{tool.models.length} model{tool.models.length !== 1 ? 's' : ''}</span>
-                {!tool.isValid && <span className={styles.toolMissing}>Not installed</span>}
+                <span className={styles.toolCount}>{t('install.modelsCount', { count: tool.models.length })}</span>
+                {!tool.isValid && <span className={styles.toolMissing}>{t('installed.notInstalled')}</span>}
               </div>
               {tool.models.length > 0 && (
                 <div className={styles.modelList}>
@@ -72,7 +74,7 @@ export default function InstalledModelsView({ onClose, onToast }) {
                       <button
                         className={styles.disableBtn}
                         onClick={() => handleDisable(tool.toolMode, model.modelId)}
-                        title="Remove model from config (backup saved)"
+                        title={t('installed.removeTitle')}
                       >
                         <IconTrash size={12} />
                       </button>

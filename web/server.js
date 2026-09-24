@@ -389,7 +389,11 @@ function getConfigPayload() {
       cliOnly: src.cliOnly || false,
     }
   }
-  return { providers, totalModels: MODELS.length }
+  return {
+    providers,
+    totalModels: MODELS.length,
+    settings: { language: config.settings?.language || 'en' },
+  }
 }
 
 function maskApiKey(key) {
@@ -1572,6 +1576,9 @@ async function handleRequest(req, res) {
         const body = await readJsonBody(req)
         if (!body || typeof body !== 'object' || !body.feature) {
           sendJson(res, 400, { error: 'Missing "feature" key' }); return
+        }
+        if (body.feature === 'language' && !['en', 'zh-CN'].includes(body.value)) {
+          sendJson(res, 422, { error: 'Unsupported language' }); return
         }
         if (!config.settings || typeof config.settings !== 'object') config.settings = {}
         const before = config.settings[body.feature]

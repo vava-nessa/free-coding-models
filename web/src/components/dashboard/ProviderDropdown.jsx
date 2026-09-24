@@ -30,6 +30,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { IconChevronDown } from '@tabler/icons-react'
 import ProviderLogo from '../atoms/ProviderLogo.jsx'
 import styles from './ProviderDropdown.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 /**
  * 📖 Derives the health indicator state from aggregated provider data.
@@ -42,17 +43,19 @@ function providerHealthState(provider) {
 }
 
 function HealthIndicator({ state }) {
+  const { t } = useI18n()
   const cls = styles[`dot_${state}`] || styles.dot_nokey
   const titles = {
-    active: 'API key works — at least one model is UP',
-    pending: 'API key set — waiting for health data',
-    down: 'API key set — models are DOWN or have auth errors',
-    nokey: 'No API key configured',
+    active: t('provider.health.active'),
+    pending: t('provider.health.pending'),
+    down: t('provider.health.down'),
+    nokey: t('dashboard.noApiKey'),
   }
   return <span className={`${styles.healthDot} ${cls}`} title={titles[state] || ''} />
 }
 
 export default function ProviderDropdown({ providers, value, onChange }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const listRef = useRef(null)
@@ -91,7 +94,7 @@ export default function ProviderDropdown({ providers, value, onChange }) {
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        title={isFiltered ? `Provider: ${selectedProvider?.name || value}` : 'All providers'}
+        title={isFiltered ? `${t('filters.provider')}: ${selectedProvider?.name || value}` : t('dashboard.allProviders')}
       >
         <span className={styles.triggerContent}>
           {isFiltered && selectedProvider ? (
@@ -102,7 +105,7 @@ export default function ProviderDropdown({ providers, value, onChange }) {
               <span className={styles.triggerCount}>{selectedProvider.count}</span>
             </>
           ) : (
-            <span className={styles.triggerLabel}>All Providers</span>
+            <span className={styles.triggerLabel}>{t('dashboard.allProviders')}</span>
           )}
         </span>
         <IconChevronDown
@@ -122,7 +125,7 @@ export default function ProviderDropdown({ providers, value, onChange }) {
             className={`${styles.option} ${value === 'all' ? styles.optionActive : ''}`}
             onClick={() => { onChange('all'); close() }}
           >
-            <span className={styles.optionLabel}>All Providers</span>
+            <span className={styles.optionLabel}>{t('dashboard.allProviders')}</span>
             <span className={styles.optionCount}>{providers.reduce((s, p) => s + p.count, 0)}</span>
           </button>
 
@@ -139,7 +142,7 @@ export default function ProviderDropdown({ providers, value, onChange }) {
                 data-active={value === p.key}
                 className={`${styles.option} ${value === p.key ? styles.optionActive : ''}`}
                 onClick={() => { onChange(p.key); close() }}
-                title={`${p.name} — ${p.count} model${p.count !== 1 ? 's' : ''}`}
+                title={t('dashboard.providerModelsTitle', { provider: p.name, count: p.count })}
               >
                 <span className={styles.optionLogo}>
                   <ProviderLogo providerKey={p.key} origin={p.name} />

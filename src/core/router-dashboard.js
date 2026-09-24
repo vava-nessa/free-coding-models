@@ -44,6 +44,7 @@ import chalk from 'chalk'
 import { existsSync, readFileSync } from 'node:fs'
 import { displayWidth, padEndDisplay, sliceOverlayLines, tintOverlayLines } from '../tui/render-helpers.js'
 import { ROUTER_DEFAULT_PORT, ROUTER_MAX_PORT, getRouterPidPath, getRouterPortPath, getRouterPortRange } from './router-daemon.js'
+import { t } from './i18n/index.js'
 import { themeColors, getTierRgb } from '../tui/theme.js'
 import { formatTokenTotalCompact } from './token-usage-reader.js'
 import { sendUsageTelemetry } from './telemetry.js'
@@ -871,12 +872,12 @@ export function renderRouterDashboard(state, deps = {}) {
   const { defaultPort: currentDefaultPort } = getRouterPortRange()
   const port = snapshot.port || state.routerDashboardPort || currentDefaultPort
   const baseUrl = `http://localhost:${port}/v1`
-  lines.push(`  ${themeColors.textBold('Quick Setup')} ${themeColors.dim('— paste into your coding tool config')}`)
+  lines.push(`  ${themeColors.textBold(t('router.quickSetup'))} ${themeColors.dim(`— ${t('router.pasteIntoToolConfig')}`)}`)
   lines.push(`  ${themeColors.dim('URL')}     ${themeColors.infoBold(baseUrl)}`)
-  lines.push(`  ${themeColors.dim('Model')}   ${themeColors.infoBold('fcm')}`)
+  lines.push(`  ${themeColors.dim(t('router.model'))}   ${themeColors.infoBold('fcm')}`)
   lines.push(`  ${themeColors.dim('API Key')} ${themeColors.infoBold('fcm-local')}`)
   if (isRunning) {
-    lines.push(`  ${themeColors.dim('Uptime')}  ${themeColors.success(formatRouterDuration(snapshot.uptimeSeconds))}  ${themeColors.dim('Requests routed:')} ${themeColors.info(String(snapshot.requestsRouted))}`)
+    lines.push(`  ${themeColors.dim(t('router.uptime'))}  ${themeColors.success(formatRouterDuration(snapshot.uptimeSeconds))}  ${themeColors.dim(`${t('router.requests')}:`)} ${themeColors.info(String(snapshot.requestsRouted))}`)
   } else {
     lines.push(`  ${themeColors.dim('Hint')}    ${themeColors.dim('Start the daemon to enable routing')}`)
   }
@@ -886,7 +887,7 @@ export function renderRouterDashboard(state, deps = {}) {
   // ── Favorites / Router Fallback Models ──────────────────────────────────────
   // 📖 Instead of the old "sets" system, show the user's favorites from the main
   // 📖 table as the router fallback chain. #1 = tried first, #2 = next, etc.
-  lines.push(`  ${themeColors.textBold('Router Models')} ${themeColors.dim('— your favorites, in fallback order')}`)
+  lines.push(`  ${themeColors.textBold(t('router.routerModels'))} ${themeColors.dim(`— ${t('router.favoritesFallbackOrder')}`)}`)
   lines.push(`  ${themeColors.dim('Star models with F in the main table. Shift+↑↓ to reorder here.')}`)
   lines.push('')
 
@@ -895,7 +896,7 @@ export function renderRouterDashboard(state, deps = {}) {
   const cursor = state.routerDashboardCursorIndex ?? 0
 
   if (favorites.length === 0) {
-    lines.push(`  ${themeColors.warning('No favorites yet. Press Esc, then F on any model to add it.')}`)
+    lines.push(`  ${themeColors.warning(t('router.noFavoritesTui'))}`)
     lines.push(`  ${themeColors.dim('Favorites become your router fallback chain — #1 is tried first.')}`)
   } else {
     // 📖 Priority keycap glyphs for the fallback order
@@ -1010,7 +1011,7 @@ export function renderRouterDashboard(state, deps = {}) {
   lines.push('')
   const btnCursor = favorites.length
   const isBtnCursor = cursor === btnCursor
-  const btnText = isStopped ? '▶ Start Router Daemon' : '⏹ Stop Router Daemon'
+  const btnText = isStopped ? `▶ ${t('router.start')}` : `⏹ ${t('router.stop')}`
   const btnRowText = `  [ ${btnText} ]`
   
   if (isBtnCursor) {
@@ -1022,7 +1023,7 @@ export function renderRouterDashboard(state, deps = {}) {
   // 📖 Install Endpoint Button
   const installBtnCursor = favorites.length + 1
   const isInstallBtnCursor = cursor === installBtnCursor
-  const installBtnText = '🔌 Install Router Endpoint to CLI Tool'
+  const installBtnText = `🔌 ${t('router.installEndpointCli')}`
   const installBtnRowText = `  [ ${installBtnText} ]`
   
   if (isInstallBtnCursor) {
@@ -1036,11 +1037,11 @@ export function renderRouterDashboard(state, deps = {}) {
   lines.push('')
 
   // ── Token Summary (compact, visual) ─────────────────────────────────────────
-  lines.push(`  ${themeColors.textBold('📊 Tokens')}  ${themeColors.dim('Today:')} ${themeColors.info(formatTokenTotalCompact(snapshot.tokens.today.total_tokens))} ${themeColors.dim(`(${snapshot.tokens.today.requests} req)`)}  ${themeColors.dim('Lifetime:')} ${themeColors.info(formatTokenTotalCompact(snapshot.tokens.all_time.total_tokens))} ${themeColors.dim(`(${snapshot.tokens.all_time.requests} req)`)}`)
+  lines.push(`  ${themeColors.textBold('📊 Token')}  ${themeColors.dim(`${t('analytics.today')}:`)} ${themeColors.info(formatTokenTotalCompact(snapshot.tokens.today.total_tokens))} ${themeColors.dim(t('analytics.requestsShort', { count: snapshot.tokens.today.requests }))}  ${themeColors.dim(`${t('router.lifetime')}:`)} ${themeColors.info(formatTokenTotalCompact(snapshot.tokens.all_time.total_tokens))} ${themeColors.dim(t('analytics.requestsShort', { count: snapshot.tokens.all_time.requests }))}`)
 
   // ── Active Requests ────────────────────────────────────────────────────────
   lines.push('')
-  lines.push(`  ${themeColors.warningBold('⚡ Active Requests')} ${themeColors.dim(`(${snapshot.activeRequests?.length || 0})`)}`)
+  lines.push(`  ${themeColors.warningBold(`⚡ ${t('router.activeRequests')}`)} ${themeColors.dim(`(${snapshot.activeRequests?.length || 0})`)}`)
   if (snapshot.activeRequests?.length > 0) {
     for (const req of snapshot.activeRequests) {
       const model = compactText(req.model, 24)
@@ -1052,15 +1053,15 @@ export function renderRouterDashboard(state, deps = {}) {
       lines.push(`  ${themeColors.dim('•')} ${shortId}${model} → ${themeColors.info(current)} ${status}${tokens} ${themeColors.dim(duration)}`)
     }
   } else {
-    lines.push(`  ${themeColors.dim('No active requests')}`)
+    lines.push(`  ${themeColors.dim(t('router.noActiveRequests'))}`)
   }
 
   // ── Live Request Log (compact) ──────────────────────────────────────────────
   const requestRows = requestLogRows(state, snapshot)
   lines.push('')
-  lines.push(`  ${themeColors.textBold('Recent Requests')}`)
+  lines.push(`  ${themeColors.textBold(t('router.recentRequests'))}`)
   if (requestRows.length > 0) {
-    const header = `  ${padEndDisplay('ID', 5)} ${padEndDisplay('Time', 10)} ${padEndDisplay('Model', 34)} ${padEndDisplay('Status', 8)} ${padEndDisplay('Latency', 9)} Detail`
+    const header = `  ${padEndDisplay('ID', 5)} ${padEndDisplay(t('router.time'), 10)} ${padEndDisplay(t('router.model'), 34)} ${padEndDisplay(t('router.state'), 8)} ${padEndDisplay(t('router.lastLatency'), 9)} ${t('router.detail')}`
     lines.push(themeColors.dim(header))
     for (const row of requestRows.slice(0, 6)) {
       const atMs = Date.parse(row.at)
@@ -1086,7 +1087,7 @@ export function renderRouterDashboard(state, deps = {}) {
       )
     }
   } else {
-    lines.push(`  ${themeColors.dim('No requests routed yet')}`)
+    lines.push(`  ${themeColors.dim(t('router.noRequests'))}`)
   }
 
   // ── Health check speed ──────────────────────────────────────────────────────
@@ -1111,7 +1112,7 @@ export function renderRouterDashboard(state, deps = {}) {
   // ── Footer ──────────────────────────────────────────────────────────────────
   lines.push('')
   lines.push(`  ${separator}`)
-  lines.push(`  ${themeColors.hotkey('↑↓')} ${themeColors.dim('Navigate')}  ${themeColors.dim('•')}  ${themeColors.hotkey('Shift+↑↓')} ${themeColors.dim('Reorder')}  ${themeColors.dim('•')}  ${themeColors.hotkey('S')} ${themeColors.dim(isStopped ? 'Start daemon' : 'Stop daemon')}  ${themeColors.dim('•')}  ${themeColors.hotkey('I')} ${themeColors.dim(`Health check: ${probeLabel}`)}  ${themeColors.dim('•')}  ${themeColors.hotkey('C')} ${themeColors.dim('Clear log')}  ${themeColors.dim('•')}  ${themeColors.hotkey('R')} ${themeColors.dim('Sync best')}  ${themeColors.dim('•')}  ${themeColors.hotkey('Esc')} ${themeColors.dim('Back')}`)
+  lines.push(`  ${themeColors.hotkey('↑↓')} ${themeColors.dim(t('settings.navigate'))}  ${themeColors.dim('•')}  ${themeColors.hotkey('Shift+↑↓')} ${themeColors.dim(t('router.reorder'))}  ${themeColors.dim('•')}  ${themeColors.hotkey('S')} ${themeColors.dim(isStopped ? t('router.start') : t('router.stop'))}  ${themeColors.dim('•')}  ${themeColors.hotkey('I')} ${themeColors.dim(`${t('router.healthCheck')}: ${probeLabel}`)}  ${themeColors.dim('•')}  ${themeColors.hotkey('C')} ${themeColors.dim(t('router.clearLog'))}  ${themeColors.dim('•')}  ${themeColors.hotkey('R')} ${themeColors.dim(t('router.syncBest'))}  ${themeColors.dim('•')}  ${themeColors.hotkey('Esc')} ${themeColors.dim(t('common.back'))}`)
 
   const { visible, offset } = sliceOverlayLines(lines, state.routerDashboardScrollOffset || 0, state.terminalRows || 24)
   state.routerDashboardScrollOffset = offset

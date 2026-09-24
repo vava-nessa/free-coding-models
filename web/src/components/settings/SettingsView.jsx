@@ -16,18 +16,20 @@ import {
   IconTrash, IconBolt, IconCircleCheckFilled, IconHistory, IconRefresh, IconDownload, IconSun, IconStar,
 } from '@tabler/icons-react'
 import styles from './SettingsView.module.css'
+import { useI18n } from '../../i18n.jsx'
 import { maskKey } from '../../utils/format.js'
 
 const TEST_OUTCOME_META = {
-  ok: { label: 'OK', icon: IconCircleCheckFilled, className: 'testOk' },
-  auth_error: { label: 'Auth error', icon: IconKey, className: 'testErr' },
-  rate_limited: { label: 'Rate limited', icon: IconRefresh, className: 'testWarn' },
-  no_callable_model: { label: 'No callable model', icon: IconKey, className: 'testWarn' },
-  fail: { label: 'Failed', icon: IconKey, className: 'testErr' },
-  missing_key: { label: 'Missing key', icon: IconKey, className: 'testNeutral' },
+  ok: { labelKey: 'settings.test.ok', icon: IconCircleCheckFilled, className: 'testOk' },
+  auth_error: { labelKey: 'settings.test.authError', icon: IconKey, className: 'testErr' },
+  rate_limited: { labelKey: 'settings.test.rateLimited', icon: IconRefresh, className: 'testWarn' },
+  no_callable_model: { labelKey: 'settings.test.noCallableModel', icon: IconKey, className: 'testWarn' },
+  fail: { labelKey: 'settings.test.failed', icon: IconKey, className: 'testErr' },
+  missing_key: { labelKey: 'settings.test.missingKey', icon: IconKey, className: 'testNeutral' },
 }
 
 export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdate }) {
+  const { t, locale, locales, setLanguage } = useI18n()
   const [config, setConfig] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedCards, setExpandedCards] = useState(new Set())
@@ -43,9 +45,9 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
       const data = await resp.json()
       setConfig(data)
     } catch {
-      onToast?.('Failed to load settings', 'error')
+      onToast?.(t('settings.loadFailed'), 'error')
     }
-  }, [onToast])
+  }, [onToast, t])
 
   useEffect(() => { loadConfig() }, [loadConfig])
 
@@ -80,7 +82,7 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
   const saveKey = async (key) => {
     const value = keyInputs[key]?.trim()
     if (!value) {
-      onToast?.('Please enter an API key', 'warning')
+      onToast?.(t('settings.enterApiKey'), 'warning')
       return
     }
     try {
@@ -91,21 +93,21 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
       })
       const result = await resp.json()
       if (result.success) {
-        onToast?.(`API key for ${key} saved successfully!`, 'success')
+        onToast?.(t('settings.keySavedForProvider', { provider: key }), 'success')
         setKeyInputs((prev) => ({ ...prev, [key]: '' }))
         setRevealedKeys((prev) => { const n = new Set(prev); n.delete(key); return n })
         await loadConfig()
         setExpandedCards((prev) => new Set(prev).add(key))
       } else {
-        onToast?.(result.error || 'Failed to save', 'error')
+        onToast?.(result.error || t('settings.keySaveFailed'), 'error')
       }
     } catch {
-      onToast?.('Network error while saving', 'error')
+      onToast?.(t('settings.networkSaveFailed'), 'error')
     }
   }
 
   const deleteKey = async (key) => {
-    if (!confirm(`Are you sure you want to delete the API key for "${key}"?`)) return
+    if (!confirm(t('settings.confirmDeleteKey', { provider: key }))) return
     try {
       const resp = await fetch('/api/settings', {
         method: 'POST',
@@ -114,14 +116,14 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
       })
       const result = await resp.json()
       if (result.success) {
-        onToast?.(`API key for ${key} deleted`, 'info')
+        onToast?.(t('settings.keyRemovedForProvider', { provider: key }), 'info')
         setRevealedKeys((prev) => { const n = new Set(prev); n.delete(key); return n })
         await loadConfig()
       } else {
-        onToast?.(result.error || 'Failed to delete', 'error')
+        onToast?.(result.error || t('settings.keyRemoveFailed'), 'error')
       }
     } catch {
-      onToast?.('Network error while deleting', 'error')
+      onToast?.(t('settings.networkDeleteFailed'), 'error')
     }
   }
 
@@ -134,12 +136,12 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
       })
       const result = await resp.json()
       if (result.success) {
-        onToast?.(`${key} ${enabled ? 'enabled' : 'disabled'}`, 'success')
+        onToast?.(t(enabled ? 'settings.providerEnabled' : 'settings.providerDisabled', { provider: key }), 'success')
       } else {
-        onToast?.(result.error || 'Failed to toggle', 'error')
+        onToast?.(result.error || t('settings.toggleFailed'), 'error')
       }
     } catch {
-      onToast?.('Network error', 'error')
+      onToast?.(t('settings.networkError'), 'error')
     }
   }
 
@@ -155,14 +157,14 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
       if (resp.ok) {
         setTestResults((prev) => ({ ...prev, [key]: data }))
         const meta = TEST_OUTCOME_META[data.outcome] || TEST_OUTCOME_META.fail
-        onToast?.(`${key} test: ${meta.label}${data.code ? ` (HTTP ${data.code})` : ''}`, data.outcome === 'ok' ? 'success' : 'info')
+        onToast?.(t('settings.keyTestResult', { provider: key, result: t(meta.labelKey), code: data.code ? ` (HTTP ${data.code})` : '' }), data.outcome === 'ok' ? 'success' : 'info')
       } else {
         setTestResults((prev) => ({ ...prev, [key]: { outcome: 'fail', detail: data.error || 'HTTP ' + resp.status } }))
-        onToast?.(`${key} test failed: ${data.error || resp.statusText}`, 'error')
+        onToast?.(t('settings.keyTestError', { provider: key, error: data.error || resp.statusText }), 'error')
       }
     } catch (err) {
       setTestResults((prev) => ({ ...prev, [key]: { outcome: 'fail', detail: err.message } }))
-      onToast?.(`${key} test failed: ${err.message}`, 'error')
+      onToast?.(t('settings.keyTestError', { provider: key, error: err.message }), 'error')
     } finally {
       setTestingKeys((prev) => {
         const next = new Set(prev)
@@ -170,7 +172,7 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
         return next
       })
     }
-  }, [testingKeys, onToast])
+  }, [testingKeys, onToast, t])
 
   // 📖 M2: feature toggles (theme / favorites mode / startup AI scan / shell env)
   // 📖 go through /api/settings/feature which persists to the same config file
@@ -186,14 +188,14 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
       const data = await resp.json()
       if (data.success) {
         await loadConfig()
-        onToast?.(`${feature} updated`, 'success')
+        onToast?.(t('settings.settingUpdated'), 'success')
       } else {
-        onToast?.(data.error || 'Failed to update feature', 'error')
+        onToast?.(data.error || t('settings.featureUpdateFailed'), 'error')
       }
     } catch {
-      onToast?.('Network error', 'error')
+      onToast?.(t('settings.networkError'), 'error')
     }
-  }, [onToast])
+  }, [onToast, t])
 
   const setShellEnv = useCallback(async (enabled) => {
     try {
@@ -205,33 +207,33 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
       const data = await resp.json()
       if (data.success) {
         await loadConfig()
-        onToast?.(`Shell env export ${data.enabled ? 'enabled' : 'disabled'} — restart your shell to apply.`, 'success')
+        onToast?.(t(data.enabled ? 'settings.shellExportEnabled' : 'settings.shellExportDisabled'), 'success')
       } else {
-        onToast?.(data.error || 'Failed to toggle shell env', 'error')
+        onToast?.(data.error || t('settings.shellToggleFailed'), 'error')
       }
     } catch {
-      onToast?.('Network error', 'error')
+      onToast?.(t('settings.networkError'), 'error')
     }
-  }, [onToast])
+  }, [onToast, t])
 
   const runLegacyCleanup = useCallback(async () => {
-    if (!confirm('Remove discontinued proxy config leftovers? This is safe to run.')) return
+    if (!confirm(t('settings.confirmLegacyCleanup'))) return
     try {
       const resp = await fetch('/api/legacy-cleanup', { method: 'POST' })
       const data = await resp.json()
       const cleaned = (data.removedFiles?.length || 0) + (data.updatedFiles?.length || 0)
       if (data.changed) {
-        setLegacyCleanupMsg(`Cleaned ${cleaned} legacy file(s). ${data.errors.length} error(s).`)
-        onToast?.(`Legacy proxy cleanup: ${cleaned} file(s) cleaned.`, 'success')
+        setLegacyCleanupMsg(t('settings.legacyCleanupComplete', { count: cleaned, errors: data.errors.length }))
+        onToast?.(t('settings.legacyCleanupToast', { count: cleaned }), 'success')
       } else {
-        setLegacyCleanupMsg('No discontinued proxy config was found. You are on the stable direct-provider setup.')
-        onToast?.('No legacy proxy config found — already on stable setup.', 'info')
+        setLegacyCleanupMsg(t('settings.legacyNone'))
+        onToast?.(t('settings.legacyNone'), 'info')
       }
       await loadConfig()
     } catch (err) {
-      onToast?.(`Legacy cleanup failed: ${err.message}`, 'error')
+      onToast?.(t('settings.legacyCleanupFailed', { error: err.message }), 'error')
     }
-  }, [onToast])
+  }, [onToast, t])
 
   const onCheckUpdatesClick = useCallback(() => {
     onCheckForUpdate?.()
@@ -240,7 +242,7 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
   if (!config) {
     return (
       <div className={styles.page}>
-        <div className={styles.loading}>Loading settings...</div>
+        <div className={styles.loading}>{t('settings.loading')}</div>
       </div>
     )
   }
@@ -258,27 +260,46 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>
           <IconSettings size={24} stroke={1.5} style={{ marginRight: 8, verticalAlign: 'middle' }} />
-          Settings
+          {t('settings.title')}
         </h1>
         <p className={styles.pageSubtitle}>
-          API keys, theme, favorites mode, shell env, and update controls.
-          All settings are stored locally in <code>~/.free-coding-models.json</code>
-          and shared with the TUI.
+          {t('settings.subtitle')}
+          {' '}<code>~/.free-coding-models.json</code>
         </p>
       </div>
 
       {/* ── M2: global feature toggles ────────────────────────────────────── */}
       {config && (
         <section className={styles.featureSection}>
-          <h2 className={styles.sectionHeading}>⚙️ Global settings</h2>
+          <h2 className={styles.sectionHeading}>⚙️ {t('settings.global')}</h2>
           <div className={styles.featureGrid}>
+            <div className={styles.featureRow}>
+              <div className={styles.featureLabel}>
+                <div>
+                  <div className={styles.featureTitle}>{t('settings.language')}</div>
+                  <div className={styles.featureDesc}>{t('settings.language.description')}</div>
+                </div>
+              </div>
+              <select
+                className={styles.select}
+                value={locale}
+                onChange={async (event) => {
+                  const saved = await setLanguage(event.target.value)
+                  if (!saved) onToast?.(t('settings.languageSaveFailed'), 'error')
+                  else setConfig((current) => current ? { ...current, settings: { ...current.settings, language: event.target.value } } : current)
+                }}
+                aria-label={t('settings.language')}
+              >
+                {locales.map((option) => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}
+              </select>
+            </div>
             {/* Theme */}
             <div className={styles.featureRow}>
               <div className={styles.featureLabel}>
                 <IconSun size={16} stroke={1.5} />
                 <div>
-                  <div className={styles.featureTitle}>Theme</div>
-                  <div className={styles.featureDesc}>Tri-state cycle. Auto follows your OS.</div>
+                  <div className={styles.featureTitle}>{t('settings.theme')}</div>
+                  <div className={styles.featureDesc}>{t('settings.theme.description')}</div>
                 </div>
               </div>
               <select
@@ -286,9 +307,9 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
                 value={config.settings?.theme || 'auto'}
                 onChange={(e) => toggleFeature('theme', e.target.value)}
               >
-                <option value="auto">Auto (OS)</option>
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
+                <option value="auto">{t('settings.theme.auto')}</option>
+                <option value="dark">{t('settings.theme.dark')}</option>
+                <option value="light">{t('settings.theme.light')}</option>
               </select>
             </div>
 
@@ -297,8 +318,8 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
               <div className={styles.featureLabel}>
                 <IconStar size={16} stroke={1.5} />
                 <div>
-                  <div className={styles.featureTitle}>Favorites pinned + always visible</div>
-                  <div className={styles.featureDesc}>Favorites bypass filters and stay on top (TUI: Y key).</div>
+                  <div className={styles.featureTitle}>{t('settings.favoritesPinned')}</div>
+                  <div className={styles.featureDesc}>{t('settings.favoritesPinned.description')}</div>
                 </div>
               </div>
               <label className={styles.toggleSwitch}>
@@ -316,8 +337,8 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
               <div className={styles.featureLabel}>
                 <IconBolt size={16} stroke={1.5} />
                 <div>
-                  <div className={styles.featureTitle}>Run AI Speed Test on startup</div>
-                  <div className={styles.featureDesc}>Auto-fire the global benchmark right after launch (TUI: U → 'Enable').</div>
+                  <div className={styles.featureTitle}>{t('settings.startupSpeedTest')}</div>
+                  <div className={styles.featureDesc}>{t('settings.startupSpeedTest.description')}</div>
                 </div>
               </div>
               <label className={styles.toggleSwitch}>
@@ -335,8 +356,8 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
               <div className={styles.featureLabel}>
                 <IconCircleCheck size={16} stroke={1.5} />
                 <div>
-                  <div className={styles.featureTitle}>Export API keys to shell rc</div>
-                  <div className={styles.featureDesc}>Write NVIDIA_API_KEY / GROQ_API_KEY / … to your shell rc file.</div>
+                  <div className={styles.featureTitle}>{t('settings.shellEnv')}</div>
+                  <div className={styles.featureDesc}>{t('settings.shellEnv.description')}</div>
                 </div>
               </div>
               <label className={styles.toggleSwitch}>
@@ -354,10 +375,9 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
               <div className={styles.featureLabel}>
                 <IconDownload size={16} stroke={1.5} />
                 <div>
-                  <div className={styles.featureTitle}>Check for updates</div>
+                  <div className={styles.featureTitle}>{t('settings.checkUpdates')}</div>
                   <div className={styles.featureDesc}>
-                    The header chip turns green when a newer npm version is available.
-                    Use the 'Update now' button to install.
+                    {t('settings.checkUpdates.description')}
                   </div>
                 </div>
               </div>
@@ -366,13 +386,13 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
                   className={styles.smallBtn}
                   onClick={onCheckUpdatesClick}
                 >
-                  Check now
+                  {t('settings.checkNow')}
                 </button>
                 <button
                   className={styles.smallBtn}
                   onClick={() => onOpenChangelog?.(null)}
                 >
-                  <IconHistory size={13} stroke={1.5} /> Changelog
+                  <IconHistory size={13} stroke={1.5} /> {t('nav.changelog')}
                 </button>
               </div>
             </div>
@@ -382,9 +402,9 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
               <div className={styles.featureLabel}>
                 <IconRefresh size={16} stroke={1.5} />
                 <div>
-                  <div className={styles.featureTitle}>Cleanup discontinued proxy artifacts</div>
+                  <div className={styles.featureTitle}>{t('settings.cleanupLegacy')}</div>
                   <div className={styles.featureDesc}>
-                    Remove old config / env / service leftovers from the old multi-tool proxy.
+                    {t('settings.cleanupLegacy.description')}
                   </div>
                 </div>
               </div>
@@ -392,7 +412,7 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
                 className={styles.smallBtn}
                 onClick={runLegacyCleanup}
               >
-                Run cleanup
+                {t('settings.runCleanup')}
               </button>
             </div>
           </div>
@@ -409,15 +429,15 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
           </svg>
           <input
             type="text"
-            placeholder="Search providers..."
+            placeholder={t('settings.searchProviders')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             autoComplete="off"
           />
         </div>
         <div className={styles.toolbarActions}>
-          <button className={styles.toolbarBtn} onClick={expandAll}>Expand All</button>
-          <button className={styles.toolbarBtn} onClick={collapseAll}>Collapse All</button>
+          <button className={styles.toolbarBtn} onClick={expandAll}>{t('settings.expandAll')}</button>
+          <button className={styles.toolbarBtn} onClick={collapseAll}>{t('settings.collapseAll')}</button>
         </div>
       </div>
 
@@ -434,16 +454,16 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
                 </div>
                 <div className={styles.cardInfo}>
                   <div className={styles.cardName}>{p.displayName || p.name}</div>
-                  <div className={styles.cardMeta}>{p.modelCount} models · {key}{p.billingNote ? ` · ${p.billingNote}` : ''}</div>
+                  <div className={styles.cardMeta}>{t('settings.providersCount', { count: p.modelCount })} · {key}{p.billingNote ? ` · ${p.billingNote}` : ''}</div>
                 </div>
                 <span className={`${styles.cardStatus} ${p.hasKey ? styles.statusConfigured : styles.statusMissing}`}>
                   {p.hasKey ? (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <IconCircleCheck size={14} stroke={1.5} /> Active
+                      <IconCircleCheck size={14} stroke={1.5} /> {t('dashboard.working')}
                     </span>
                   ) : (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <IconKey size={14} stroke={1.5} /> No Key
+                      <IconKey size={14} stroke={1.5} /> {t('filters.health.noKey')}
                     </span>
                   )}
                 </span>
@@ -460,7 +480,7 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
                         return (
                           <>
                             <Icon size={12} stroke={1.5} />
-                            <span>Last test: {meta.label}{testResults[key].code ? ` (HTTP ${testResults[key].code})` : ''}</span>
+                            <span>{t('settings.lastTest')}: {t(meta.labelKey)}{testResults[key].code ? ` (HTTP ${testResults[key].code})` : ''}</span>
                           </>
                         )
                       })()}
@@ -468,26 +488,26 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
                   )}
                   {p.hasKey && (
                     <div className={styles.keyGroup}>
-                      <label className={styles.keyLabel}>Current API Key</label>
+                      <label className={styles.keyLabel}>{t('settings.currentApiKey')}</label>
                       <div className={styles.keyDisplay}>
                         <span className={styles.keyDisplayValue}>
                           {isRevealed ? (p.maskedKey || '••••••••') : maskKey(p.maskedKey || '')}
                         </span>
                         <div className={styles.keyDisplayActions}>
-                          <button className={styles.actionBtn} onClick={() => toggleRevealKey(key)} title={isRevealed ? 'Hide' : 'Reveal'}>
+                          <button className={styles.actionBtn} onClick={() => toggleRevealKey(key)} title={isRevealed ? t('settings.hideKey') : t('settings.revealKey')} aria-label={isRevealed ? t('settings.hideKey') : t('settings.revealKey')}>
                             {isRevealed ? <IconEyeOff size={14} stroke={1.5} /> : <IconEye size={14} stroke={1.5} />}
                           </button>
                           <button
                             className={styles.actionBtn}
                             onClick={() => testKey(key)}
                             disabled={testingKeys.has(key)}
-                            title="Test this key against the provider (TUI: T key in Settings)"
-                            aria-label={`Test key for ${key}`}
+                            title={t('settings.testKeyHint')}
+                            aria-label={t('settings.testKeyForProvider', { provider: key })}
                           >
                             {testingKeys.has(key) ? <span className={styles.testSpinner} /> : <IconBolt size={14} stroke={1.5} />}
-                            {testingKeys.has(key) ? 'Testing…' : 'Test'}
+                            {testingKeys.has(key) ? t('settings.testing') : t('settings.testKey')}
                           </button>
-                          <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} onClick={() => deleteKey(key)} title="Delete Key">
+                          <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} onClick={() => deleteKey(key)} title={t('settings.deleteKey')} aria-label={t('settings.deleteKey')}>
                             <IconTrash size={14} stroke={1.5} />
                           </button>
                         </div>
@@ -496,24 +516,25 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
                   )}
 
                   <div className={styles.keyGroup}>
-                    <label className={styles.keyLabel}>{p.hasKey ? 'Update API Key' : 'Add API Key'}{p.billingNote ? ` 💰 ${p.billingNote}` : ''}</label>
+                    <label className={styles.keyLabel}>{p.hasKey ? t('settings.updateApiKey') : t('settings.addApiKey')}{p.billingNote ? ` 💰 ${p.billingNote}` : ''}</label>
                     <div className={styles.keyInputRow}>
                       <input
                         type="password"
                         className={styles.keyInput}
-                        placeholder="Enter your API key..."
+                        placeholder={t('settings.apiKeyPlaceholder')}
+                        aria-label={t('settings.apiKeyForProvider', { provider: key })}
                         value={keyInputs[key] || ''}
                         onChange={(e) => setKeyInputs((prev) => ({ ...prev, [key]: e.target.value }))}
                         autoComplete="off"
                       />
                       <button className={styles.saveBtn} onClick={() => saveKey(key)}>
-                        {p.hasKey ? 'Update' : 'Save'}
+                        {p.hasKey ? t('common.update') : t('common.save')}
                       </button>
                     </div>
                   </div>
 
                   <div className={styles.enabledRow}>
-                    <span className={styles.enabledLabel}>Provider Enabled</span>
+                    <span className={styles.enabledLabel}>{t('settings.providerEnabledLabel')}</span>
                     <label className={styles.toggleSwitch}>
                       <input
                         type="checkbox"

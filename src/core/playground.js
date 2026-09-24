@@ -21,10 +21,11 @@
  * @see ../tui/overlays.js — overlay factory that mounts this renderer
  */
 
-import { displayWidth, sliceOverlayLines, tintOverlayLines } from '../tui/render-helpers.js'
+import { displayWidth, sliceOverlayLines, tintOverlayLines, truncateAnsiWidth } from '../tui/render-helpers.js'
 import { ROUTER_PORT_PATH, getRouterPortPath } from './router-daemon.js'
 import { existsSync, readFileSync } from 'node:fs'
 import { themeColors } from '../tui/theme.js'
+import { t } from './i18n/index.js'
 
 // 📖 Width budget for the wrapped input + transcript columns inside the
 // 📖 overlay. Slightly tighter than the full terminal so borders have room
@@ -162,7 +163,7 @@ export async function playgroundSubmit(state, deps = {}) {
 
   const port = await readDaemonPort()
   if (!port) {
-    PLAYGROUND_OVERLAY_STATE.lastError = 'Router is not running. Press R or run `free-coding-models --daemon-bg`.'
+    PLAYGROUND_OVERLAY_STATE.lastError = t('playground.routerStartError')
     return
   }
 
@@ -173,7 +174,7 @@ export async function playgroundSubmit(state, deps = {}) {
   PLAYGROUND_OVERLAY_STATE.cursor = 0
   PLAYGROUND_OVERLAY_STATE.busy = true
   PLAYGROUND_OVERLAY_STATE.lastError = null
-  PLAYGROUND_OVERLAY_STATE.statusMessage = 'Sending…'
+  PLAYGROUND_OVERLAY_STATE.statusMessage = t('playground.sending')
 
   const controller = new AbortController()
   PLAYGROUND_OVERLAY_STATE.abortController = controller
@@ -403,22 +404,22 @@ export function renderPlayground(state, terminalRows, terminalCols) {
   const innerWidth = Math.max(40, terminalCols - 8)
 
   // 📖 Header
-  lines.push(themeColors.accentBold('  💬 Playground — chat with the FCM router'))
-  lines.push(themeColors.dim('  Press Enter to send · Shift+Tab cycles model · Ctrl+S toggles streaming · Esc closes · Ctrl+L clears'))
+  lines.push(themeColors.accentBold(`  💬 ${t('playground.title')} — ${t('playground.chatViaRouter')}`))
+  lines.push(themeColors.dim(`  ${t('playground.tuiHotkeys')}`))
   lines.push('')
 
   // 📖 Persona pill (one liner preview of the pre-prompt)
   const pre = PLAYGROUND_OVERLAY_STATE.prePrompt
   if (pre && pre.enabled && pre.text) {
-    const preview = pre.text.length > innerWidth - 16 ? `${pre.text.slice(0, innerWidth - 19)}…` : pre.text
-    lines.push(themeColors.dim(`  Persona: ${preview.replace(/\n+/g, ' ')}`))
+    const preview = displayWidth(pre.text) > innerWidth - 16 ? truncateAnsiWidth(pre.text.replace(/\n+/g, ' '), innerWidth - 16, { ellipsis: '…' }) : pre.text.replace(/\n+/g, ' ')
+    lines.push(themeColors.dim(`  ${t('playground.persona')}: ${preview}`))
   } else {
-    lines.push(themeColors.dim('  Persona: (none)'))
+    lines.push(themeColors.dim(`  ${t('playground.persona')}: ${t('common.none')}`))
   }
 
   // 📖 Model + mode row
-  const mode = PLAYGROUND_OVERLAY_STATE.streamOn ? 'streaming' : 'one-shot'
-  lines.push(themeColors.dim(`  Model: ${PLAYGROUND_OVERLAY_STATE.model} · ${mode}`))
+  const mode = PLAYGROUND_OVERLAY_STATE.streamOn ? t('playground.streamOn') : t('playground.streamOff')
+  lines.push(themeColors.dim(`  ${t('playground.model')}: ${PLAYGROUND_OVERLAY_STATE.model} · ${mode}`))
   if (PLAYGROUND_OVERLAY_STATE.lastError) {
     lines.push(themeColors.errorBold(`  ⚠ ${PLAYGROUND_OVERLAY_STATE.lastError}`))
   }
@@ -428,7 +429,7 @@ export function renderPlayground(state, terminalRows, terminalCols) {
   const transcriptLines = []
   for (const msg of PLAYGROUND_OVERLAY_STATE.messages) {
     const role = msg.role === 'user'
-      ? themeColors.accentBold('  ❯ you')
+      ? themeColors.accentBold(`  ❯ ${t('playground.you')}`)
       : msg.role === 'assistant'
         ? themeColors.dim('  ✦ fcm')
         : themeColors.dim(`  · ${msg.role}`)
@@ -439,18 +440,18 @@ export function renderPlayground(state, terminalRows, terminalCols) {
     }
     if (msg.role === 'assistant' && msg.meta) {
       const metaChips = []
-      if (msg.meta.provider) metaChips.push(`routed ${msg.meta.provider}/${msg.meta.model || '?'}`)
+      if (msg.meta.provider) metaChips.push(`${t('playground.routed')} ${msg.meta.provider}/${msg.meta.model || '?'}`)
       if (msg.meta.latencyMs != null) metaChips.push(`${msg.meta.latencyMs}ms`)
-      if (msg.meta.tokens) metaChips.push(`${msg.meta.tokens} tok`)
-      if (msg.meta.fallbackAttempts) metaChips.push(`${msg.meta.fallbackAttempts} fallback`)
+      if (msg.meta.tokens) metaChips.push(`${msg.meta.tokens} ${t('playground.tokensShort')}`)
+      if (msg.meta.fallbackAttempts) metaChips.push(`${msg.meta.fallbackAttempts} ${t('playground.fallbackShort')}`)
       if (metaChips.length) {
         transcriptLines.push(themeColors.dim(`    [ ${metaChips.join(' · ')} ]`))
       }
       if (msg.meta.aborted) {
-        transcriptLines.push(themeColors.dim('    [ stopped ]'))
+        transcriptLines.push(themeColors.dim(`    [ ${t('playground.stopped')} ]`))
       }
       if (msg.meta.error) {
-        transcriptLines.push(themeColors.error(`    [ error: ${msg.meta.error} ]`))
+        transcriptLines.push(themeColors.error(`    [ ${t('common.error')}: ${msg.meta.error} ]`))
       }
     }
     transcriptLines.push('')
@@ -465,16 +466,16 @@ export function renderPlayground(state, terminalRows, terminalCols) {
   // 📖 Input box
   lines.push(themeColors.dim('  ─'.repeat(Math.max(8, Math.floor(innerWidth / 4)))))
   if (PLAYGROUND_OVERLAY_STATE.busy) {
-    lines.push(themeColors.accent('  ⏳ waiting for response — Esc to stop'))
+    lines.push(themeColors.accent(`  ⏳ ${t('playground.waitingResponse')}`))
   } else {
-    const draft = PLAYGROUND_OVERLAY_STATE.draft || 'Type your message and press Enter…'
+    const draft = PLAYGROUND_OVERLAY_STATE.draft || t('playground.draftPlaceholder')
     const draftDisplay = PLAYGROUND_OVERLAY_STATE.draft ? draft : themeColors.dim(draft)
     const wrappedDraft = wrapMessage(draftDisplay, innerWidth - 4)
     for (const line of wrappedDraft) {
       lines.push(`  ❯ ${line}`)
     }
     if (!PLAYGROUND_OVERLAY_STATE.draft) {
-      lines.push(themeColors.dim('  (Enter to send · Shift+Tab for a pinned model)'))
+      lines.push(themeColors.dim(`  (${t('playground.enterToSend')} · Shift+Tab ${t('playground.pinModel')})`))
     }
   }
 

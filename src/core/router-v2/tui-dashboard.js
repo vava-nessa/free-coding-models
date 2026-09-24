@@ -49,6 +49,7 @@ import { discoverRouterV2Port, testModelViaRouter, testSetViaRouter } from './be
 // 📖 After the merge, the v2 engine lives in the MAIN router daemon: all
 // discovery and lifecycle calls target the historical daemon paths/ports.
 import { getRouterPidPath, getRouterPortPath, getRouterPortRange } from '../router-daemon.js'
+import { t } from '../i18n/index.js'
 
 export const ROUTER_V2_DASHBOARD_POLL_INTERVAL_MS = 2000
 export const ROUTER_V2_DASHBOARD_FETCH_TIMEOUT_MS = 1500
@@ -429,15 +430,15 @@ function formatDurationV2(seconds) {
 
 function stateBadgeV2(modelState) {
   switch (modelState) {
-    case 'CLOSED': return { text: '✅ UP', color: themeColors.success }
-    case 'DEGRADED': return { text: '🟠 DEGRADED', color: themeColors.warningBold }
-    case 'HALF_OPEN': return { text: '🔁 PROBING', color: themeColors.warning }
-    case 'OPEN': return { text: '⛔ OPEN', color: themeColors.error }
-    case 'AUTH_ERROR': return { text: '🔐 AUTH FAIL', color: themeColors.errorBold }
-    case 'QUOTA_PAUSED': return { text: '🔥 QUOTA', color: themeColors.warningBold }
-    case 'STALE': return { text: '👻 STALE', color: themeColors.dim }
-    case 'UNSUPPORTED': return { text: '🚫 UNSUPPORTED', color: themeColors.dim }
-    default: return { text: '⏳ PENDING', color: themeColors.dim }
+    case 'CLOSED': return { text: `✅ ${t('dashboard.working').toUpperCase()}`, color: themeColors.success }
+    case 'DEGRADED': return { text: `🟠 ${t('router.circuit.degraded').toUpperCase()}`, color: themeColors.warningBold }
+    case 'HALF_OPEN': return { text: `🔁 ${t('router.circuit.probing').toUpperCase()}`, color: themeColors.warning }
+    case 'OPEN': return { text: `⛔ ${t('router.circuit.down').toUpperCase()}`, color: themeColors.error }
+    case 'AUTH_ERROR': return { text: `🔐 ${t('router.circuit.authError').toUpperCase()}`, color: themeColors.errorBold }
+    case 'QUOTA_PAUSED': return { text: `🔥 ${t('router.circuit.quotaPaused').toUpperCase()}`, color: themeColors.warningBold }
+    case 'STALE': return { text: `👻 ${t('router.circuit.deprecated').toUpperCase()}`, color: themeColors.dim }
+    case 'UNSUPPORTED': return { text: `🚫 ${t('router.circuit.unsupported').toUpperCase()}`, color: themeColors.dim }
+    default: return { text: `⏳ ${t('dashboard.pending').toUpperCase()}`, color: themeColors.dim }
   }
 }
 
@@ -489,17 +490,17 @@ export function renderRouterV2Dashboard(state, deps = {}) {
   // ── Quick Setup ─────────────────────────────────────────────────────────────
   const { defaultPort } = getRouterPortRange()
   const port = state.routerV2Port || defaultPort
-  lines.push(`  ${themeColors.textBold('Quick Setup')} ${themeColors.dim('(beta)')} ${themeColors.dim('- point your coding tool at v2')}`)
+  lines.push(`  ${themeColors.textBold(t('router.quickSetup'))} ${themeColors.dim(`(${t('router.v2.beta')})`)} ${themeColors.dim(`— ${t('router.v2.pointToolAtV2')}`)}`)
   lines.push(`  ${themeColors.dim('URL')}     ${themeColors.infoBold(`http://localhost:${port}/v1`)}   ${themeColors.dim('Anthropic:')} ${themeColors.infoBold(`http://localhost:${port}`)}  ${themeColors.dim('(POST /v1/messages)')}`)
-  lines.push(`  ${themeColors.dim('Model')}   ${themeColors.infoBold('fcm')}  ${themeColors.dim('or pin one:')} ${themeColors.infoBold('fcm:@provider/model')}`)
+  lines.push(`  ${themeColors.dim(t('router.model'))}   ${themeColors.infoBold('fcm')}  ${themeColors.dim(t('router.v2.orPinOne'))} ${themeColors.infoBold('fcm:@provider/model')}`)
   lines.push(`  ${themeColors.dim('API Key')} ${themeColors.infoBold('fcm-local')}`)
   if (isRunning) {
-    lines.push(`  ${themeColors.dim('Uptime')}  ${themeColors.success(formatDurationV2(toFiniteNumber(stats?.uptimeSeconds, 0)))}  ${themeColors.dim('Routed:')} ${themeColors.info(String(toFiniteNumber(stats?.requestsRouted, 0)))}  ${themeColors.dim('Failover rate:')} ${themeColors.info(`${Math.round(toFiniteNumber(stats?.history?.failover_rate, 0) * 100)}%`)}`)
+    lines.push(`  ${themeColors.dim(t('router.uptime'))}  ${themeColors.success(formatDurationV2(toFiniteNumber(stats?.uptimeSeconds, 0)))}  ${themeColors.dim(`${t('router.requests')}:`)} ${themeColors.info(String(toFiniteNumber(stats?.requestsRouted, 0)))}  ${themeColors.dim(`${t('router.v2.failoverRate')}:`)} ${themeColors.info(`${Math.round(toFiniteNumber(stats?.history?.failover_rate, 0) * 100)}%`)}`)
   }
   lines.push(`  ${separator}`)
 
   // ── Fallback chain with live breaker states ─────────────────────────────────
-  lines.push(`  ${themeColors.textBold('Fallback Chain')} ${themeColors.dim('- routing order for the next request')}`)
+  lines.push(`  ${themeColors.textBold(t('router.v2.fallbackChain'))} ${themeColors.dim(`— ${t('router.v2.exactOrder')}`)}`)
   const routingOrder = Array.isArray(stats?.routingOrder) ? stats.routingOrder : []
   const models = Array.isArray(stats?.models) ? stats.models : []
   const healthByKey = new Map(models.map((m) => [m.key, m]))
@@ -507,11 +508,11 @@ export function renderRouterV2Dashboard(state, deps = {}) {
   const cursor = state.routerV2CursorIndex ?? 0
 
   if (!isRunning) {
-    lines.push(`  ${themeColors.dim('Start the daemon to see the live chain.')}`)
+    lines.push(`  ${themeColors.dim(t('router.v2.startToSeeChain'))}`)
   } else if (routingOrder.length === 0) {
-    lines.push(`  ${themeColors.warning('No routeable candidates right now (keys missing or all models failing).')}`)
+    lines.push(`  ${themeColors.warning(t('router.v2.emptyCandidates'))}`)
   } else {
-    lines.push(`   ${themeColors.dim(padEndDisplay('PRI', 4))} ${themeColors.dim(padEndDisplay('MODEL', 44))} ${themeColors.dim(padEndDisplay('STATE', 15))} ${themeColors.dim(padEndDisplay('UPTIME', 7))} ${themeColors.dim(padEndDisplay('V2 TEST', 12))} ${themeColors.dim('LAST ERROR')}`)
+    lines.push(`   ${themeColors.dim(padEndDisplay('PRI', 4))} ${themeColors.dim(padEndDisplay(t('router.model'), 44))} ${themeColors.dim(padEndDisplay(t('router.state'), 15))} ${themeColors.dim(padEndDisplay(t('router.uptime'), 7))} ${themeColors.dim(padEndDisplay('V2 ' + t('router.v2.testViaRouter'), 12))} ${themeColors.dim(t('router.v2.lastError'))}`)
     const maxRows = Math.max(1, routingOrder.length)
     routingOrder.forEach((entry, i) => {
       const health = healthByKey.get(entry.key)
@@ -535,21 +536,21 @@ export function renderRouterV2Dashboard(state, deps = {}) {
 
   // ── Recent requests WITH fallback chains (the v1 gap) ───────────────────────
   lines.push('')
-  lines.push(`  ${themeColors.textBold('Request Chains')} ${themeColors.dim('- every attempt, skips and the winner')}`)
+  lines.push(`  ${themeColors.textBold(t('router.v2.requestChains'))} ${themeColors.dim(`— ${t('router.v2.attemptsHint')}`)}`)
   const historyEntries = Array.isArray(state.routerV2History?.entries) ? state.routerV2History.entries : []
   if (!isRunning) {
-    lines.push(`  ${themeColors.dim('No history (daemon stopped).')}`)
+    lines.push(`  ${themeColors.dim(t('router.v2.noHistory'))}`)
   } else if (historyEntries.length === 0) {
-    lines.push(`  ${themeColors.dim('No requests routed yet')}`)
+    lines.push(`  ${themeColors.dim(t('router.noRequests'))}`)
   } else {
     for (const entry of historyEntries.slice(0, 6)) {
       const atMs = Date.parse(entry.at)
       const time = Number.isFinite(atMs) ? new Date(atMs).toLocaleTimeString() : '-'
       const outcome = entry.outcome === 'served'
-        ? themeColors.success('served')
+        ? themeColors.success(t('router.v2.outcome.served'))
         : entry.outcome === 'client_aborted'
-          ? themeColors.dim('aborted')
-          : themeColors.error(entry.outcome || 'failed')
+          ? themeColors.dim(t('router.v2.outcome.aborted'))
+          : themeColors.error(t('router.v2.outcome.failed'))
       const chain = attemptChainLabel(entry)
       const skips = Array.isArray(entry.skipped) && entry.skipped.length > 0
         ? ` ${themeColors.dim(`[skips: ${entry.skipped.map((s) => s.reason).join(', ')}]`)}`
@@ -572,7 +573,7 @@ export function renderRouterV2Dashboard(state, deps = {}) {
       `🔐 auth ${stateCounts.AUTH_ERROR ?? 0}`,
       `🔥 quota ${stateCounts.QUOTA_PAUSED ?? 0}`,
     ]
-    lines.push(`  ${themeColors.textBold('Models:')} ${chips.map((c) => themeColors.dim(c)).join('  ')}`)
+    lines.push(`  ${themeColors.textBold(`${t('router.models')}:`)} ${chips.map((c) => themeColors.dim(c)).join('  ')}`)
     const pauses = Array.isArray(stats?.quotaPauses) ? stats.quotaPauses : []
     if (pauses.length > 0) {
       for (const pause of pauses.slice(0, 3)) {
@@ -592,7 +593,7 @@ export function renderRouterV2Dashboard(state, deps = {}) {
   const isStopped = !isRunning && !isLoading
   const cursorBase = Math.max(1, routingOrder.length)
   const startBtnCursor = cursorBase
-  const startBtnText = isStopped ? '▶ Start Router Daemon (v2 engine)' : '⏹ Stop Router Daemon (v2 engine)'
+  const startBtnText = isStopped ? `▶ ${t('router.start')} (v2)` : `⏹ ${t('router.stop')} (v2)`
   const startBtnRow = `  [ ${startBtnText} ]`
   lines.push(cursor === startBtnCursor
     ? themeColors.bgCursor(startBtnRow + ' '.repeat(Math.max(0, width - displayWidth(startBtnRow) - 3)))
@@ -616,7 +617,7 @@ export function renderRouterV2Dashboard(state, deps = {}) {
   lines.push('')
   lines.push(`  ${separator}`)
   const probeMode = stats?.probeMode || 'balanced'
-  lines.push(`  ${themeColors.hotkey('↑↓')} ${themeColors.dim('Navigate')}  ${themeColors.dim('•')}  ${themeColors.hotkey('T')} ${themeColors.dim('Test via router')}  ${themeColors.dim('•')}  ${themeColors.hotkey('S')} ${themeColors.dim(isStopped ? 'Start' : 'Stop')}  ${themeColors.dim('•')}  ${themeColors.hotkey('I')} ${themeColors.dim(`Probes: ${probeMode}`)}  ${themeColors.dim('•')}  ${themeColors.hotkey('C')} ${themeColors.dim('Clear history')}  ${themeColors.dim('•')}  ${themeColors.hotkey('Esc')} ${themeColors.dim('Back')}`)
+  lines.push(`  ${themeColors.hotkey('↑↓')} ${themeColors.dim(t('settings.navigate'))}  ${themeColors.dim('•')}  ${themeColors.hotkey('T')} ${themeColors.dim(t('router.v2.testViaRouter'))}  ${themeColors.dim('•')}  ${themeColors.hotkey('S')} ${themeColors.dim(isStopped ? t('router.start') : t('router.stop'))}  ${themeColors.dim('•')}  ${themeColors.hotkey('I')} ${themeColors.dim(`${t('router.v2.probes')}: ${probeMode}`)}  ${themeColors.dim('•')}  ${themeColors.hotkey('C')} ${themeColors.dim(t('router.clearHistory'))}  ${themeColors.dim('•')}  ${themeColors.hotkey('Esc')} ${themeColors.dim(t('common.back'))}`)
   lines.push(`  ${themeColors.dim('BETA: the v2 engine now powers the main router daemon. Ctrl+T tests the selected table model, Ctrl+Shift+T tests all visible models through the router.')}`)
 
   const { visible, offset } = sliceOverlayLines(lines, state.routerV2ScrollOffset || 0, state.terminalRows || 24)
@@ -628,5 +629,5 @@ export function renderRouterV2Dashboard(state, deps = {}) {
 function compactTextV2(value, width) {
   const text = String(value ?? '')
   if (displayWidth(text) <= width) return themeColors.dim(text)
-  return themeColors.dim(`${text.slice(0, Math.max(1, width - 1))}…`)
+  return themeColors.dim(truncateAnsiWidth(text, width, { ellipsis: '…' }))
 }

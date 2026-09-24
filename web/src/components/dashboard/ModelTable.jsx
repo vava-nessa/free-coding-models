@@ -51,6 +51,7 @@ import { getCompatibleTools } from '../../../../src/core/tool-metadata.js'
 import { supportsUsagePercent } from '../../../../src/core/quota-capabilities.js'
 import ExpandedDetailRow from './ExpandedDetailRow.jsx'
 import styles from './ModelTable.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 const colHelper = createColumnHelper()
 
@@ -69,6 +70,7 @@ function RankCellRenderer({ row }) {
 }
 
 function ModelCellRenderer({ row }) {
+  const { t } = useI18n()
   const m = row.original
   const showNoKey = !m.hasApiKey && !m.cliOnly
   return (
@@ -80,13 +82,28 @@ function ModelCellRenderer({ row }) {
           {showNoKey && (
             <NoKeyIcon
               size={14}
-              title="No API key configured — health will stay in 'NO KEY' state"
+              title={t('dashboard.noApiKeyState')}
             />
           )}
         </div>
         <div className={styles.modelId}>{m.modelId}</div>
       </div>
     </div>
+  )
+}
+
+function FavoriteButton({ model, favorites, isFavorite }) {
+  const { t } = useI18n()
+  return (
+    <button
+      className={styles.favBtn + (isFavorite ? ' ' + styles.favBtnActive : '')}
+      onClick={(e) => { e.stopPropagation(); favorites.toggle(model) }}
+      title={t(isFavorite ? 'dashboard.unfavoriteModelTitle' : 'dashboard.favoriteModelTitle', { model: model.label })}
+      aria-label={t(isFavorite ? 'dashboard.unfavoriteModelTitle' : 'dashboard.favoriteModelTitle', { model: model.label })}
+      aria-pressed={isFavorite}
+    >
+      {isFavorite ? <IconStarFilled size={14} stroke={1.5} /> : <IconStar size={14} stroke={1.5} />}
+    </button>
   )
 }
 
@@ -144,6 +161,7 @@ function UptimeCellRenderer({ row }) {
 }
 
 function AILatencyCellRenderer({ row }) {
+  const { t } = useI18n()
   const m = row.original
   const isRunning = Boolean(m.isBenchmarking)
   return (
@@ -155,7 +173,7 @@ function AILatencyCellRenderer({ row }) {
         const handler = window.__fcmRowBenchmarkHandler
         if (typeof handler === 'function') handler(m)
       }}
-      title={isRunning ? 'Benchmarking…' : 'Click to run AI Speed Test (TUI: Ctrl+A)'}
+      title={isRunning ? t('dashboard.benchmarking') : t('dashboard.clickToBenchmark')}
     >
       <AILatencyCell result={m.benchmark || null} isRunning={isRunning} />
       {!isRunning && (
@@ -204,17 +222,7 @@ const buildColumns = ({ favorites, onBenchmarkRow, onSelectModel, onLaunch, tool
     cell: ({ row }) => {
       const m = row.original
       const isFav = favorites.isFavorite(m)
-      return (
-        <button
-          className={`${styles.favBtn} ${isFav ? styles.favBtnActive : ''}`}
-          onClick={(e) => { e.stopPropagation(); favorites.toggle(m) }}
-          title={isFav ? `Unfavorite ${m.label} (TUI: F)` : `Favorite ${m.label} (TUI: F)`}
-          aria-label={isFav ? `Unfavorite ${m.label}` : `Favorite ${m.label}`}
-          aria-pressed={isFav}
-        >
-          {isFav ? <IconStarFilled size={14} stroke={1.5} /> : <IconStar size={14} stroke={1.5} />}
-        </button>
-      )
+      return <FavoriteButton model={m} favorites={favorites} isFavorite={isFav} />
     },
   }),
   colHelper.display({
@@ -364,6 +372,13 @@ export const DEFAULT_COLUMN_SIZING = PLACEHOLDER_COLUMNS.reduce((acc, c) => {
 const COLUMN_RESIZE_MIN = 24
 const COLUMN_RESIZE_MAX = 1200
 
+const COLUMN_HEADER_KEYS = Object.freeze({
+  fav: 'dashboard.favorites', tier: 'dashboard.tier', sweScore: 'dashboard.swe', ctx: 'dashboard.context',
+  label: 'dashboard.model', origin: 'dashboard.provider', latestPing: 'dashboard.lastPing', avg: 'dashboard.average',
+  condition: 'dashboard.health', verdict: 'dashboard.verdict', stability: 'dashboard.stability', uptime: 'dashboard.uptime',
+  aiLatency: 'dashboard.aiLatency', tps: 'dashboard.tps', quota: 'dashboard.quota', trend: 'dashboard.trend',
+})
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function ModelTable({
   filtered, onSelectModel, onBenchmarkRow, onLaunch, favorites,
@@ -371,6 +386,7 @@ export default function ModelTable({
   toolMode = null,
   onToast, onSetToolMode, onCycleToolMode, onOpenFallback,
 }) {
+  const { t } = useI18n()
   // 📖 Expand row state — only one row expanded at a time (accordion)
   const [expandedRowId, setExpandedRowId] = useState(null)
 
@@ -501,7 +517,7 @@ export default function ModelTable({
   }, [isResizing])
 
   if (rows.length === 0) {
-    return <div className={styles.empty}>No models match your filters</div>
+    return <div className={styles.empty}>{t('dashboard.noModels')}</div>
   }
 
   return (
@@ -511,15 +527,15 @@ export default function ModelTable({
       {hasCustomSizing && (
         <div className={styles.resizeToolbar}>
           <span className={styles.resizeToolbarHint}>
-            📐 Custom column widths · total <strong>{Math.round(totalTableWidth)}px</strong>
+            📐 {t('dashboard.customColumnWidths')} · {t('dashboard.totalWidth')} <strong>{Math.round(totalTableWidth)}px</strong>
           </span>
           <button
             type="button"
             className={styles.resizeResetButton}
             onClick={resetColumnSizing}
-            title="Restore the default column widths"
+            title={t('dashboard.restoreColumnWidths')}
           >
-            ↺ Reset columns
+          ↺ {t('dashboard.resetColumns')}
           </button>
         </div>
       )}
@@ -539,17 +555,18 @@ export default function ModelTable({
                 const canSort = SORTABLE_COLUMN_IDS.has(col.id)
                 const isResizing = col.getIsResizing?.() === true
                 const sizePx = `${header.getSize()}px`
+                const headerLabel = COLUMN_HEADER_KEYS[col.id] ? t(COLUMN_HEADER_KEYS[col.id]) : String(col.columnDef.header)
                 return (
                   <th
                     key={header.id}
                     className={styles.th}
                     onClick={canSort ? () => onSort(header.id) : undefined}
                     style={{ width: sizePx, minWidth: sizePx, maxWidth: sizePx, cursor: canSort ? 'pointer' : 'default' }}
-                    title={`Sort ${col.columnDef.header}: asc → desc → reset`}
+                    title={t('dashboard.sortColumn', { column: headerLabel })}
                   >
                     <div className={styles.thInner}>
                       <span className={styles.thLabel}>
-                        {flexRender(col.columnDef.header, header.getContext())}
+                        {COLUMN_HEADER_KEYS[col.id] ? headerLabel : flexRender(col.columnDef.header, header.getContext())}
                         {canSort && (
                           <span className={
                             sortColumn === col.id
@@ -574,10 +591,10 @@ export default function ModelTable({
                           // 📖 Double-click resets just this column to its declared default width.
                           setColumnSizing((prev) => ({ ...prev, [col.id]: DEFAULT_COLUMN_SIZING[col.id] }))
                         }}
-                        title={`Drag to resize ${col.columnDef.header} (double-click to reset this column)`}
+                        title={t('dashboard.resizeColumn', { column: headerLabel })}
                         role="separator"
                         aria-orientation="vertical"
-                        aria-label={`Resize ${col.columnDef.header} column`}
+                        aria-label={t('dashboard.resizeColumnAria', { column: headerLabel })}
                       />
                     </div>
                   </th>

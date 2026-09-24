@@ -35,6 +35,7 @@ import {
 } from '@tabler/icons-react'
 import NoKeyIcon from './NoKeyIcon.jsx'
 import styles from './HealthCell.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 const ICON_SIZE = 12
 const ICON_STROKE = 1.8
@@ -49,14 +50,14 @@ const HEALTH_ICON_COLOR = {
   dim:     'var(--color-text-dim, #444)',
 }
 
-const ERROR_LABELS = {
-  '404': '404 NOT FOUND',
-  '410': '410 GONE',
-  '429': '429 TRY LATER',
-  '500': '500 ERROR',
-  '502': '502 ERROR',
-  '503': '503 ERROR',
-  '504': '504 TIMEOUT',
+const ERROR_LABEL_KEYS = {
+  '404': 'health.http404',
+  '410': 'health.http410',
+  '429': 'health.http429',
+  '500': 'health.http500',
+  '502': 'health.http502',
+  '503': 'health.http503',
+  '504': 'health.http504',
 }
 
 // 📖 Per-HTTP-code icon + color picker. Anything not in this map falls back to
@@ -70,15 +71,17 @@ const ERROR_ICON = {
   '504': { Icon: IconClock,        color: HEALTH_ICON_COLOR.danger  },
 }
 
-function statusLabel(status, httpCode, inRouterSet) {
-  if (status === 'noauth')  return 'NO KEY'
-  if (status === 'auth_error') return 'AUTH FAIL'
-  if (status === 'pending') return inRouterSet ? 'wait' : 'NOT IN SET'
-  if (status === 'timeout') return 'TIMEOUT'
+function statusLabel(status, httpCode, inRouterSet, t) {
+  if (status === 'noauth')  return t('dashboard.noKeyShort')
+  if (status === 'auth_error') return t('dashboard.authFailShort')
+  if (status === 'pending') return inRouterSet ? t('common.wait') : t('dashboard.notInSet')
+  if (status === 'timeout') return t('filters.health.timeout').toUpperCase()
   if (status === 'down') {
-    return ERROR_LABELS[httpCode] || (httpCode || 'ERROR')
+    return ERROR_LABEL_KEYS[httpCode]
+      ? t(ERROR_LABEL_KEYS[httpCode])
+      : httpCode ? t('health.httpError', { code: httpCode }) : t('common.error').toUpperCase()
   }
-  if (status === 'up') return 'UP'
+  if (status === 'up') return t('dashboard.upShort').toUpperCase()
   return '?'
 }
 
@@ -93,7 +96,8 @@ function statusClass(status, inRouterSet) {
 }
 
 export default function HealthCell({ status, httpCode, inRouterSet = true }) {
-  const text = statusLabel(status, httpCode, inRouterSet)
+  const { t } = useI18n()
+  const text = statusLabel(status, httpCode, inRouterSet, t)
   const cls = statusClass(status, inRouterSet)
   const isNoKey = status === 'noauth'
   const isNotInSet = status === 'pending' && !inRouterSet
@@ -128,7 +132,7 @@ export default function HealthCell({ status, httpCode, inRouterSet = true }) {
   return (
     <span className={`${styles.cell} ${cls}`}>
       {isNoKey ? (
-        <NoKeyIcon size={15} title="No API key configured for this provider" />
+        <NoKeyIcon size={15} title={t('dashboard.noApiKey')} />
       ) : Icon ? (
         <Icon
           size={ICON_SIZE}

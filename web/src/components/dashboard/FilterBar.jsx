@@ -13,10 +13,11 @@ import { IconRefresh, IconX, IconFilter, IconChevronDown, IconSearch } from '@ta
 import { getToolMeta } from '../../../../src/core/tool-metadata.js'
 import ProviderDropdown from './ProviderDropdown.jsx'
 import styles from './FilterBar.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 // 📖 Chip sets match the TUI cycles 1:1 (see useFilter.js). Keep these in sync.
 const TIERS = [
-  { key: 'all', label: 'All' },
+  { key: 'all', labelKey: 'filters.all' },
   { key: 'S+', label: 'S+' },
   { key: 'S', label: 'S' },
   { key: 'A+', label: 'A+' },
@@ -27,43 +28,43 @@ const TIERS = [
   { key: 'C', label: 'C' },
 ]
 const STATUSES = [
-  { key: 'all', label: 'All' },
-  { key: 'up', label: 'Up' },
-  { key: 'down', label: 'Down' },
-  { key: 'pending', label: 'Pending' },
+  { key: 'all', labelKey: 'filters.all' },
+  { key: 'up', labelKey: 'dashboard.working' },
+  { key: 'down', labelKey: 'dashboard.down' },
+  { key: 'pending', labelKey: 'dashboard.pending' },
 ]
 const VERDICTS = [
-  { key: 'all', label: 'All' },
-  { key: 'Perfect', label: 'Perfect' },
-  { key: 'Normal', label: 'Normal' },
-  { key: 'Spiky', label: 'Spiky' },
-  { key: 'Slow', label: 'Slow' },
-  { key: 'Overloaded', label: 'Overloaded' },
-  { key: 'Down', label: 'Down' },
-  { key: 'Unstable', label: 'Unstable' },
-  { key: 'Pending', label: 'Pending' },
+  { key: 'all', labelKey: 'filters.all' },
+  { key: 'Perfect', labelKey: 'filters.verdict.perfect' },
+  { key: 'Normal', labelKey: 'filters.verdict.normal' },
+  { key: 'Spiky', labelKey: 'filters.verdict.spiky' },
+  { key: 'Slow', labelKey: 'filters.verdict.slow' },
+  { key: 'Overloaded', labelKey: 'filters.verdict.overloaded' },
+  { key: 'Down', labelKey: 'dashboard.down' },
+  { key: 'Unstable', labelKey: 'filters.verdict.unstable' },
+  { key: 'Pending', labelKey: 'dashboard.pending' },
 ]
 const HEALTHS = [
-  { key: 'all', label: 'All' },
-  { key: 'up', label: 'Up' },
-  { key: 'timeout', label: 'Timeout' },
-  { key: 'down', label: 'Down' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'noauth', label: 'No key' },
-  { key: 'auth_error', label: 'Auth err' },
+  { key: 'all', labelKey: 'filters.all' },
+  { key: 'up', labelKey: 'dashboard.working' },
+  { key: 'timeout', labelKey: 'filters.health.timeout' },
+  { key: 'down', labelKey: 'dashboard.down' },
+  { key: 'pending', labelKey: 'dashboard.pending' },
+  { key: 'noauth', labelKey: 'filters.health.noKey' },
+  { key: 'auth_error', labelKey: 'filters.health.authError' },
 ]
 // 📖 TUI's E key cycle. The Web mirrors the same 3-state machine.
 const VISIBILITY_MODES = [
-  { key: 'normal',     label: 'All models',       hint: 'Show everything' },
-  { key: 'configured', label: 'Configured only',  hint: 'Hide models with no key or auth errors' },
-  { key: 'usable',     label: 'Usable only',      hint: 'Only Health UP + good verdict' },
+  { key: 'normal',     labelKey: 'dashboard.allModels', hintKey: 'filters.visibility.allHint' },
+  { key: 'configured', labelKey: 'filters.visibility.configured', hintKey: 'filters.visibility.configuredHint' },
+  { key: 'usable',     labelKey: 'filters.visibility.usable', hintKey: 'filters.visibility.usableHint' },
 ]
 
 const PING_MODES = [
-  { key: 'speed',  label: '⚡ Speed', interval: '2s',  color: '#00ff88' },
-  { key: 'normal', label: '● Normal', interval: '10s', color: '#ffaa00' },
-  { key: 'slow',   label: '🐢 Slow',  interval: '30s', color: '#ff6644' },
-  { key: 'forced', label: '🔥 Forced', interval: '4s',  color: '#ff4466' },
+  { key: 'speed',  labelKey: 'filters.pingSpeed', interval: '2s',  color: '#00ff88' },
+  { key: 'normal', labelKey: 'filters.pingNormal', interval: '10s', color: '#ffaa00' },
+  { key: 'slow',   labelKey: 'filters.pingSlow', interval: '30s', color: '#ff6644' },
+  { key: 'forced', labelKey: 'filters.pingForced', interval: '4s', color: '#ff4466' },
 ]
 
 function formatCountdown(ms) {
@@ -82,6 +83,7 @@ function formatCountdown(ms) {
  *     by default while exposing the full chip set on demand.
  */
 function FilterGroup({ label, items, value, onChange, colorMap }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -102,7 +104,8 @@ function FilterGroup({ label, items, value, onChange, colorMap }) {
   }, [open, close])
 
   const activeItem = items.find(i => i.key === value)
-  const activeLabel = activeItem?.label ?? value ?? 'All'
+  const activeLabel = activeItem?.labelKey ? t(activeItem.labelKey) : activeItem?.label ?? activeItem?.key ?? value ?? t('filters.all')
+  const labelText = label.key ? t(label.key) : label
   const isFiltered = value !== 'all'
 
   return (
@@ -110,11 +113,11 @@ function FilterGroup({ label, items, value, onChange, colorMap }) {
       <button
         className={`${styles.filterTrigger} ${isFiltered ? styles.filterTriggerActive : ''} ${open ? styles.filterTriggerExpanded : ''}`}
         onClick={() => setOpen(!open)}
-        title={`${label}: ${activeLabel}`}
+        title={`${labelText}: ${activeLabel}`}
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <span className={styles.filterTriggerLabel}>{label}</span>
+        <span className={styles.filterTriggerLabel}>{labelText}</span>
         <span className={styles.filterTriggerSep}>:</span>
         <span className={styles.filterTriggerValue}>{activeLabel}</span>
         <IconChevronDown
@@ -137,9 +140,9 @@ function FilterGroup({ label, items, value, onChange, colorMap }) {
                   className={`${styles.filterChip} ${active ? styles.filterChipActive : ''}`}
                   style={active && customColor ? { '--chip-active-color': customColor } : {}}
                   onClick={() => { onChange(item.key); close() }}
-                  title={item.hint || item.label}
+                  title={item.hintKey ? t(item.hintKey) : item.hint || (item.labelKey ? t(item.labelKey) : item.label)}
                 >
-                  {item.label}
+                  {item.labelKey ? t(item.labelKey) : item.label ?? item.key}
                 </button>
               )
             })}
@@ -169,6 +172,7 @@ export default function FilterBar({
   globalBenchmarkCompleted,
   toolMode = 'opencode',
 }) {
+  const { t } = useI18n()
   const [countdown, setCountdown] = useState(null)
 
   useEffect(() => {
@@ -214,7 +218,7 @@ export default function FilterBar({
         <div className={styles.benchmarkBar}>
           <div className={styles.benchmarkLabel}>
             <span className={styles.benchmarkSpinner} />
-            <span>AI Speed Test</span>
+            <span>{t('dashboard.aiSpeedTest')}</span>
             <span className={styles.benchmarkCount}>{globalBenchmarkCompleted}/{globalBenchmarkTotal}</span>
           </div>
           <div className={styles.benchmarkTrack}>
@@ -224,29 +228,29 @@ export default function FilterBar({
         </div>
       )}
 
-      <FilterGroup label="Tier" items={TIERS} value={filterTier} onChange={setFilterTier} />
-      <FilterGroup label="Status" items={STATUSES} value={filterStatus} onChange={setFilterStatus} />
-      <FilterGroup label="Verdict" items={VERDICTS} value={filterVerdict} onChange={setFilterVerdict} />
-      <FilterGroup label="Health" items={HEALTHS} value={filterHealth} onChange={setFilterHealth} />
+      <FilterGroup label={{ key: 'filters.tier' }} items={TIERS} value={filterTier} onChange={setFilterTier} />
+      <FilterGroup label={{ key: 'filters.status' }} items={STATUSES} value={filterStatus} onChange={setFilterStatus} />
+      <FilterGroup label={{ key: 'filters.verdict' }} items={VERDICTS} value={filterVerdict} onChange={setFilterVerdict} />
+      <FilterGroup label={{ key: 'filters.health' }} items={HEALTHS} value={filterHealth} onChange={setFilterHealth} />
 
       <div className={styles.group}>
-        <label className={styles.filterLabel} htmlFor="visibility-select">Visibility</label>
+        <label className={styles.filterLabel} htmlFor="visibility-select">{t('filters.visibility')}</label>
         <select
           id="visibility-select"
           className={styles.select}
           value={visibilityMode}
           onChange={(e) => setVisibilityMode(e.target.value)}
-          title={VISIBILITY_MODES.find((v) => v.key === visibilityMode)?.hint}
-          aria-label="Visibility mode"
+          title={(() => { const mode = VISIBILITY_MODES.find((v) => v.key === visibilityMode); return mode?.hintKey ? t(mode.hintKey) : mode?.hint })()}
+          aria-label={t('filters.visibility')}
         >
           {VISIBILITY_MODES.map((v) => (
-            <option key={v.key} value={v.key}>{v.label}</option>
+            <option key={v.key} value={v.key}>{t(v.labelKey)}</option>
           ))}
         </select>
       </div>
 
       <div className={styles.group}>
-        <label className={styles.filterLabel}>Provider</label>
+        <label className={styles.filterLabel}>{t('filters.provider')}</label>
         <ProviderDropdown
           providers={providers}
           value={filterProvider}
@@ -260,18 +264,18 @@ export default function FilterBar({
           <input
             type="text"
             className={styles.searchInput}
-            placeholder="Search models, providers..."
+            placeholder={t('dashboard.searchPlaceholder')}
             value={searchQuery || ''}
             onChange={(e) => onSearchChange?.(e.target.value)}
             autoComplete="off"
-            aria-label="Search models"
+            aria-label={t('dashboard.search')}
           />
         </div>
       </div>
 
       <div className={styles.group}>
-        <label className={styles.filterLabel}>Endpoint target</label>
-        <div className={styles.toolStatus} title="Active endpoint install target from the Header picker">
+        <label className={styles.filterLabel}>{t('filters.endpointTarget')}</label>
+        <div className={styles.toolStatus} title={t('filters.endpointTargetHint')}>
           <span>{activeTool.emoji}</span>
           <strong>{activeTool.label}</strong>
         </div>
@@ -282,15 +286,15 @@ export default function FilterBar({
       {/* ── Custom text filter chip (TUI's Ctrl+P "Apply text filter") ── */}
       {customFilterActive && (
         <div className={styles.group}>
-          <label className={styles.filterLabel}>Text</label>
-          <div className={styles.customFilterChip} title="Click X to clear (TUI: X key)">
+          <label className={styles.filterLabel}>{t('filters.text')}</label>
+          <div className={styles.customFilterChip} title={t('filters.clearTextHint')}>
             <span className={styles.customFilterIcon}><IconFilter size={12} stroke={1.5} /></span>
             <span className={styles.customFilterLabel}>{customTextFilter}</span>
             <button
               className={styles.customFilterClear}
               onClick={() => setCustomTextFilter(null)}
-              title="Clear custom text filter (TUI: X)"
-              aria-label="Clear custom text filter"
+              title={t('filters.clearText')}
+              aria-label={t('filters.clearText')}
             >
               <IconX size={12} stroke={2} />
             </button>
@@ -303,17 +307,17 @@ export default function FilterBar({
         <button
           className={styles.resetBtn}
           onClick={onResetView}
-          title={`Reset ${activeFilterCount} active filter${activeFilterCount === 1 ? '' : 's'} (TUI: N)`}
+          title={t('filters.resetTitle', { count: activeFilterCount })}
         >
           <IconRefresh size={12} stroke={1.5} />
-          <span>Reset</span>
+          <span>{t('dashboard.resetView')}</span>
           <span className={styles.resetBadge}>{activeFilterCount}</span>
         </button>
       )}
 
       {/* ── Ping interval selector (collapsible group) ── */}
       <FilterGroup
-        label="Ping"
+        label={{ key: 'filters.ping' }}
         items={PING_MODES}
         value={pingMode}
         onChange={setPingMode}
@@ -328,8 +332,8 @@ export default function FilterBar({
           📖 `isPinging` is true so the LIVE state is still visible without
           📖 resorting to the "Pinging…" text. */}
       <div className={styles.group}>
-        <div className={styles.nextPing} title="Next ping countdown">
-          <span className={styles.nextPingLabel}>next ping in</span>
+        <div className={styles.nextPing} title={t('filters.nextPing')}>
+          <span className={styles.nextPingLabel}>{t('filters.nextPing')}</span>
           <span className={styles.nextPingTime}>{countdownDisplay ?? '—'}</span>
         </div>
       </div>

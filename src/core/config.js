@@ -105,6 +105,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSy
 import { homedir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { syncShellEnv } from './shell-env.js'
+import { DEFAULT_LOCALE, normalizeLocale } from './i18n/index.js'
 
 // 📖 Expand leading ~/ or bare ~ to homedir so --config-dir ~/.config/... works.
 // 📖 resolve() alone does NOT expand tilde, it would treat ~ as a literal folder.
@@ -331,6 +332,7 @@ function normalizeSettingsSection(settings) {
   delete safeSettings.footerHidden
   return {
     ...safeSettings,
+    language: normalizeLocale(safeSettings.language),
     hideUnconfiguredModels: typeof safeSettings.hideUnconfiguredModels === 'boolean' ? safeSettings.hideUnconfiguredModels : true,
     favoritesPinnedAndSticky: typeof safeSettings.favoritesPinnedAndSticky === 'boolean' ? safeSettings.favoritesPinnedAndSticky : false,
     runAiSpeedTestOnStartup: typeof safeSettings.runAiSpeedTestOnStartup === 'boolean' ? safeSettings.runAiSpeedTestOnStartup : false,
@@ -1295,6 +1297,7 @@ export function isProviderEnabled(config, providerKey) {
  */
 export function _emptyProfileSettings() {
   return {
+    language: DEFAULT_LOCALE,
     tierFilter: null,     // 📖 null = show all tiers, or 'S'|'A'|'B'|'C'|'D'
     sortColumn: 'avg',    // 📖 default sort column
     sortAsc: true,        // 📖 true = ascending (fastest first for latency)

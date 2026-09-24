@@ -23,6 +23,7 @@
 
 import { getToolMeta, isModelCompatibleWithTool, getCompatibleTools, findSimilarCompatibleModels } from '../core/tool-metadata.js'
 import { loadConfig, saveConfig, replaceConfigContents, getApiKey } from '../core/config.js'
+import { setLocale } from '../core/i18n/index.js'
 import { sources } from '../../sources.js'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -604,6 +605,14 @@ export function createKeyHandler(ctx) {
   function cycleGlobalTheme() {
     const currentTheme = state.config.settings?.theme || 'auto'
     applyThemeSetting(cycleThemeSetting(currentTheme))
+  }
+
+  function cycleLanguage() {
+    if (!state.config.settings || typeof state.config.settings !== 'object') state.config.settings = {}
+    const nextLanguage = state.config.settings.language === 'zh-CN' ? 'en' : 'zh-CN'
+    state.config.settings.language = nextLanguage
+    setLocale(nextLanguage)
+    saveConfig(state.config)
   }
 
   function toggleStartupAiSpeedScan() {
@@ -2607,7 +2616,8 @@ export function createKeyHandler(ctx) {
       const providerKeys = Object.keys(sources)
       const updateRowIdx = providerKeys.length
       const themeRowIdx = updateRowIdx + 1
-      const favoritesModeRowIdx = themeRowIdx + 1
+      const languageRowIdx = themeRowIdx + 1
+      const favoritesModeRowIdx = languageRowIdx + 1
       const startupAiSpeedScanRowIdx = favoritesModeRowIdx + 1
       const autoHideBrokenModelsRowIdx = startupAiSpeedScanRowIdx + 1
       const cleanupLegacyProxyRowIdx = autoHideBrokenModelsRowIdx + 1
@@ -2763,6 +2773,11 @@ export function createKeyHandler(ctx) {
           return
         }
 
+        if (state.settingsCursor === languageRowIdx) {
+          cycleLanguage()
+          return
+        }
+
         if (state.settingsCursor === favoritesModeRowIdx) {
           toggleFavoritesDisplayMode()
           return
@@ -2828,6 +2843,10 @@ export function createKeyHandler(ctx) {
           cycleGlobalTheme()
           return
         }
+        if (state.settingsCursor === languageRowIdx) {
+          cycleLanguage()
+          return
+        }
         if (state.settingsCursor === favoritesModeRowIdx) {
           toggleFavoritesDisplayMode()
           return
@@ -2856,6 +2875,7 @@ export function createKeyHandler(ctx) {
         if (
           state.settingsCursor === updateRowIdx
           || state.settingsCursor === themeRowIdx
+          || state.settingsCursor === languageRowIdx
           || state.settingsCursor === favoritesModeRowIdx
           || state.settingsCursor === startupAiSpeedScanRowIdx
           || state.settingsCursor === autoHideBrokenModelsRowIdx

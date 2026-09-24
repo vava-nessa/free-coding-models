@@ -32,6 +32,7 @@ if (_configDirIdx !== -1 && process.argv[_configDirIdx + 1] && !process.argv[_co
 import chalk from 'chalk';
 import { parseArgs, TIER_LETTER_MAP } from '../src/core/utils.js';
 import { loadConfig, saveConfig } from '../src/core/config.js';
+import { setLocale } from '../src/core/i18n/index.js';
 import { ensureTelemetryConfig } from '../src/core/telemetry.js';
 import { ensureFavoritesConfig } from '../src/core/favorites.js';
 import { buildCliHelpText } from '../src/tui/cli-help.js';
@@ -69,6 +70,7 @@ async function main() {
   const cliArgs = parseArgs(process.argv);
 
   if (cliArgs.helpMode) {
+    setLocale(loadConfig().settings?.language || 'en');
     console.log();
     console.log(buildCliHelpText({ chalk, title: 'free-coding-models' }));
     console.log();

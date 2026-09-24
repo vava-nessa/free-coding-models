@@ -11,9 +11,11 @@
  */
 import { useState, useRef, useEffect } from 'react'
 import { IconDownload, IconHistory, IconX, IconExternalLink } from '@tabler/icons-react'
+import { useI18n } from '../../i18n.jsx'
 import styles from './UpdateChip.module.css'
 
 export default function UpdateChip({ updateAvailable, latestVersion, onRunUpdate, onOpenChangelog, checking }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -35,7 +37,7 @@ export default function UpdateChip({ updateAvailable, latestVersion, onRunUpdate
   if (!updateAvailable) {
     if (checking) {
       return (
-        <span className={styles.checking} title="Checking for updates…">
+        <span className={styles.checking} title={t('update.checking')}>
           <span className={styles.dot} />
         </span>
       )
@@ -48,7 +50,7 @@ export default function UpdateChip({ updateAvailable, latestVersion, onRunUpdate
       <button
         className={styles.chip}
         onClick={() => setOpen((o) => !o)}
-        title={`Update available: v${latestVersion}. Click to install.`}
+        title={t('update.availableTitle', { version: latestVersion })}
         aria-expanded={open}
         aria-haspopup="dialog"
       >
@@ -57,23 +59,22 @@ export default function UpdateChip({ updateAvailable, latestVersion, onRunUpdate
       </button>
 
       {open && (
-        <div className={styles.popover} role="dialog" aria-label="Update available">
+        <div className={styles.popover} role="dialog" aria-label={t('update.available')}>
           <div className={styles.popoverHeader}>
             <div className={styles.popoverTitle}>
               <IconDownload size={14} stroke={1.5} />
-              <span>Update available</span>
+              <span>{t('update.available')}</span>
             </div>
             <button
               className={styles.popoverClose}
               onClick={() => setOpen(false)}
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <IconX size={14} stroke={1.5} />
             </button>
           </div>
           <p className={styles.popoverBody}>
-            A newer version (<strong>v{latestVersion}</strong>) is available on npm.
-            After updating, restart the dashboard to pick up the changes.
+            {t('update.availableDescription', { version: latestVersion })}
           </p>
           <div className={styles.popoverActions}>
             <button
@@ -84,7 +85,7 @@ export default function UpdateChip({ updateAvailable, latestVersion, onRunUpdate
               }}
             >
               <IconDownload size={13} stroke={1.5} />
-              <span>Update now</span>
+              <span>{t('update.now')}</span>
             </button>
             <button
               className={styles.secondaryAction}
@@ -94,7 +95,7 @@ export default function UpdateChip({ updateAvailable, latestVersion, onRunUpdate
               }}
             >
               <IconHistory size={13} stroke={1.5} />
-              <span>What's new</span>
+              <span>{t('update.whatsNew')}</span>
             </button>
           </div>
         </div>

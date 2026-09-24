@@ -42,6 +42,7 @@ import {
   IconAlertTriangle, IconRefresh, IconLoader,
 } from '@tabler/icons-react'
 import styles from './PlaygroundChat.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 /**
  * Split a "provider/modelId" key into its parts. Returns { provider, model }.
@@ -140,6 +141,7 @@ const PlaygroundChat = forwardRef(function PlaygroundChat({
   children,
   onTurnComplete,
 }, ref) {
+  const { t } = useI18n()
   // 📖 Each message: { id, role, content, target?, meta?, error?, aborted?, pending? }
   // 📖 meta = { provider, model, latencyMs, tokens, tps }
   const [messages, setMessages] = useState([])
@@ -410,7 +412,7 @@ const PlaygroundChat = forwardRef(function PlaygroundChat({
                   <button
                     className={styles.copyBtn}
                     onClick={() => copyMessage(idx, m.content)}
-                    title="Copy reply"
+                    title={t('playground.copyReply')}
                     type="button"
                   >
                     {copiedIdx === idx ? <IconCheck size={11} /> : <IconCopy size={11} />}
@@ -435,7 +437,7 @@ const PlaygroundChat = forwardRef(function PlaygroundChat({
               {/* ── Metadata row under the USER bubble: addressed model ── */}
               {m.role === 'user' && m.target && (
                 <div className={styles.meta}>
-                  <span className={`${styles.metaChip} ${styles.target}`} title="Addressed model">
+                  <span className={`${styles.metaChip} ${styles.target}`} title={t('playground.addressedModel')}>
                     <IconBolt size={11} />
                     {m.target}
                   </span>
@@ -446,24 +448,24 @@ const PlaygroundChat = forwardRef(function PlaygroundChat({
               {m.role === 'assistant' && !m.pending && m.meta && (
                 <div className={styles.meta}>
                   {m.meta.provider && (
-                    <span className={`${styles.metaChip} ${styles.modelChip}`} title="Model that served this reply">
+                    <span className={`${styles.metaChip} ${styles.modelChip}`} title={t('playground.servedModel')}>
                       <IconBolt size={11} />
                       {m.meta.provider}{m.meta.model ? `/${m.meta.model}` : ''}
                     </span>
                   )}
                   {m.meta.latencyMs != null && (
-                    <span className={`${styles.metaChip} ${styles.latencyChip}`} title="Response time (send → end)">
+                    <span className={`${styles.metaChip} ${styles.latencyChip}`} title={t('playground.responseTime')}>
                       <IconClock size={11} />
                       {Math.round(m.meta.latencyMs)}ms
                     </span>
                   )}
                   {m.meta.tokens > 0 && (
-                    <span className={styles.metaChip} title="Completion tokens">
+                    <span className={styles.metaChip} title={t('playground.completionTokens')}>
                       {m.meta.tokens} tok
                     </span>
                   )}
                   {m.meta.tps != null && m.meta.tps > 0 && (
-                    <span className={`${styles.metaChip} ${styles.tpsChip}`} title="Tokens per second">
+                    <span className={`${styles.metaChip} ${styles.tpsChip}`} title={t('playground.tokensPerSecond')}>
                       <IconRefresh size={11} />
                       {round1(m.meta.tps)} t/s
                     </span>
@@ -481,7 +483,7 @@ const PlaygroundChat = forwardRef(function PlaygroundChat({
               )}
               {m.role === 'assistant' && m.aborted && !m.error && (
                 <div className={styles.meta}>
-                  <span className={styles.metaChip}>stopped</span>
+                    <span className={styles.metaChip}>{t('playground.stopped')}</span>
                 </div>
               )}
             </div>
@@ -494,8 +496,8 @@ const PlaygroundChat = forwardRef(function PlaygroundChat({
           ref={inputRef}
           className={styles.input}
           placeholder={placeholder || (variant === 'full'
-            ? 'Ask anything. Enter to send, Shift+Enter for a newline.'
-            : 'Send a message…')}
+            ? t('playground.fullPlaceholder')
+            : t('playground.miniPlaceholder'))}
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
@@ -503,20 +505,20 @@ const PlaygroundChat = forwardRef(function PlaygroundChat({
           rows={1}
         />
         {loading ? (
-          <button className={styles.stopBtn} onClick={stop} title="Stop generating" type="button">
+          <button className={styles.stopBtn} onClick={stop} title={t('playground.stopGenerating')} type="button">
             <IconLoader size={14} className={styles.spin} />
-            {variant === 'full' ? 'Stop' : ''}
+            {variant === 'full' ? t('playground.stop') : ''}
           </button>
         ) : (
           <button
             className={styles.sendBtn}
             onClick={() => void sendMessage()}
             disabled={disabled || !input.trim()}
-            title="Send"
+            title={t('playground.send')}
             type="button"
           >
             <IconSend size={14} />
-            {variant === 'full' ? 'Send' : ''}
+            {variant === 'full' ? t('playground.send') : ''}
           </button>
         )}
       </div>

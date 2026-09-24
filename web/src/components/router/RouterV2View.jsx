@@ -19,6 +19,7 @@ import {
 } from '@tabler/icons-react'
 import useRouterV2 from '../../hooks/useRouterV2.js'
 import styles from './RouterV2View.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 function formatUptime(seconds) {
   const s = Number(seconds)
@@ -53,26 +54,28 @@ const STATE_CLASS = {
 }
 
 const STATE_LABEL = {
-  CLOSED: 'UP',
-  DEGRADED: 'DEGRADED',
-  HALF_OPEN: 'PROBING',
-  OPEN: 'OPEN',
-  AUTH_ERROR: 'AUTH FAIL',
-  QUOTA_PAUSED: 'QUOTA PAUSED',
-  STALE: 'STALE',
-  UNSUPPORTED: 'UNSUPPORTED',
+  CLOSED: 'dashboard.working',
+  DEGRADED: 'router.circuit.degraded',
+  HALF_OPEN: 'router.circuit.probing',
+  OPEN: 'router.circuit.down',
+  AUTH_ERROR: 'router.circuit.authError',
+  QUOTA_PAUSED: 'router.circuit.quotaPaused',
+  STALE: 'router.circuit.deprecated',
+  UNSUPPORTED: 'router.circuit.unsupported',
 }
 
 function OutcomeBadge({ outcome }) {
+  const { t } = useI18n()
   const cls = outcome === 'served'
     ? styles.outcomeServed
     : outcome === 'client_aborted'
       ? styles.outcomeAborted
       : styles.outcomeFailed
-  return <span className={cls}>{outcome === 'served' ? 'served' : (outcome === 'client_aborted' ? 'aborted' : (outcome || 'failed'))}</span>
+  return <span className={cls}>{t(outcome === 'served' ? 'router.v2.outcome.served' : (outcome === 'client_aborted' ? 'router.v2.outcome.aborted' : 'router.v2.outcome.failed'))}</span>
 }
 
 export default function RouterV2View({ onClose, onToast }) {
+  const { t } = useI18n()
   const { status, stats, history, loading, lastError, refresh, start, stop, testModel } = useRouterV2()
   const [testingKey, setTestingKey] = useState(null)
   const [testResults, setTestResults] = useState({})
@@ -96,8 +99,8 @@ export default function RouterV2View({ onClose, onToast }) {
     try {
       const result = await testModel(provider, model)
       setTestResults((prev) => ({ ...prev, [key]: result }))
-      if (result.ok) onToast?.(`${key} OK via router v2 (${formatMs(result.latencyMs)})`, 'success')
-      else onToast?.(`${key} FAILED via router v2: ${result.error || 'unknown'}`, 'error')
+      if (result.ok) onToast?.(`${key} · ${t('router.v2.testViaRouter')} · ${formatMs(result.latencyMs)}`, 'success')
+      else onToast?.(`${key} · ${t('router.v2.failed')}: ${result.error || t('common.unknown')}`, 'error')
       void refresh()
     } finally {
       setTestingKey(null)
@@ -115,47 +118,43 @@ export default function RouterV2View({ onClose, onToast }) {
       <div className={styles.header}>
         <div className={styles.titleBlock}>
           <IconRoute size={22} stroke={1.6} />
-          <h2 className={styles.title}>Smart Model Router v2</h2>
-          <span className={styles.betaChip}>BETA</span>
+          <h2 className={styles.title}>{t('router.v2.title')}</h2>
+          <span className={styles.betaChip}>{t('router.v2.beta')}</span>
         </div>
         <div className={styles.actions}>
-          <button className={styles.ghostBtn} onClick={() => void refresh()} title="Refresh">
-            <IconRefresh size={15} stroke={1.6} /> Refresh
+          <button className={styles.ghostBtn} onClick={() => void refresh()} title={t('common.refresh')}>
+            <IconRefresh size={15} stroke={1.6} /> {t('common.refresh')}
           </button>
           {running ? (
             <button className={styles.stopBtn} onClick={() => void stop().then((r) => onToast?.(r.ok ? 'Router v2 stopped' : (r.error || 'Stop failed'), r.ok ? 'info' : 'error'))}>
-              <IconPlayerStop size={15} stroke={1.6} /> Stop daemon
+              <IconPlayerStop size={15} stroke={1.6} /> {t('router.stop')}
             </button>
           ) : (
             <button className={styles.startBtn} onClick={() => void start().then((r) => onToast?.(r.ok ? 'Router v2 started' : (r.error || 'Start failed'), r.ok ? 'success' : 'error'))}>
-              <IconPlayerPlay size={15} stroke={1.6} /> Start daemon
+              <IconPlayerPlay size={15} stroke={1.6} /> {t('router.start')}
             </button>
           )}
         </div>
       </div>
 
       <p className={styles.betaBanner}>
-        <strong>Beta:</strong> v2 runs next to the stable Router on its own port
-        ({status?.port || 19380}) and shares the same sets, models and API keys.
-        Failover here is content-validated: an HTTP 200 with empty or garbage
-        output is treated as a failure and fails over. Anthropic-style agents can
-        use <code>POST /v1/messages</code> on the same port.
+        {t('router.v2.betaDescription', { port: status?.port || 19380 })}
       </p>
 
       {!running && (
         <div className={styles.stoppedCard}>
           {loading ? (
-            <p>Checking for a running v2 daemon...</p>
+            <p>{t('router.v2.checking')}</p>
           ) : (
             <>
               <p>
                 {lastError
-                  ? <>Router v2 daemon is not reachable ({lastError}).</>
-                  : <>Router v2 daemon is not running.</>}
+                  ? <>{t('router.v2.notReachable', { error: lastError })}</>
+                  : <>{t('router.v2.notRunning')}</>}
               </p>
               <code className={styles.codeBlock}>free-coding-models --router-v2-bg</code>
               <p className={styles.dim}>
-                Or press <strong>Start daemon</strong> above. The stable Router (v1) is unaffected and keeps running on port 19280.
+                {t('router.v2.startStableHint')}
               </p>
             </>
           )}
@@ -166,50 +165,50 @@ export default function RouterV2View({ onClose, onToast }) {
         <>
           <div className={styles.cards}>
             <div className={styles.card}>
-              <span className={styles.cardLabel}>Uptime</span>
+              <span className={styles.cardLabel}>{t('router.uptime')}</span>
               <span className={styles.cardValue}>{formatUptime(stats?.uptimeSeconds)}</span>
             </div>
             <div className={styles.card}>
-              <span className={styles.cardLabel}>Requests routed</span>
+              <span className={styles.cardLabel}>{t('router.v2.requestsRouted')}</span>
               <span className={styles.cardValue}>{stats?.requestsRouted ?? 0}</span>
-              <span className={styles.cardSub}>{Math.round((stats?.history?.failover_rate ?? 0) * 100)}% needed failover</span>
+              <span className={styles.cardSub}>{t('router.v2.failoverNeeded', { percent: Math.round((stats?.history?.failover_rate ?? 0) * 100) })}</span>
             </div>
             <div className={styles.card}>
-              <span className={styles.cardLabel}>Chain health</span>
+              <span className={styles.cardLabel}>{t('router.v2.chainHealth')}</span>
               <span className={styles.cardValue}>
-                <span className={styles.stateUp}>{stateCounts.CLOSED ?? 0} up</span>{' '}
-                <span className={styles.stateDegraded}>{stateCounts.DEGRADED ?? 0} degraded</span>{' '}
-                <span className={styles.stateOpen}>{stateCounts.OPEN ?? 0} open</span>
+                <span className={styles.stateUp}>{t('router.v2.up', { count: stateCounts.CLOSED ?? 0 })}</span>{' '}
+                <span className={styles.stateDegraded}>{t('router.v2.degraded', { count: stateCounts.DEGRADED ?? 0 })}</span>{' '}
+                <span className={styles.stateOpen}>{t('router.v2.open', { count: stateCounts.OPEN ?? 0 })}</span>
               </span>
             </div>
             <div className={styles.card}>
-              <span className={styles.cardLabel}>Validation</span>
-              <span className={styles.cardValue}>{stats?.failover?.contentValidation || 'strict'}</span>
+              <span className={styles.cardLabel}>{t('router.v2.validation')}</span>
+              <span className={styles.cardValue}>{stats?.failover?.contentValidation || t('router.v2.strict')}</span>
               <span className={styles.cardSub}>
-                last resort: {stats?.failover?.lastResortModel || 'off'}
+                {t('router.v2.lastResort', { model: stats?.failover?.lastResortModel || t('common.disabled').toLowerCase() })}
               </span>
             </div>
           </div>
 
           <section className={styles.section}>
             <div className={styles.sectionHead}>
-              <h3>Fallback chain</h3>
-              <span className={styles.sectionHint}>the exact order the next request will try</span>
+              <h3>{t('router.v2.fallbackChain')}</h3>
+              <span className={styles.sectionHint}>{t('router.v2.exactOrder')}</span>
             </div>
             <table className={styles.table}>
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Model</th>
-                  <th>State</th>
-                  <th>Uptime</th>
-                  <th>Last latency</th>
-                  <th>Test via router</th>
+                  <th>{t('router.model')}</th>
+                  <th>{t('router.state')}</th>
+                  <th>{t('router.uptime')}</th>
+                  <th>{t('router.v2.lastLatency')}</th>
+                  <th>{t('router.v2.testViaRouter')}</th>
                 </tr>
               </thead>
               <tbody>
                 {routingOrder.length === 0 && (
-                  <tr><td colSpan={6} className={styles.empty}>No routeable candidates (missing keys or every model is failing).</td></tr>
+                  <tr><td colSpan={6} className={styles.empty}>{t('router.v2.emptyCandidates')}</td></tr>
                 )}
                 {routingOrder.map((entry, i) => {
                   const health = models.get(entry.key) || {}
@@ -221,7 +220,7 @@ export default function RouterV2View({ onClose, onToast }) {
                       <td className={styles.modelCell}>{entry.key}</td>
                       <td>
                         <span className={styles[STATE_CLASS[state]] || styles.stateUnknown}>
-                          {STATE_LABEL[state] || state}
+                          {STATE_LABEL[state] ? t(STATE_LABEL[state]) : state}
                         </span>
                         {health.quota_paused_until && (
                           <span className={styles.pauseUntil}> until {formatClock(health.quota_paused_until)}</span>
@@ -234,10 +233,10 @@ export default function RouterV2View({ onClose, onToast }) {
                           className={styles.testBtn}
                           disabled={testingKey === entry.key}
                           onClick={() => void handleTest(entry.key)}
-                          title="Send one real pinned request through the router chain"
+                          title={t('router.v2.testTitle')}
                         >
                           <IconFlask size={13} stroke={1.6} />
-                          {testingKey === entry.key ? 'testing...' : (test ? (test.ok ? `OK ${formatMs(test.latencyMs)}` : 'failed') : 'test')}
+                          {testingKey === entry.key ? t('router.v2.testing') : (test ? (test.ok ? `OK ${formatMs(test.latencyMs)}` : t('router.v2.failed')) : t('router.v2.test'))}
                         </button>
                       </td>
                     </tr>
@@ -248,7 +247,7 @@ export default function RouterV2View({ onClose, onToast }) {
             {routingOrder.length > 0 && (
               <div className={styles.sectionActions}>
                 <button className={styles.ghostBtn} disabled={testingKey !== null} onClick={() => void handleTestTopThree()}>
-                  <IconFlask size={14} stroke={1.6} /> Test top 3 through the router
+                  <IconFlask size={14} stroke={1.6} /> {t('router.v2.testTopThree')}
                 </button>
               </div>
             )}
@@ -256,20 +255,20 @@ export default function RouterV2View({ onClose, onToast }) {
 
           <section className={styles.section}>
             <div className={styles.sectionHead}>
-              <h3>Request chains</h3>
-              <span className={styles.sectionHint}>every attempt, skip reason and the winning model</span>
+              <h3>{t('router.v2.requestChains')}</h3>
+              <span className={styles.sectionHint}>{t('router.v2.attemptsHint')}</span>
             </div>
             {historyEntries.length === 0 ? (
-              <p className={styles.empty}>No requests routed yet. Point a tool at <code>http://localhost:{status?.port || 19380}/v1</code> with model <code>fcm</code>.</p>
+              <p className={styles.empty}>{t('router.noRequests')} <code>http://localhost:{status?.port || 19380}/v1</code> · <code>fcm</code></p>
             ) : (
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>Time</th>
-                    <th>Set</th>
-                    <th>Outcome</th>
-                    <th>Chain</th>
-                    <th>Wall</th>
+                    <th>{t('router.time')}</th>
+                    <th>{t('router.activeSetLabel')}</th>
+                    <th>{t('router.v2.outcome')}</th>
+                    <th>{t('router.v2.fallbackChain')}</th>
+                    <th>{t('router.v2.wallTime')}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -285,14 +284,14 @@ export default function RouterV2View({ onClose, onToast }) {
                           <td><OutcomeBadge outcome={entry.outcome} /></td>
                           <td className={styles.chainCell}>{entry.summary || entry.served_model || '-'}</td>
                           <td>{formatMs(entry.wall_ms)}</td>
-                          <td>{entry.last_resort_used ? <span className={styles.lastResort}>last-resort</span> : null}</td>
+                          <td>{entry.last_resort_used ? <span className={styles.lastResort}>{t('router.v2.lastResortTag')}</span> : null}</td>
                         </tr>
                         {isOpen && (
                           <tr className={styles.detailRow}>
                             <td colSpan={6}>
                               <div className={styles.detailBody}>
                                 <div>
-                                  <strong>Attempts:</strong>
+                                  <strong>{t('router.v2.attempts')}:</strong>
                                   <ol>
                                     {(entry.attempts || []).map((a, i) => (
                                       <li key={`${id}-a${i}`}>
@@ -305,9 +304,9 @@ export default function RouterV2View({ onClose, onToast }) {
                                   </ol>
                                 </div>
                                 <div>
-                                  <strong>Skipped:</strong>
+                                  <strong>{t('router.v2.skipped')}:</strong>
                                   {(entry.skipped || []).length === 0
-                                    ? <span> none</span>
+                                    ? <span> {t('common.none')}</span>
                                     : (
                                       <ul>
                                         {entry.skipped.map((s, i) => (
@@ -330,24 +329,24 @@ export default function RouterV2View({ onClose, onToast }) {
 
           <section className={styles.section}>
             <div className={styles.sectionHead}>
-              <h3>Quick setup</h3>
+              <h3>{t('router.quickSetup')}</h3>
             </div>
             <div className={styles.setupGrid}>
               <div>
-                <span className={styles.cardLabel}>OpenAI-compatible tools</span>
+                <span className={styles.cardLabel}>{t('router.v2.openAiTools')}</span>
                 <code className={styles.codeBlock}>
                   base_url: http://localhost:{status?.port || 19380}/v1{'\n'}model: fcm{'\n'}api_key: fcm-local
                 </code>
               </div>
               <div>
-                <span className={styles.cardLabel}>Anthropic-protocol agents</span>
+                <span className={styles.cardLabel}>{t('router.v2.anthropicTools')}</span>
                 <code className={styles.codeBlock}>
                   base_url: http://localhost:{status?.port || 19380}{'\n'}POST /v1/messages{'\n'}model: fcm (or fcm:@provider/model)
                 </code>
               </div>
             </div>
             <p className={styles.dim}>
-              Pin a single model for testing or dedicated traffic: <code>model: "fcm:@{routingOrder[0]?.key || 'provider/model'}"</code> routes to that exact model with failover disabled.
+              {t('router.v2.pinOneHint')} <code>model: "fcm:@{routingOrder[0]?.key || 'provider/model'}"</code>
             </p>
           </section>
         </>

@@ -314,6 +314,11 @@
   &:hover { color: var(--color-text); background: var(--color-bg-hover); }
 }
 
+/* Keep the mobile toggle visible; this rule must follow the desktop default. */
+@media (max-width: 768px) {
+  .hamburgerBtn { display: flex; }
+}
+
 .mobileNav {
   position: absolute;
   top: var(--header-h, 60px);
