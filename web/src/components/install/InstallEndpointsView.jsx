@@ -146,7 +146,7 @@ export default function InstallEndpointsView({ onClose, onToast }) {
             <IconPlug size={20} stroke={1.5} />
             {t('install.title')}
           </h2>
-          <button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
+          <button className={styles.closeBtn} onClick={onClose} aria-label={t('common.close')}>✕</button>
         </div>
 
         {/* Step indicator */}
