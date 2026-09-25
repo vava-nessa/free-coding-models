@@ -34,7 +34,13 @@ const require = createRequire(import.meta.url)
 const { version: LOCAL_VERSION } = require('../package.json')
 
 import { sources, MODELS } from '../sources.js'
-import { loadConfig, getApiKey, saveConfig, isProviderEnabled } from '../src/core/config.js'
+import {
+  loadConfig,
+  getApiKey,
+  saveConfig,
+  isProviderEnabled,
+  persistApiKeysForProvider,
+} from '../src/core/config.js'
 import { getProviderBillingNote, getProviderLabelWithBilling, PROVIDER_METADATA } from '../src/core/provider-metadata.js'
 import { ensureFavoritesConfig } from '../src/core/favorites.js'
 import { ping, getProviderQuotaPercentCached, getProviderSessionHeaders } from '../src/core/ping.js'
@@ -1192,23 +1198,62 @@ async function handleRequest(req, res) {
           res.end('Method Not Allowed')
           return
         }
+
         const settings = await readJsonBody(req)
         noteUserActivity()
-        if (settings.apiKeys) {
+
+        // Persist API-key changes provider-by-provider.
+        //
+        // Do NOT rely on a plain saveConfig(config) here:
+        // saveConfig() intentionally merges API keys from the latest on-disk
+        // snapshot to protect against stale writers. That merge can resurrect
+        // a key that was just deleted from this in-memory config.
+        //
+        // persistApiKeysForProvider() is the config module's dedicated helper
+        // for exactly this case. It reads the latest disk snapshot, replaces
+        // only the selected provider's key set, and refreshes the live config.
+        if (settings.apiKeys && typeof settings.apiKeys === 'object') {
           if (!config.apiKeys) config.apiKeys = {}
-          for (const [key, value] of Object.entries(settings.apiKeys)) {
+
+          for (const [key, rawValue] of Object.entries(settings.apiKeys)) {
+            const value = typeof rawValue === 'string' ? rawValue.trim() : ''
+
             if (value) config.apiKeys[key] = value
             else delete config.apiKeys[key]
+
+            const keySaveResult = persistApiKeysForProvider(config, key)
+            if (!keySaveResult.success) {
+              sendJson(res, 500, {
+                success: false,
+                error: keySaveResult.error || `Failed to persist API key for ${key}`,
+                provider: key,
+              })
+              return
+            }
           }
         }
-        if (settings.providers) {
+
+        // Provider enabled/disabled state is independent of API-key persistence.
+        // Save it after key mutations so the in-memory config already reflects
+        // the latest disk snapshot returned by persistApiKeysForProvider().
+        if (settings.providers && typeof settings.providers === 'object') {
           if (!config.providers) config.providers = {}
+
           for (const [key, value] of Object.entries(settings.providers)) {
             if (!config.providers[key]) config.providers[key] = {}
             config.providers[key].enabled = value?.enabled !== false
           }
+
+          const providerSaveResult = saveConfig(config)
+          if (!providerSaveResult.success) {
+            sendJson(res, 500, {
+              success: false,
+              error: providerSaveResult.error || 'Failed to save provider settings',
+            })
+            return
+          }
         }
-        saveConfig(config)
+
         broadcastUpdate({ immediate: true })
         sendJson(res, 200, { success: true })
         return
