@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Find the fastest free coding model in seconds.</strong><br>
-  Live latency, stability and verdicts for 263 models from 25 free AI providers, then install the one you pick straight into your favorite coding tool.<br><br>
+  Live latency, stability and verdicts for 259 models from 25 free AI providers, then install the one you pick straight into your favorite coding tool.<br><br>
   <strong>Works with:</strong> OpenCode CLI / Desktop / WebUI, OpenClaw, Crush, Goose, Aider, Kilo CLI, Qwen Code, OpenHands, Amp, Hermes, Continue, Cline, Xcode, Pi, ZCode, ForgeCode, Copilot, jcode, Caveman Code and more.
 </p>
 
@@ -35,7 +35,7 @@ free-coding-models
 
 ## 💡 Why this tool?
 
-There is a large catalog of free and free-limited coding models (**25 providers / 263 live models**, generated from [`sources.js`](./sources.js)). Which one is fastest *right now*? Which one is actually stable, versus just lucky on the last ping?
+There is a large catalog of free and free-limited coding models (**25 providers / 259 live models**, generated from [`sources.js`](./sources.js)). Which one is fastest *right now*? Which one is actually stable, versus just lucky on the last ping?
 
 `free-coding-models` (FCM) answers that by pinging every model in parallel, showing live latency, and computing a **live Stability Score (0-100)** combining p95 latency, jitter, spike rate and uptime. Average latency alone is misleading: a model that randomly spikes to 6 seconds is not reliable.
 
@@ -87,17 +87,17 @@ free-coding-models --fiable              # print the single most reliable model 
 
 ## 🟢 Providers
 
-**25 active providers / 263 live models**, sorted by live model count. Top 8:
+**25 active providers / 259 live models**, sorted by live model count. Top 8:
 
 | Provider | Models | Best tier | Env var |
 |----------|--------|-----------|---------|
 | [Alibaba DashScope](https://modelstudio.console.alibabacloud.com) | 29 | S+ | `DASHSCOPE_API_KEY` |
-| [Pollinations AI](https://enter.pollinations.ai) | 23 | S+ | `POLLINATIONS_API_KEY` |
+| [Kilo](https://kilo.ai) | 21 | S+ | `KILO_API_KEY` |
 | [OpenRouter](https://openrouter.ai/keys) | 21 | S+ | `OPENROUTER_API_KEY` |
-| [Kilo](https://kilo.ai) | 20 | S+ | `KILO_API_KEY` |
+| [Pollinations AI](https://enter.pollinations.ai) | 21 | S+ | `POLLINATIONS_API_KEY` |
 | [Ollama Cloud](https://ollama.com/settings/keys) | 20 | S+ | `OLLAMA_API_KEY` |
-| [OVHcloud AI](https://endpoints.ai.cloud.ovh.net) | 17 | S+ | `OVH_AI_ENDPOINTS_ACCESS_TOKEN` |
-| [Cloudflare AI](https://dash.cloudflare.com) | 15 | S+ | `CLOUDFLARE_API_TOKEN` |
+| [Cloudflare AI](https://dash.cloudflare.com) | 15 | S | `CLOUDFLARE_API_TOKEN` |
+| [OVHcloud AI](https://endpoints.ai.cloud.ovh.net) | 13 | S+ | `OVH_AI_ENDPOINTS_ACCESS_TOKEN` |
 | [NVIDIA NIM](https://build.nvidia.com) | 12 | S+ | `NVIDIA_API_KEY` |
 
 > 🧾 **What "free" means here:** free is a property of the *(provider, model)* pair, never of the provider as a whole. A row is listed only when that exact model id costs $0 to call through that provider (permanent free tier, `:free` variant, or free plan), verified live at audit time. The same open-weights model can be free on one host and paid on another - paid siblings are deliberately excluded. Full breakdown and badge legend: [`docs/providers.md`](./docs/providers.md).

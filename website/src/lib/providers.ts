@@ -421,6 +421,23 @@ export const PROVIDERS: Provider[] = [
     href: 'https://vercel.com/ai-gateway',
   },
   {
+    slug: 'onomeo',
+    name: 'onomeo',
+    tagline: 'Free · daily check-in credits · 12 RPM',
+    signup: 'https://onomeo.com/dashboard',
+    docs: 'https://onomeo.com/docs',
+    envVar: 'ONOMEO_API_KEY',
+    baseUrl: 'https://onomeo.com/v1',
+    freeTier:
+      'Daily check-in credits (50,000 on day 1, up to 200,000/day with a streak), no card needed. Every call spends credits; the allowance is small, so pick cheap models.',
+    subtleties: [
+      'Rate limits: 12 requests/min per key, 60 requests per 5h per account.',
+      'Public beta with no uptime promise; health probes count against the limits.',
+      'Some upstream providers may train on prompts; each model page says which.',
+    ],
+    href: 'https://onomeo.com',
+  },
+  {
     slug: 'ollama-cloud',
     name: 'Ollama Cloud',
     tagline: 'Free plan · session + weekly caps',
