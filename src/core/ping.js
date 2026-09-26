@@ -200,6 +200,30 @@ async function isDisabledThinkingRejected(resp, req) {
   }
 }
 
+// 📖 Pollinations paid-wall sniffing (issue #190): models that left the free
+// 📖 tier answer HTTP 200 with the error embedded in the completion content
+// ("The account behind this API key doesn't have enough credits. This model
+// needs paid Pollen..."). Status codes alone mark them healthy, so sniff the
+// body and surface 402 (Payment Required) instead. Scoped to pollinations to
+// avoid false positives on other providers.
+const POLLINATIONS_PAID_WALL_MARKERS = [
+  // 📖 Apostrophe-free fragments: the API may return straight ' or typographic ’
+  'have enough credits',
+  'needs paid pollen',
+]
+
+async function isPollinationsPaidWall(resp) {
+  try {
+    const body = await resp.clone().json()
+    const content = body?.choices?.[0]?.message?.content
+    if (typeof content !== 'string') return false
+    const lower = content.toLowerCase()
+    return POLLINATIONS_PAID_WALL_MARKERS.some((marker) => lower.includes(marker))
+  } catch {
+    return false
+  }
+}
+
 // 📖 ping: Send a single chat completion request to measure model availability and latency.
 // 📖 providerKey and url determine provider-specific request format.
 // 📖 apiKey can be null — in that case no Authorization header is sent.
@@ -234,7 +258,13 @@ export async function ping(apiKey, modelId, providerKey, url) {
       if (retryMs > 0) pauseProviderQuota(providerKey, retryMs)
     }
     // 📖 Normalize all HTTP 2xx statuses to "200" so existing verdict/avg logic still works.
-    const code = resp.status >= 200 && resp.status < 300 ? '200' : String(resp.status)
+    let code = resp.status >= 200 && resp.status < 300 ? '200' : String(resp.status)
+    // 📖 Pollinations paid-wall (issue #190): a 200 whose completion content is
+    // 📖 the credits error means the model is NOT usable on a free key. Report
+    // 📖 402 so rows show a failure instead of a fake-healthy green.
+    if (code === '200' && providerKey === 'pollinations' && (await isPollinationsPaidWall(resp))) {
+      code = '402'
+    }
     // 📖 Passive quota tracker (t2): parse the response headers via the shared module.
     // 📖 1) Write to the passive snapshot map so /stats + TUI footer see live quota.
     // 📖 2) Return the percent number for the per-call consumer below.

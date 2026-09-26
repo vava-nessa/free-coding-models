@@ -553,21 +553,25 @@ export const novita = [
 // 📖 Note (2026-09-21): the anonymous tier (text.pollinations.ai/models) now lists ONLY openai-fast;
 // 📖 the models below need the free API key + Pollen credits (gen.pollinations.ai). Re-check the Pollen
 // 📖 free-grant policy at next audit: if grants stop covering these models, this list must shrink to openai-fast.
+// 📖 Note (2026-09-26, issue #190): a subset of models now requires PAID Pollen even with a free key — they
+// 📖 return HTTP 200 with the error embedded in the completion content ("not enough credits / needs paid
+// 📖 Pollen"), so status-code-only probes see them as healthy. 6 such models were removed; when auditing
+// 📖 Pollinations, sniff the completion content for that message, not just the HTTP status.
 export const pollinations = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
   ['laguna', 'Laguna S 2.1', 'S+', '-', '1M'], // Fixed (2026-09-21): alias now resolves to poolside/laguna-s-2.1 (Laguna S 2.1), was Laguna XS.2; score cleared (S 2.1 has no published SWE-bench Verified)
-  ['minimax-m2.7', 'MiniMax M2.7', 'S+', '78.0%', '200k'],
+  // Removed (2026-09-26): minimax-m2.7 (MiniMax M2.7) — now requires paid Pollen: HTTP 200 with an embedded "not enough credits, this model needs paid Pollen" error on free-tier keys (issue #190); replacement: minimax (MiniMax M3, still free via Pollen grants)
   ['glm-5.3', 'Z.ai GLM-5.3', 'S+', '-', '1M'],
   ['kimi', 'Moonshot Kimi K2.6', 'S+', '80.2%', '262k'],
   ['minimax', 'MiniMax M3', 'S+', '80.5%', '524k'],
   ['moonshotai/kimi-k3', 'Moonshot Kimi K3', 'S+', '76.8%', '1M'], // Added (2026-09-21) — canonical id, healthy on live /v1/models; score follows the Kimi K3 entry on NVIDIA
   ['deepseek/deepseek-v4-pro', 'DeepSeek V4 Pro', 'S+', '-', '1M'], // Added (2026-09-21) — canonical id, healthy on live /v1/models
-  ['qwen/qwen3.8-max', 'Qwen3.8 Max', 'S+', '-', '1M'], // Added (2026-09-21) — canonical id, healthy on live /v1/models
-  ['google/gemini-3.1-pro-preview', 'Gemini 3.1 Pro Preview', 'S+', '-', '1M'], // Added (2026-09-21) — canonical id (paid-only on Google AI Studio but free here) // ⚠️ status 'down' on live /v1/models 2026-09-22, re-verify next audit
+  // Removed (2026-09-26): qwen/qwen3.8-max (Qwen3.8 Max) — requires paid Pollen (embedded credits error on free-tier keys, issue #190); still free on DashScope
+  // Removed (2026-09-26): google/gemini-3.1-pro-preview (Gemini 3.1 Pro Preview) — requires paid Pollen (embedded credits error on free-tier keys, issue #190); no free Gemini Pro tier anywhere
   ['openai/gpt-5.5', 'OpenAI GPT-5.5', 'S+', '-', '1M'], // Added (2026-09-21) — canonical id, healthy on live /v1/models
   ['openai/gpt-6-astra', 'OpenAI GPT-6 Astra', 'S+', '-', '1M'], // Added (2026-09-21) — canonical id, healthy on live /v1/models
   ['z-ai/glm-5.3-flash', 'Z.ai GLM-5.3 Flash', 'S+', '-', '1M'], // Added (2026-09-21) — canonical id, healthy on live /v1/models
-  ['nvidia/nemotron-3-ultra', 'NVIDIA Nemotron 3 Ultra', 'S+', '71.9%', '262k'], // Added (2026-09-21) — canonical id, healthy on live /v1/models; score/scale from the NVIDIA entry
+  // Removed (2026-09-26): nvidia/nemotron-3-ultra (NVIDIA Nemotron 3 Ultra) — requires paid Pollen (embedded credits error on free-tier keys, issue #190); still free on NVIDIA NIM
   ['anthropic/claude-opus-5', 'Claude Opus 5', 'S+', '-', '1M'], // Added (2026-09-22) — healthy on live /v1/models, free via Pollen credits
   // ── S tier — SWE-bench Verified 60–70% ──
   ['anthropic/claude-sonnet-5', 'Claude Sonnet 5', 'S', '-', '1M'], // Added (2026-09-22) — healthy on live /v1/models, free via Pollen credits
@@ -575,12 +579,12 @@ export const pollinations = [
   ['deepseek', 'DeepSeek V4 Flash', 'S+', '79.0%', '1M'], // Fixed (2026-09-21): alias now resolves to deepseek/deepseek-v4-flash (V4 Flash 0731), was V3; re-scored per the V4 Flash family entry
   ['kimi-code', 'Kimi K2.7 Code', 'S', '60.4%', '262k'], // Fixed (2026-09-21): alias now resolves to moonshotai/kimi-k2.7-code, was K2 Code
   ['openai', 'OpenAI GPT-5.4 Nano', 'B+', '-', '400k'], // Fixed (2026-09-21): alias now resolves to openai/gpt-5.4-nano (was a generic GPT alias); re-tiered to the nano class
-  ['qwen/qwen3-coder-next', 'Qwen3 Coder Next', 'S+', '70.6%', '262k'], // Added (2026-09-21) — canonical id (new on the network, health still warming up); score from the DashScope entry
+  // Removed (2026-09-26): qwen/qwen3-coder-next (Qwen3 Coder Next) — requires paid Pollen (embedded credits error on free-tier keys, issue #190); still free on DashScope
   ['openai/gpt-5.6-luna', 'OpenAI GPT-5.6 Luna', 'S', '-', '1M'], // Added (2026-09-21) — canonical id, healthy on live /v1/models
   // ── A+ tier — SWE-bench Verified 50–60% ──
   ['deepseek/deepseek-v4.1-flash', 'DeepSeek V4.1 Flash', 'A+', '-', '1M'], // Added (2026-09-22) — healthy on live /v1/models, successor to V4 Flash
   ['meituan/longcat-2.0', 'LongCat 2.0', 'A', '-', '1M'], // Added (2026-09-22) — healthy on live /v1/models, new MoE agentic/coding model on the network
-  ['gemma-4-31b', 'Gemma 4 31B', 'A+', '52.0%', '262k'],
+  // Removed (2026-09-26): gemma-4-31b (Gemma 4 31B) — requires paid Pollen (embedded credits error on free-tier keys, issue #190); the free Gemma route is NVIDIA NIM
   ['gpt-oss', 'GPT OSS 20B', 'A+', '50.3%', '131k'],
   ['qwen3.7-flash', 'Qwen3.7 Flash', 'A+', '-', '1M'],
   // ── B+ tier ──
