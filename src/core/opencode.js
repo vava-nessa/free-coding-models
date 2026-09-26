@@ -165,6 +165,11 @@ async function createZaiProxy(apiKey) {
 // ─── Shared OpenCode spawn helper ─────────────────────────────────────────────
 
 // 📖 spawnOpenCode: Resolve API keys + spawn opencode CLI with correct env.
+// 📖 Never pass --model on the command line: opencode v2 rejects flags its
+// 📖 entry points don't know ("Unrecognized flag: --model", issue #194) and
+// 📖 `opencode web` never accepted it. Every caller writes `config.model`
+// 📖 into opencode.json first, so a bare launch picks the right model on
+// 📖 both v1 and v2.
 async function spawnOpenCode(args, providerKey, fcmConfig, existingZaiProxy = null) {
   const envVarName = ENV_VAR_NAMES[providerKey]
   const resolvedKey = getApiKey(fcmConfig, providerKey)
@@ -295,7 +300,7 @@ export async function startOpenCode(model, fcmConfig) {
     console.log(chalk.dim('  Starting OpenCode...'))
     console.log()
 
-    await spawnOpenCode(['--model', modelRef], providerKey, fcmConfig)
+    await spawnOpenCode([], providerKey, fcmConfig)
     return
   }
 
@@ -359,7 +364,7 @@ export async function startOpenCode(model, fcmConfig) {
     console.log(chalk.dim('  Starting OpenCode...'))
     console.log()
 
-    await spawnOpenCode(['--model', modelRef], providerKey, fcmConfig, zaiProxyServer)
+    await spawnOpenCode([], providerKey, fcmConfig, zaiProxyServer)
     return
   }
 
@@ -394,7 +399,7 @@ export async function startOpenCode(model, fcmConfig) {
     }
     console.log()
 
-    await spawnOpenCode(['--model', zenModelRef], providerKey, fcmConfig)
+    await spawnOpenCode([], providerKey, fcmConfig)
     return
   }
 
@@ -584,7 +589,7 @@ export async function startOpenCode(model, fcmConfig) {
   console.log(chalk.dim('  Starting OpenCode...'))
   console.log()
 
-  await spawnOpenCode(['--model', modelRef], providerKey, fcmConfig)
+  await spawnOpenCode([], providerKey, fcmConfig)
 }
 
 // ─── Start OpenCode Web ───────────────────────────────────────────────────────
@@ -640,7 +645,9 @@ export async function startOpenCodeWeb(model, fcmConfig) {
   console.log(chalk.dim('  Starting OpenCode Web...'))
   console.log()
 
-  await spawnOpenCode(['web', '--model', modelRef], providerKey, fcmConfig)
+  // 📖 `opencode web` accepts no --model flag; the default written in
+  // 📖 opencode.json above is what the web UI starts with.
+  await spawnOpenCode(['web'], providerKey, fcmConfig)
 }
 
 // ─── Start OpenCode Desktop ───────────────────────────────────────────────────
@@ -672,9 +679,9 @@ export async function startOpenCodeDesktop(model, fcmConfig) {
         execFile(cmd, args, (err) => resolve(!err))
       })
       const launched =
-        (await tryExecFile('opencode-desktop', ['--model', modelRef])) ||
-        (await tryExecFile('flatpak', ['run', 'ai.opencode.OpenCode', '--model', modelRef])) ||
-        (await tryExecFile('snap', ['run', 'opencode', '--model', modelRef])) ||
+        (await tryExecFile('opencode-desktop', [])) ||
+        (await tryExecFile('flatpak', ['run', 'ai.opencode.OpenCode'])) ||
+        (await tryExecFile('snap', ['run', 'opencode'])) ||
         (await tryExecFile('xdg-open', ['/usr/share/applications/opencode.desktop']))
       if (!launched) printDesktopLaunchError()
       return
