@@ -2,7 +2,7 @@
 
 # Provider Catalog
 
-**25 providers / 267 live models**, generated from [`sources.js`](../sources.js), the same catalog the TUI, the Web Dashboard and the Smart Model Router read. Counts update only when this script is re-run, so they always match the shipped catalog.
+**25 providers / 263 live models**, generated from [`sources.js`](../sources.js), the same catalog the TUI, the Web Dashboard and the Smart Model Router read. Counts update only when this script is re-run, so they always match the shipped catalog.
 
 Sign up on any one provider to grab a free API key: **one key is enough to start**. Add more at any time from inside the app (press `P` in the TUI, or the Web Dashboard Settings page). A few providers (`Kilo`, `LLM7`, OVHcloud sandbox) even answer without a key, with tighter shared limits.
 
@@ -36,9 +36,9 @@ Two caveats worth knowing: free tiers get smaller or disappear over time (the au
 | [Google AI](https://aistudio.google.com/apikey) | 12 | S+ | Free · Gemini quotas vary by model | `GOOGLE_API_KEY` |
 | [Requesty](https://app.requesty.ai/api-keys) | 12 | S+ | Free · 200 req/day · no card | `REQUESTY_API_KEY` |
 | [NVIDIA NIM](https://build.nvidia.com) | 11 | S+ | Free · 1000 req/month | `NVIDIA_API_KEY` |
-| [onomeo](https://onomeo.com/dashboard) | 11 | S+ | Daily check-in credits · 12 RPM · 60 req/5h | `ONOMEO_API_KEY` |
 | [Scaleway](https://console.scaleway.com/iam/api-keys) | 10 | S+ | 1M free tokens | `SCALEWAY_API_KEY` |
 | [ZAI](https://z.ai) | 10 | S+ | Free · Flash models only | `ZAI_API_KEY` |
+| [onomeo](https://onomeo.com/dashboard) | 9 | S+ | Daily check-in credits · 12 RPM · 60 req/5h | `ONOMEO_API_KEY` |
 | [OpencodeZen](https://opencode.ai/auth) | 8 | S+ | Free · Zen key required | `OPENCODE_ZEN_API_KEY` |
 | [Novita AI](https://novita.ai/settings/key-management) | 7 | A | No zero-price models as of 2026-08-13 | `NOVITA_API_KEY` |
 | [SambaNova](https://cloud.sambanova.ai/apis) | 7 | S+ | Small dev tier · light use | `SAMBANOVA_API_KEY` |

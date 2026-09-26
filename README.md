@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Find the fastest free coding model in seconds.</strong><br>
-  Live latency, stability and verdicts for 267 models from 25 free AI providers, then install the one you pick straight into your favorite coding tool.<br><br>
+  Live latency, stability and verdicts for 263 models from 25 free AI providers, then install the one you pick straight into your favorite coding tool.<br><br>
   <strong>Works with:</strong> OpenCode CLI / Desktop / WebUI, OpenClaw, Crush, Goose, Aider, Kilo CLI, Qwen Code, OpenHands, Amp, Hermes, Continue, Cline, Xcode, Pi, ZCode, ForgeCode, Copilot, jcode, Caveman Code and more.
 </p>
 
@@ -35,7 +35,7 @@ free-coding-models
 
 ## 💡 Why this tool?
 
-There is a large catalog of free and free-limited coding models (**25 providers / 267 live models**, generated from [`sources.js`](./sources.js)). Which one is fastest *right now*? Which one is actually stable, versus just lucky on the last ping?
+There is a large catalog of free and free-limited coding models (**25 providers / 263 live models**, generated from [`sources.js`](./sources.js)). Which one is fastest *right now*? Which one is actually stable, versus just lucky on the last ping?
 
 `free-coding-models` (FCM) answers that by pinging every model in parallel, showing live latency, and computing a **live Stability Score (0-100)** combining p95 latency, jitter, spike rate and uptime. Average latency alone is misleading: a model that randomly spikes to 6 seconds is not reliable.
 
@@ -87,7 +87,7 @@ free-coding-models --fiable              # print the single most reliable model 
 
 ## 🟢 Providers
 
-**25 active providers / 267 live models**, sorted by live model count. Top 8:
+**25 active providers / 263 live models**, sorted by live model count. Top 8:
 
 | Provider | Models | Best tier | Env var |
 |----------|--------|-----------|---------|

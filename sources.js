@@ -708,33 +708,31 @@ export const ollamaCloud = [
 
 // 📖 onomeo source - https://onomeo.com/docs
 // 📖 OpenAI-compatible gateway: https://onomeo.com/v1/chat/completions (streaming + tool calls)
-// 📖 Free credits come from a daily check-in: 1,200/day, rising to 3,500/day with a streak, no card.
-// 📖 Every call spends credits, counted by characters sent + received (CJK: 1 char = 1 credit,
-// 📖 other text: 4 chars = 1 credit), so this is a small allowance, not unlimited: at 3,500
-// 📖 credits a day glm-5.2 gives about 4 replies. Premium models cost many times more and are
-// 📖 not listed. Limits: 12 req/min per key, 60 req per 5 hours per account, 450 per 5 hours site-wide.
+// 📖 Public beta: not every feature is guaranteed to work; feedback is welcome at https://onomeo.com/feedback.
+// 📖 Free credits come from a daily check-in, no card: 50,000 on day 1, rising to 200,000/day from
+// 📖 day 7 of a streak (a missed day resets it). Every call spends credits and the cost per reply
+// 📖 varies by model (https://onomeo.com/models), so this is a small allowance.
+// 📖 Premium models are not listed; accounts that have not paid share a 50,000 credits/day cap on them.
+// 📖 Optional: $5 one-time buys 1,000,000 credits. Limits: 12 req/min per key, 60 req per 5 hours
+// 📖 per account, 120 per 5 hours per IP, and a site-wide pool of 450 per 5 hours for accounts
+// 📖 that have not bought credits.
 // 📖 Some upstreams may train on prompts; each model page (https://onomeo.com/models/<id>) says which.
-// 📖 Ids and 30-day average credits per reply checked 2026-09-21 against the public
-// 📖 https://onomeo.com/api/info (/v1/models needs a key). ctx is '-' because onomeo does not
-// 📖 publish per-model context limits.
+// 📖 Ids and ctx checked 2026-09-26 against the public https://onomeo.com/api/info
+// 📖 (`models`, `modelFacts`); /v1/models needs a key.
 export const onomeo = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
-  ['deepseek-v4-flash', 'DeepSeek V4 Flash', 'S+', '79.0%', '-'], // ~23 credits/reply
-  ['glm-5.2', 'GLM 5.2', 'S+', '82.8%', '-'], // ~750 credits/reply
+  ['deepseek-v4-flash', 'DeepSeek V4 Flash', 'S+', '79.0%', '1M'],
+  ['glm-5.2', 'GLM 5.2', 'S+', '82.8%', '1M'],
   // ── S tier — SWE-bench Verified 60–70% ──
-  ['gemini-3.1-flash-lite', 'Gemini 3.1 Flash Lite', 'S', '62.8%', '-'], // ~16 credits/reply
-  ['@cf/openai/gpt-oss-120b', 'GPT OSS 120B', 'S', '62.4%', '-'], // ~16 credits/reply
-  ['nvidia/nemotron-3-super-120b-a12b', 'Nemotron 3 Super', 'S', '60.5%', '-'], // ~3 credits/reply
+  ['gemini-3.1-flash-lite', 'Gemini 3.1 Flash Lite', 'S', '62.8%', '1M'],
+  ['@cf/openai/gpt-oss-120b', 'GPT OSS 120B', 'S', '62.4%', '128k'],
+  ['nvidia/nemotron-3-super-120b-a12b', 'Nemotron 3 Super', 'S', '60.5%', '262k'],
   // ── A+ tier — SWE-bench Verified 50–60% ──
-  ['openai/gpt-oss-20b', 'GPT OSS 20B', 'A+', '50.3%', '-'], // ~567 credits/reply
-  ['z-ai/glm-5.3-flash-free', 'GLM-5.3 Flash', 'A+', '-', '-'], // ~195 credits/reply
-  ['stepfun/step-3.7-flash:free', 'Step 3.7 Flash', 'A+', '-', '-'], // ~48 credits/reply
+  ['openai/gpt-oss-20b', 'GPT OSS 20B', 'A+', '50.3%', '128k'],
+  ['z-ai/glm-5.3-flash-free', 'GLM-5.3 Flash', 'A+', '-', '1M'],
+  ['stepfun/step-3.7-flash:free', 'Step 3.7 Flash', 'A+', '-', '256k'],
   // ── A tier — SWE-bench Verified 40–50% ──
-  ['codestral-latest', 'Codestral Latest', 'A', '40.0%', '-'], // ~60 credits/reply
-  // ── B+ tier — SWE-bench Verified 30–35% ──
-  ['Qwen/Qwen3-8B', 'Qwen3 8B', 'B+', '30.0%', '-'], // ~490 credits/reply
-  // ── B tier — SWE-bench Verified 20–30% ──
-  ['ministral-8b-latest', 'Ministral 8B', 'B', '-', '-'], // ~10 credits/reply
+  ['codestral-latest', 'Codestral Latest', 'A', '40.0%', '256k'],
 ]
 
 // 📖 All sources combined - used by the main script
