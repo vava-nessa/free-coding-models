@@ -70,6 +70,7 @@ export const PROVIDER_AUTH_ENDPOINTS = {
   requesty:     null,
   orcarouter:   { url: 'https://api.orcarouter.ai/v1/models',   method: 'GET' },
   'vercel-gateway': { url: 'https://ai-gateway.vercel.sh/v1/models', method: 'GET' },
+  onomeo:       { url: 'https://onomeo.com/v1/models',          method: 'GET' },
   together:     { url: 'https://api.together.xyz/v1/models',        method: 'GET' },
   perplexity:   { url: 'https://api.perplexity.ai/v1/models',       method: 'GET' },
   chutes:       { url: 'https://chutes.ai/v1/models',               method: 'GET' },

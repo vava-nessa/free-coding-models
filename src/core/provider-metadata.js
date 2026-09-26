@@ -67,6 +67,7 @@ export const ENV_VAR_NAMES = {
   requesty:   'REQUESTY_API_KEY',
   orcarouter: 'ORCAROUTER_API_KEY',
   'vercel-gateway': 'VERCEL_AI_GATEWAY_API_KEY',
+  onomeo:     'ONOMEO_API_KEY',
   // 📖 Providers whose OpenCode/Kilo config writers reference {env:VAR} - names
   // 📖 must match those tables exactly (see opencode.js / kilo.js).
   huggingface: 'HUGGINGFACE_API_KEY',
@@ -357,6 +358,14 @@ export const PROVIDER_METADATA = {
     signupHint: 'AI Gateway → API Keys ($5 credits/30 days, no card)',
     rateLimits: 'Free tier · $5 credits/30 days + $0 models',
     detailedLimits: 'Official Vercel gateway at list prices, zero markup.\nEvery account gets $5 of credits every 30 days, no card required.\nThe monthly credit covers a subset of the catalog; the explicit $0 models stay free.\nCaution: purchasing credits once permanently moves the account to the paid tier and the monthly free credit stops.',
+  },
+  onomeo: {
+    label: 'onomeo',
+    color: chalk.rgb(240, 120, 60),
+    signupUrl: 'https://onomeo.com/dashboard',
+    signupHint: 'Sign in (email, Google or GitHub, no card) → check in daily → Dashboard → API key',
+    rateLimits: 'Daily check-in credits (50,000-200,000/day) · 12 req/min per key · 60 req/5h per account',
+    detailedLimits: 'Public beta: not every feature is guaranteed to work; feedback is welcome at https://onomeo.com/feedback.\nCredits come from a daily check-in: 50,000 on day 1, rising to 200,000/day from day 7 of a streak. No card needed.\nEvery call spends credits and the cost per reply varies by model (see https://onomeo.com/models), so this is a small allowance. Each account that has not paid can spend up to 50,000 credits/day on premium models. Optional: $5 one-time buys 1,000,000 credits.\nLimits: 12 req/min per key, 60 req per 5 hours per account, 120 per 5 hours per IP, 450 per 5 hours site-wide for accounts that have not bought credits. Health probes count against them.\nSome upstreams may train on prompts; each model page on onomeo.com says which.',
   },
   'ollama-cloud': {
     label: 'Ollama Cloud',
