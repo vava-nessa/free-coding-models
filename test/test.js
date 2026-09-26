@@ -4059,6 +4059,59 @@ describe('router daemon integration hardening', () => {
     })
   })
 
+  // ── /api/tool-mode GET+POST (issue #189): the dashboard hook POSTs on load
+  // ── to sync ?toolMode= from the URL; a missing POST route used to fall
+  // ── through to the OpenAI-style 404 catch-all and toast "[object Object]".
+  it('GET /api/tool-mode returns the persisted preferred mode and tool list', async () => {
+    const config = buildRouterTestConfig([])
+    config.settings = { preferredToolMode: 'openclaw' }
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/api/tool-mode`)
+      const payload = await response.json()
+      assert.equal(response.status, 200)
+      assert.equal(payload.mode, 'openclaw')
+      assert.ok(Array.isArray(payload.tools) && payload.tools.includes('opencode'))
+    })
+  })
+
+  it('GET /api/tool-mode normalizes an unknown stored mode to opencode', async () => {
+    const config = buildRouterTestConfig([])
+    config.settings = { preferredToolMode: 'does-not-exist' }
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/api/tool-mode`)
+      const payload = await response.json()
+      assert.equal(response.status, 200)
+      assert.equal(payload.mode, 'opencode')
+    })
+  })
+
+  it('POST /api/tool-mode persists a valid mode and echoes it back', async () => {
+    const config = buildRouterTestConfig([])
+    await withRouterTestServer(config, async ({ baseUrl, runtime }) => {
+      const response = await fetch(`${baseUrl}/api/tool-mode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'openclaw' }),
+      })
+      const payload = await response.json()
+      assert.equal(response.status, 200)
+      assert.equal(payload.mode, 'openclaw')
+      assert.equal(runtime.config.settings.preferredToolMode, 'openclaw', 'mode must land in the shared config')
+    })
+  })
+
+  it('POST /api/tool-mode rejects an invalid mode with 422', async () => {
+    const config = buildRouterTestConfig([])
+    await withRouterTestServer(config, async ({ baseUrl }) => {
+      const response = await fetch(`${baseUrl}/api/tool-mode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'not-a-tool' }),
+      })
+      assert.equal(response.status, 422)
+    })
+  })
+
   it('autoHealActiveSet is a no-op when the set is user-customized', async () => {
     const config = buildRouterTestConfig([
       { provider: 'groq', model: 'openai/gpt-oss-120b', priority: 1 },
