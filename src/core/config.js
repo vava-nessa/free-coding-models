@@ -456,10 +456,22 @@ function normalizeRouterFailover(failover, routerFallback = {}) {
   const rawStreamStall = numberOrNull(safeFailover.streamStallTimeoutMs) ?? numberOrNull(routerFallback.streamStallTimeoutMs)
   const rawRequestTimeout = numberOrNull(safeFailover.requestTimeoutMs) ?? numberOrNull(routerFallback.requestTimeoutMs)
 
+  // 📖 router-v2 documented failover fields (lastResortModel,
+  // bodyReadTimeoutMs, totalBudgetMs, contentValidation — docs/router-v2.md)
+  // are read by the daemon at runtime but are not v1 knobs normalized here.
+  // Carry any unknown keys through so they survive load()/save() round-trips
+  // instead of being silently dropped from the on-disk config.
+  const v1FailoverKeys = new Set(['maxRetries', 'streamStallTimeoutMs', 'requestTimeoutMs'])
+  const extras = {}
+  for (const key of Object.keys(safeFailover)) {
+    if (!v1FailoverKeys.has(key)) extras[key] = safeFailover[key]
+  }
+
   return {
     maxRetries: normalizePositiveInteger(rawMaxRetries, DEFAULT_ROUTER_SETTINGS.failover.maxRetries, { min: 1, max: 20 }),
     streamStallTimeoutMs: normalizePositiveInteger(rawStreamStall, DEFAULT_ROUTER_SETTINGS.failover.streamStallTimeoutMs, { min: 1000, max: 120000 }),
     requestTimeoutMs: normalizePositiveInteger(rawRequestTimeout, DEFAULT_ROUTER_SETTINGS.failover.requestTimeoutMs, { min: 1000, max: 300000 }),
+    ...extras,
   }
 }
 
