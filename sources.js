@@ -712,7 +712,7 @@ export const ollamaCloud = [
 // 📖 Free credits come from a daily check-in, no card: 50,000 on day 1, rising to 200,000/day from
 // 📖 day 7 of a streak (a missed day resets it). Every call spends credits and the cost per reply
 // 📖 varies by model (https://onomeo.com/models), so this is a small allowance.
-// 📖 Premium models are not listed; accounts that have not paid share a 50,000 credits/day cap on them.
+// 📖 Premium models are not listed; each account that has not paid can spend up to 50,000 credits/day on them.
 // 📖 Optional: $5 one-time buys 1,000,000 credits. Limits: 12 req/min per key, 60 req per 5 hours
 // 📖 per account, 120 per 5 hours per IP, and a site-wide pool of 450 per 5 hours for accounts
 // 📖 that have not bought credits.
