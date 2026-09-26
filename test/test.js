@@ -1100,9 +1100,9 @@ describe('provider key test model discovery', () => {
       [
         'moonshotai/kimi-k3',
         'openai/gpt-oss-120b',
+        'z-ai/glm-5.3-flash',
         'nvidia/nemotron-3-ultra-550b-a55b',
         'poolside/laguna-xs-2.1',
-        'meta/muse-glimmer-30b',
       ]
     )
   })
