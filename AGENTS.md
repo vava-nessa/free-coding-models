@@ -103,7 +103,7 @@ When releasing a new version, follow this exact process:
 
 ## GitHub Contributors
 
-When new PRs are merged, add the contributor's GitHub handle to the footer in `bin/free-coding-models.js` (the `Contributors:` line near line 775), separated by spaces. Also update this list:
+When new PRs are merged, update this list (the CLI footer now links to the GitHub contributors graph instead of a hardcoded handle list):
 
 - @whit3rabbit
 - @PhucTruong-ctrl
@@ -115,6 +115,10 @@ When new PRs are merged, add the contributor's GitHub handle to the footer in `b
 - @ia-S-on
 - @bangla24bdrang-lab
 - @Sy57em1
+- @ming076
+- @MrTodone
+- @Owaid0723666
+- @Mavlan
 
 ## Testing the TUI with tmux
 
