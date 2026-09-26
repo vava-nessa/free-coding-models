@@ -227,6 +227,9 @@ export const mistral = [
   ['labs-leanstral-1-5', 'Leanstral 1.5', 'B', '-', '256k'], // Added (2026-09-22) — free-listed on Mistral LP; targets Lean 4 theorem proving, niche coding use
   ['ministral-3b-2512', 'Ministral 3 3B', 'B', '-', '128k'], // Fixed (2026-09-16): ministral-3-3b-25-12 → ministral-3b-2512; ctx 256k → 128k (max_context_length 131072)
   // Removed (2026-09-16): mistral-small-creative-25-12 (Mistral Small Creative) — absent from the live catalog
+  // ── Coding models (codestral-2508 aliases, live-verified 2026-09-22 via api.mistral.ai/v1/models) ──
+  ['mistral-code-latest', 'Mistral Code', 'A', '-', '256k'], // Added (2026-09-22): aliases codestral-2508 / codestral-latest; ctx 256000
+  ['mistral-code-fim-latest', 'Mistral Code FIM', 'A', '-', '256k'], // Added (2026-09-22): FIM alias of codestral-2508; ctx 256000
 ]
 
 // 📖 Mistral Codestral source - https://codestral.mistral.ai
