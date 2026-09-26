@@ -50,7 +50,12 @@ export function useToolMode({ onToast } = {}) {
       })
       const payload = await resp.json().catch(() => ({}))
       if (!resp.ok) {
-        throw new Error(payload.error || `HTTP ${resp.status}`)
+        // 📖 Error bodies vary by server: the daemon's 404 catch-all nests the
+        // message ({ error: { message } }), web/server.js sends a plain string.
+        // Extract the innermost message so toasts never show "[object Object]".
+        const rawError = payload?.error
+        const message = (typeof rawError === 'string' && rawError) || rawError?.message || `HTTP ${resp.status}`
+        throw new Error(message)
       }
       setToolModeState(normalizeToolMode(payload.mode))
       return { ok: true, mode: normalizeToolMode(payload.mode) }

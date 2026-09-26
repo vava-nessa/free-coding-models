@@ -55,6 +55,8 @@ import { TIER_ORDER } from './utils.js'
 import { atomicWriteJson, safeJsonParse, sleep, maskApiKey, isRouteableProvider } from './shared-helpers.js'
 import { normalizeRequestBody } from './schema-normalizer.js'
 import { pickNextCandidate } from './model-family.js'
+// 📖 Shared install-target list (same order the TUI Z-cycle and web/server.js use)
+import { getInstallTargetModes } from './endpoint-installer.js'
 import {
   loadCache as loadProbeCache,
   flushCache as flushProbeCache,
@@ -3686,12 +3688,41 @@ export class RouterRuntime {
         sendJson(res, 200, getWebModelsPayload(this), { 'x-request-id': requestId })
         return
       }
-      // 📖 Stub endpoints for the web dashboard's hooks (useToolMode, useFavorites,
-      // 📖 useUpdateChecker). These were 404 before - minimal shapes that match
-      // 📖 what the dashboard hooks expect. See PR #108 for context.
-      if (req.method === 'GET' && (url.pathname === '/api/tool-mode')) {
-        sendJson(res, 200, { mode: 'opencode', tools: ['opencode', 'openclaw', 'opencode-desktop', 'opencode-web'] }, { 'x-request-id': requestId })
-        return
+      // 📖 Web dashboard hooks (useToolMode, useFavorites, useUpdateChecker).
+      // These were 404 before - minimal shapes that match what the dashboard
+      // hooks expect. See PR #108 for context.
+      // 📖 /api/tool-mode must handle POST too: useUrlState re-persists
+      // `?toolMode=` from the URL on load, and a POST falling through to the
+      // OpenAI-style 404 catch-all showed "[object Object]" toasts (issue #189).
+      if (url.pathname === '/api/tool-mode') {
+        const webToolModes = getInstallTargetModes()
+        const normalizeToolMode = (m) => (typeof m === 'string' && webToolModes.includes(m) ? m : 'opencode')
+        if (req.method === 'GET') {
+          sendJson(res, 200, { mode: normalizeToolMode(this.config?.settings?.preferredToolMode), tools: webToolModes }, { 'x-request-id': requestId })
+          return
+        }
+        if (req.method === 'POST') {
+          if (!isSameOriginOrLocal(req)) {
+            sendError(res, 403, 'Forbidden cross-origin request', 'invalid_request_error', 'forbidden_origin', requestId)
+            return
+          }
+          const body = await readJsonBody(req)
+          if (!body || typeof body.mode !== 'string' || !webToolModes.includes(body.mode)) {
+            sendError(res, 422, 'Invalid tool mode', 'invalid_request_error', 'invalid_tool_mode', requestId)
+            return
+          }
+          const mode = normalizeToolMode(body.mode)
+          if (!this.config || typeof this.config !== 'object') this.config = {}
+          if (!this.config.settings || typeof this.config.settings !== 'object') this.config.settings = {}
+          this.config.settings.preferredToolMode = mode
+          const saveResult = this.saveRouterConfig()
+          if (!saveResult?.success) {
+            sendError(res, 500, saveResult?.error || 'Failed to save tool mode', 'api_error', 'save_failed', requestId)
+            return
+          }
+          sendJson(res, 200, { mode }, { 'x-request-id': requestId })
+          return
+        }
       }
       if (req.method === 'GET' && (url.pathname === '/api/favorites')) {
         const cfg = this.config || {}
