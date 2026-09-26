@@ -17,25 +17,26 @@ import {
 } from '@tabler/icons-react'
 import ToolPicker from '../tools/ToolPicker.jsx'
 import styles from './Header.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 // 📖 Top-level nav items — always visible as buttons. Inlined here so the
 // 📖 order, icon, and "coming soon" milestone are colocated with the
 // 📖 rendering code. When a view ships, remove the `comingIn` field.
 const NAV_ITEMS = [
-  { id: 'dashboard',         label: 'Dashboard',          icon: IconLayoutDashboard },
-  { id: 'router',            label: 'Router',             icon: IconRoute },
-  { id: 'router-v2',         label: 'Router v2',          icon: IconRoute, beta: true },
-  { id: 'playground',        label: 'Playground',         icon: IconMessageChatbot },
-  { id: 'help',              label: 'Help',               icon: IconQuestionMark },
-  { id: 'install-endpoints', label: 'Install Endpoints',  icon: IconPlug },
+  { id: 'dashboard',         labelKey: 'nav.dashboard',       icon: IconLayoutDashboard },
+  { id: 'router',            labelKey: 'nav.router',          icon: IconRoute },
+  { id: 'router-v2',         labelKey: 'nav.routerV2',        icon: IconRoute, beta: true },
+  { id: 'playground',        labelKey: 'nav.playground',      icon: IconMessageChatbot },
+  { id: 'help',              labelKey: 'nav.help',            icon: IconQuestionMark },
+  { id: 'install-endpoints', labelKey: 'nav.installEndpoints',icon: IconPlug },
 ]
 
 // 📖 Overflow menu items
 const MENU_ITEMS = [
-  { id: 'analytics',         label: 'Analytics',          icon: IconActivity },
-  { id: 'recommend',         label: 'Recommend',          icon: IconSparkles },
-  { id: 'changelog',         label: 'Changelog',          icon: IconHistory },
-  { id: 'installed-models',  label: 'Installed Models',   icon: IconFolders },
+  { id: 'analytics',         labelKey: 'nav.analytics',       icon: IconActivity },
+  { id: 'recommend',         label: 'Recommend', labelKey: 'nav.recommend', icon: IconSparkles },
+  { id: 'changelog',         labelKey: 'nav.changelog',       icon: IconHistory },
+  { id: 'installed-models',  labelKey: 'nav.installedModels', icon: IconFolders },
 ]
 
 export default function Header({
@@ -47,6 +48,7 @@ export default function Header({
   toolMode = 'opencode', onSetToolMode, onCycleToolMode,
   updateSlot = null,
 }) {
+  const { t } = useI18n()
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const menuRef = useRef(null)
@@ -70,7 +72,7 @@ export default function Header({
 
   const handleNavClick = (item) => {
     if (item.comingIn) {
-      onToast?.(`${item.label} arrives in milestone ${item.comingIn}.`, 'info')
+      onToast?.(`${t(item.labelKey)} arrives in milestone ${item.comingIn}.`, 'info')
       return
     }
     onNavigate(item.id)
@@ -80,7 +82,7 @@ export default function Header({
   const handleMenuClick = (item) => {
     setMenuOpen(false)
     if (item.comingIn) {
-      onToast?.(`${item.label} arrives in milestone ${item.comingIn}.`, 'info')
+      onToast?.(`${t(item.labelKey)} arrives in milestone ${item.comingIn}.`, 'info')
       return
     }
     onNavigate(item.id)
@@ -107,7 +109,7 @@ export default function Header({
         <button
           className={styles.hamburgerBtn}
           onClick={() => setMobileNavOpen((o) => !o)}
-          aria-label="Navigation menu"
+          aria-label={t('nav.navigationMenu')}
           aria-expanded={mobileNavOpen}
           aria-haspopup="true"
         >
@@ -125,7 +127,7 @@ export default function Header({
                   role="menuitem"
                 >
                   <Icon size={16} stroke={1.5} />
-                  <span>{item.label}</span>
+                  <span>{t(item.labelKey)}</span>
                   {item.beta && <span className={styles.betaBadge}>BETA</span>}
                 </button>
               )
@@ -141,7 +143,7 @@ export default function Header({
                   role="menuitem"
                 >
                   <Icon size={16} stroke={1.5} />
-                  <span>{item.label}</span>
+                  <span>{t(item.labelKey)}</span>
                 </button>
               )
             })}
@@ -149,7 +151,7 @@ export default function Header({
         )}
 
         {/* Always-visible primary nav (replaces the old left sidebar) */}
-        <nav className={styles.nav} aria-label="Primary">
+        <nav className={styles.nav} aria-label={t('nav.primary')}>
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
             const isActive = currentView === item.id
@@ -158,11 +160,11 @@ export default function Header({
                 key={item.id}
                 className={`${styles.navBtn} ${isActive ? styles.navBtnActive : ''}`}
                 onClick={() => handleNavClick(item)}
-                title={item.comingIn ? `${item.label} — coming in ${item.comingIn}` : item.label}
+                title={item.comingIn ? `${t(item.labelKey)} — coming in ${item.comingIn}` : t(item.labelKey)}
                 aria-current={isActive ? 'page' : undefined}
               >
                 <Icon size={14} stroke={1.5} />
-                <span>{item.label}</span>
+                <span>{t(item.labelKey)}</span>
                 {item.beta && <span className={styles.betaBadge}>BETA</span>}
                 {item.comingIn && <span className={styles.comingBadge}>{item.comingIn}</span>}
               </button>
@@ -174,8 +176,8 @@ export default function Header({
             <button
               className={`${styles.navBtn} ${styles.menuTrigger} ${MENU_ITEMS.some((m) => m.id === currentView) ? styles.navBtnActive : ''}`}
               onClick={() => setMenuOpen((o) => !o)}
-              title="More features"
-              aria-label="More features"
+              title={t('nav.moreFeatures')}
+              aria-label={t('nav.moreFeatures')}
               aria-haspopup="true"
               aria-expanded={menuOpen}
             >
@@ -195,7 +197,7 @@ export default function Header({
                       aria-current={isActive ? 'page' : undefined}
                     >
                       <Icon size={14} stroke={1.5} />
-                      <span>{item.label}</span>
+                      <span>{t(item.labelKey)}</span>
                       {item.comingIn && <span className={styles.comingBadge}>{item.comingIn}</span>}
                     </button>
                   )
@@ -210,12 +212,12 @@ export default function Header({
         <button
           className={`${styles.navBtn} ${currentView === 'settings' ? styles.navBtnActive : ''}`}
           onClick={() => onNavigate('settings')}
-          title="Settings"
+          title={t('nav.settings')}
           aria-current={currentView === 'settings' ? 'page' : undefined}
           style={{ marginRight: '2px' }}
         >
           <IconSettings size={14} stroke={1.5} />
-          <span>Settings</span>
+          <span>{t('nav.settings')}</span>
         </button>
 
         <ToolPicker
@@ -228,8 +230,8 @@ export default function Header({
         <button
           className={styles.cmdkBtn}
           onClick={onOpenCommandPalette}
-          title="Command palette (⌘K / Ctrl+P)"
-          aria-label="Open command palette (⌘K)"
+          title={`${t('nav.commandPalette')} (⌘K / Ctrl+P)`}
+          aria-label={`${t('nav.commandPalette')} (⌘K)`}
         >
           <IconCommand size={14} stroke={1.5} />
           <span className={styles.cmdkLabel}>⌘K</span>
@@ -239,8 +241,8 @@ export default function Header({
           className={`${styles.benchmarkBtn} ${benchmarkRunning ? styles.benchmarkActive : ''}`}
           onClick={onBenchmark}
           disabled={benchmarkRunning}
-          title={benchmarkRunning ? `AI Speed Test running — ${benchmarkCompleted}/${benchmarkTotal}` : `Run AI Latency benchmark on ${modelsCount} visible models`}
-          aria-label={benchmarkRunning ? `AI Speed Test running — ${benchmarkCompleted} of ${benchmarkTotal} complete` : 'AI Latency benchmark'}
+          title={benchmarkRunning ? t('dashboard.aiSpeedTestRunning', { completed: benchmarkCompleted, total: benchmarkTotal }) : t('dashboard.runBenchmark', { count: modelsCount })}
+          aria-label={benchmarkRunning ? t('dashboard.aiSpeedTestRunning', { completed: benchmarkCompleted, total: benchmarkTotal }) : t('dashboard.aiLatency')}
         >
           <IconPlayerPlay size={14} stroke={1.5} />
           {benchmarkRunning ? (
@@ -249,17 +251,17 @@ export default function Header({
               RUN {benchmarkCompleted}/{benchmarkTotal}
             </span>
           ) : (
-            <span>AI Latency</span>
+            <span>{t('dashboard.aiLatency')}</span>
           )}
         </button>
 
         {/* 📖 M2: update chip slot. Hidden when no update is available. */}
         {updateSlot}
 
-        <button className={styles.iconBtn} onClick={onToggleTheme} title={`Theme: ${theme} (click to cycle auto / dark / light)`} aria-label={`Theme: ${theme}. Click to cycle.`}>
+        <button className={styles.iconBtn} onClick={onToggleTheme} title={t('nav.themeTitle', { theme: t(`settings.theme.${theme}`) })} aria-label={t('nav.themeLabel', { theme: t(`settings.theme.${theme}`) })}>
           {theme === 'light' ? <IconMoon size={16} stroke={1.5} /> : <IconSun size={16} stroke={1.5} />}
         </button>
-        <button className={styles.iconBtn} onClick={onOpenExport} title="Export Data" aria-label="Export model data">
+        <button className={styles.iconBtn} onClick={onOpenExport} title={t('nav.exportData')} aria-label={t('dashboard.exportData')}>
           <IconDownload size={16} stroke={1.5} />
         </button>
       </div>

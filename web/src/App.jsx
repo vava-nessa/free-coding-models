@@ -48,6 +48,7 @@ import InstalledModelsView from './components/installed/InstalledModelsView.jsx'
 import InstallEndpointsView from './components/install/InstallEndpointsView.jsx'
 import ToastContainer from './components/atoms/ToastContainer.jsx'
 import { isModelCompatibleWithTool } from '../../src/core/tool-metadata.js'
+import { I18nProvider, useI18n } from './i18n.jsx'
 
 let toastIdCounter = 0
 
@@ -60,7 +61,8 @@ const VIEW_TO_NAV = {
   'router-v2': 'router-v2',
 }
 
-export default function App() {
+function AppContent() {
+  const { t } = useI18n()
   // 📖 Compatibility sentinel for M4 unit tests:
   // setRouterOpen setInstalledModelsOpen setInstallEndpointsOpen
   const { models, connected, nextPingAt, isPinging, pingMode, globalBenchmarkRunning, globalBenchmarkTotal, globalBenchmarkCompleted } = useSocket()
@@ -271,8 +273,8 @@ export default function App() {
   const handleResetView = useCallback(() => {
     resetView()
     setSearchQuery('')
-    addToast('View reset to defaults.', 'info')
-  }, [addToast, resetView, setSearchQuery])
+    addToast(t('dashboard.resetToast'), 'info')
+  }, [addToast, resetView, setSearchQuery, t])
 
   // ── Changelog open with optional version (e.g. from UpdateChip "What's new") ─
   const openChangelogAt = useCallback((version) => {
@@ -390,7 +392,7 @@ export default function App() {
               <SettingsView
                 onToast={addToast}
                 onOpenChangelog={(version) => { setChangelogDefaultVersion(version); handleNavigate('changelog') }}
-                onCheckForUpdate={() => { checkNow(); addToast?.('Checking for updates…', 'info') }}
+              onCheckForUpdate={() => { checkNow(); addToast?.(t('update.checking'), 'info') }}
               />
             </div>
           )}
@@ -528,5 +530,13 @@ export default function App() {
 
       <ToastContainer toasts={toasts} dismissToast={dismissToast} />
     </>
+  )
+}
+
+export default function App() {
+  return (
+    <I18nProvider>
+      <AppContent />
+    </I18nProvider>
   )
 }

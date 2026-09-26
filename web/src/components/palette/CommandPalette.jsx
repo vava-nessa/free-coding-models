@@ -18,17 +18,18 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { IconSearch, IconCommand, IconBolt, IconArrowsExchange, IconExternalLink } from '@tabler/icons-react'
 import { buildCommandPaletteEntries, filterCommandPaletteEntries } from '../../../../src/tui/command-palette.js'
+import { useI18n } from '../../i18n.jsx'
 import styles from './CommandPalette.module.css'
 
 const SECTION_META = {
   // TUI categories → emoji + label
-  'filter':     { icon: '🔍', label: 'Filter' },
-  'sort':       { icon: '📶', label: 'Sort' },
-  'action':     { icon: '⚙️', label: 'Action' },
-  'page':       { icon: '📄', label: 'Page' },
-  'update':     { icon: '⬆️', label: 'Update' },
+  'filter':     { icon: '🔍', labelKey: 'palette.section.filter' },
+  'sort':       { icon: '📶', labelKey: 'palette.section.sort' },
+  'action':     { icon: '⚙️', labelKey: 'palette.section.action' },
+  'page':       { icon: '📄', labelKey: 'palette.section.page' },
+  'update':     { icon: '⬆️', labelKey: 'palette.section.update' },
   // TUI 'tool' sub-categories
-  'tool':       { icon: '🧰', label: 'Tool' },
+  'tool':       { icon: '🧰', labelKey: 'palette.section.tool' },
 }
 
 const PING_MODE_CYCLE = ['speed', 'normal', 'slow', 'forced']
@@ -37,29 +38,29 @@ const PING_MODE_CYCLE = ['speed', 'normal', 'slow', 'forced']
 // 📖 has a few commands the TUI doesn't). They are appended to the TUI registry
 // 📖 after a `Web` separator so the two surfaces stay easy to compare.
 function buildWebEntries(deps) {
-  const { onCycleTheme, onResetView, onSetPingMode, theme, pingMode, modelsCount, onExport, onNavigate } = deps
+  const { onCycleTheme, onResetView, onSetPingMode, theme, pingMode, modelsCount, onExport, onNavigate, t } = deps
   const web = [
     // Pages
-    { id: 'page.help', section: 'page', label: 'Open Help', keywords: ['help', 'shortcuts', 'reference'], run: () => onNavigate?.('help') },
-    { id: 'page.changelog', section: 'page', label: 'Open Changelog', keywords: ['changelog', 'release', 'history', 'version'], run: () => onNavigate?.('changelog') },
-    { id: 'page.playground', section: 'page', label: 'Open Playground', keywords: ['playground', 'chat', 'try', 'prompt', 'router'], run: () => onNavigate?.('playground') },
-    { id: 'page.install-endpoints', section: 'page', label: 'Open Install Endpoints', keywords: ['install', 'endpoint', 'tool', 'configure'], run: () => onNavigate?.('install-endpoints') },
-    { id: 'page.installed-models', section: 'page', label: 'Open Installed Models', keywords: ['installed', 'models', 'tools'], run: () => onNavigate?.('installed-models') },
+    { id: 'page.help', section: 'page', label: t('palette.web.openHelp'), keywords: ['help', 'shortcuts', 'reference'], run: () => onNavigate?.('help') },
+    { id: 'page.changelog', section: 'page', label: t('palette.web.openChangelog'), keywords: ['changelog', 'release', 'history', 'version'], run: () => onNavigate?.('changelog') },
+    { id: 'page.playground', section: 'page', label: t('palette.web.openPlayground'), keywords: ['playground', 'chat', 'try', 'prompt', 'router'], run: () => onNavigate?.('playground') },
+    { id: 'page.install-endpoints', section: 'page', label: t('palette.web.openInstallEndpoints'), keywords: ['install', 'endpoint', 'tool', 'configure'], run: () => onNavigate?.('install-endpoints') },
+    { id: 'page.installed-models', section: 'page', label: t('palette.web.openInstalledModels'), keywords: ['installed', 'models', 'tools'], run: () => onNavigate?.('installed-models') },
 
     // Theme
-    { id: 'action.theme.cycle', section: 'action', label: `Cycle theme (current: ${theme})`, keywords: ['theme', 'dark', 'light', 'auto'], run: onCycleTheme },
+    { id: 'action.theme.cycle', section: 'action', label: t('palette.web.cycleTheme', { theme: t(`settings.theme.${theme}`) }), keywords: ['theme', 'dark', 'light', 'auto'], run: onCycleTheme },
 
     // Reset
-    { id: 'action.reset.view', section: 'action', label: 'Reset view (filters + sort)', keywords: ['reset', 'view', 'clear', 'filters', 'sort'], run: onResetView },
+    { id: 'action.reset.view', section: 'action', label: t('palette.web.resetView'), keywords: ['reset', 'view', 'clear', 'filters', 'sort'], run: onResetView },
 
     // Ping mode (the TUI has these too; Web keeps them for parity)
-    { id: 'action.ping.speed',  section: 'action', label: 'Ping mode → Speed (2s)',  keywords: ['ping', 'mode', 'speed', 'fast', '2s'], run: () => onSetPingMode?.('speed') },
-    { id: 'action.ping.normal', section: 'action', label: 'Ping mode → Normal (10s)', keywords: ['ping', 'mode', 'normal', '10s', 'default'], run: () => onSetPingMode?.('normal') },
-    { id: 'action.ping.slow',   section: 'action', label: 'Ping mode → Slow (30s)',   keywords: ['ping', 'mode', 'slow', '30s', 'idle'], run: () => onSetPingMode?.('slow') },
-    { id: 'action.ping.forced', section: 'action', label: 'Ping mode → Forced (4s)',  keywords: ['ping', 'mode', 'forced', '4s'], run: () => onSetPingMode?.('forced') },
+    { id: 'action.ping.speed',  section: 'action', label: t('palette.web.pingMode', { mode: t('palette.command.action-set-ping-speed') }), keywords: ['ping', 'mode', 'speed', 'fast', '2s'], run: () => onSetPingMode?.('speed') },
+    { id: 'action.ping.normal', section: 'action', label: t('palette.web.pingMode', { mode: t('palette.command.action-set-ping-normal') }), keywords: ['ping', 'mode', 'normal', '10s', 'default'], run: () => onSetPingMode?.('normal') },
+    { id: 'action.ping.slow',   section: 'action', label: t('palette.web.pingMode', { mode: t('palette.command.action-set-ping-slow') }), keywords: ['ping', 'mode', 'slow', '30s', 'idle'], run: () => onSetPingMode?.('slow') },
+    { id: 'action.ping.forced', section: 'action', label: t('palette.web.pingMode', { mode: t('palette.command.action-set-ping-forced') }), keywords: ['ping', 'mode', 'forced', '4s'], run: () => onSetPingMode?.('forced') },
 
     // Export
-    { id: 'action.export', section: 'action', label: 'Export models…', keywords: ['export', 'download', 'json', 'csv', 'clipboard'], run: onExport },
+    { id: 'action.export', section: 'action', label: t('palette.web.exportModels'), keywords: ['export', 'download', 'json', 'csv', 'clipboard'], run: onExport },
   ]
   // TUI palette entries with a 'page' type → route through the same Web pages.
   return web
@@ -71,6 +72,7 @@ export default function CommandPalette({
   onToast, onExport, currentView, theme, pingMode, models,
   updateAvailable, latestVersion, onRunUpdate,
 }) {
+  const { locale, t } = useI18n()
   const [query, setQuery] = useState('')
   const [cursor, setCursor] = useState(0)
   const inputRef = useRef(null)
@@ -93,6 +95,7 @@ export default function CommandPalette({
     const webEntries = buildWebEntries({
       onCycleTheme, onResetView, onSetPingMode,
       theme, pingMode, modelsCount: models?.length ?? 0, onExport, onNavigate,
+      t,
     })
     // 📖 Update banner entry (only when an update is available) — mirrors
     // 📖 the TUI palette's "auto-prepended when newer version known" rule.
@@ -100,13 +103,13 @@ export default function CommandPalette({
     if (updateAvailable && latestVersion) {
       updateEntries.push({
         id: 'action.update.run', section: 'update',
-        label: `⬆️ UPDATE NOW — v${latestVersion} available (recommended!)`,
+        label: `⬆️ ${t('palette.updateNow')} — v${latestVersion} ${t('palette.versionAvailable')}`,
         keywords: ['update', 'upgrade', 'version', 'install', 'new'],
         run: () => onRunUpdate?.(),
       })
     }
     return [...updateEntries, ...tuiEntries, ...webEntries]
-  }, [models, theme, pingMode, onCycleTheme, onResetView, onSetPingMode, onOpenChangelog, onOpenHelp, onExport, updateAvailable, latestVersion, onRunUpdate])
+  }, [locale, t, models, theme, pingMode, onCycleTheme, onResetView, onSetPingMode, onOpenChangelog, onOpenHelp, onExport, onNavigate, updateAvailable, latestVersion, onRunUpdate])
 
   // 📖 Filter using the TUI's exact fuzzy rank so the two palettes are 1:1.
   // 📖 Empty query → return everything; non-empty → return ranked matches.
@@ -159,7 +162,7 @@ export default function CommandPalette({
         e.preventDefault()
         const item = flatList[cursor]
         if (!item) return
-        if (item.disabled) { onToast?.(`${item.label} is not available yet.`, 'info'); return }
+        if (item.disabled) { onToast?.(t('palette.notAvailable'), 'info'); return }
         runCommand(item)
       }
     }
@@ -192,20 +195,20 @@ export default function CommandPalette({
       onClose()
       return
     }
-    if (id === 'action-cycle-tool-mode') { onToast?.('Tool mode picker arrives in M3', 'info'); onClose(); return }
-    if (id === 'action-toggle-favorite') { onToast?.('Press F on a model row in the table.', 'info'); onClose(); return }
-    if (id === 'action-toggle-favorite-mode') { onToast?.('Set the favorites display mode in Settings (M2).', 'info'); onClose(); return }
+    if (id === 'action-cycle-tool-mode') { onToast?.(t('palette.toolModeNotReady'), 'info'); onClose(); return }
+    if (id === 'action-toggle-favorite') { onToast?.(t('palette.favoriteHint'), 'info'); onClose(); return }
+    if (id === 'action-toggle-favorite-mode') { onToast?.(t('palette.favoriteModeHint'), 'info'); onClose(); return }
     if (id === 'action-export') { onExport?.(); onClose(); return }
-    if (id === 'action-benchmark-row') { onToast?.('Click any AI Lat. cell to benchmark the highlighted row.', 'info'); onClose(); return }
+    if (id === 'action-benchmark-row') { onToast?.(t('palette.benchmarkHint'), 'info'); onClose(); return }
 
     // 📖 Filter / sort / ping mode commands are dispatched to the same Web
     // 📖 callbacks the TUI palette uses (cycle / set). For per-model filter
     // 📖 entries the user typed, we just apply a text filter.
-    if (id === 'filter-provider-cycle') { onToast?.('Use the Provider dropdown in the FilterBar.', 'info'); onClose(); return }
-    if (id.startsWith('filter-tier-')) { onToast?.('Tier filter — use the Tier chip row in the FilterBar.', 'info'); onClose(); return }
-    if (id.startsWith('filter-provider-')) { onToast?.('Provider filter — use the Provider dropdown.', 'info'); onClose(); return }
-    if (id === 'filter-configured-toggle') { onToast?.('Use the Visibility dropdown in the FilterBar.', 'info'); onClose(); return }
-    if (id.startsWith('sort-')) { onToast?.('Sort — click the column header in the table.', 'info'); onClose(); return }
+    if (id === 'filter-provider-cycle') { onToast?.(t('palette.providerFilterHint'), 'info'); onClose(); return }
+    if (id.startsWith('filter-tier-')) { onToast?.(t('palette.tierFilterHint'), 'info'); onClose(); return }
+    if (id.startsWith('filter-provider-')) { onToast?.(t('palette.providerFilterHint'), 'info'); onClose(); return }
+    if (id === 'filter-configured-toggle') { onToast?.(t('palette.visibilityFilterHint'), 'info'); onClose(); return }
+    if (id.startsWith('sort-')) { onToast?.(t('palette.sortHint'), 'info'); onClose(); return }
     if (id === 'action-set-ping-speed')  { onSetPingMode?.('speed');  onClose(); return }
     if (id === 'action-set-ping-normal') { onSetPingMode?.('normal'); onClose(); return }
     if (id === 'action-set-ping-slow')   { onSetPingMode?.('slow');   onClose(); return }
@@ -217,7 +220,7 @@ export default function CommandPalette({
       onClose()
       return
     }
-    onToast?.(`${item.label} is not wired on the Web yet.`, 'info')
+    onToast?.(t('palette.notWired'), 'info')
     onClose()
   }, [onNavigate, onClose, onToast, onCycleTheme, onResetView, onSetPingMode, onOpenHelp, onOpenChangelog, onRunUpdate, onExport, pingMode])
 
@@ -237,7 +240,7 @@ export default function CommandPalette({
           <input
             ref={inputRef}
             className={styles.input}
-            placeholder="Type a command… (filters, sorts, tools, theme, ping, export)"
+            placeholder={t('palette.placeholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoComplete="off"
@@ -247,15 +250,15 @@ export default function CommandPalette({
 
         <div className={styles.list} ref={listRef} role="listbox">
           {flatList.length === 0 && (
-            <div className={styles.empty}>No matching command.</div>
+            <div className={styles.empty}>{t('palette.noMatch')}</div>
           )}
           {grouped.map(([section, items]) => {
-            const meta = SECTION_META[section] || { icon: '•', label: section }
+            const meta = SECTION_META[section] || { icon: '•', labelKey: 'palette.section.action' }
             return (
               <div key={section} className={styles.section}>
                 <div className={styles.sectionHeader}>
                   <span className={styles.sectionIcon}>{meta.icon}</span>
-                  <span>{meta.label}</span>
+                  <span>{t(meta.labelKey)}</span>
                 </div>
                 {items.map((cmd) => {
                   // 📖 Flat index across all groups so the keyboard cursor is stable.
@@ -287,11 +290,11 @@ export default function CommandPalette({
         </div>
 
         <div className={styles.footer}>
-          <span><kbd>↑↓</kbd> navigate</span>
-          <span><kbd>↵</kbd> select</span>
-          <span><kbd>Esc</kbd> close</span>
+          <span><kbd>↑↓</kbd> {t('palette.navigate')}</span>
+          <span><kbd>↵</kbd> {t('palette.select')}</span>
+          <span><kbd>Esc</kbd> {t('common.close').toLowerCase()}</span>
           <span className={styles.footerRight}>
-            Powered by the TUI command registry — 1:1 parity
+            {t('palette.poweredByTui')}
             <IconExternalLink size={10} stroke={1.5} style={{ marginLeft: 4 }} />
           </span>
         </div>

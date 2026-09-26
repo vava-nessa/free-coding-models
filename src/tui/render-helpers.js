@@ -213,12 +213,13 @@ export function truncateAnsiWidth(input, maxWidth, { ellipsis = '…' } = {}) {
 // 📖 Applies bgColor to each line and pads to terminalCols for full-width panel look.
 // 📖 If terminalCols is not provided, falls back to OVERLAY_PANEL_WIDTH for compatibility.
 export function tintOverlayLines(lines, bgColor, terminalCols = null) {
-  const panelWidth = terminalCols || OVERLAY_PANEL_WIDTH
+  const panelWidth = Math.max(1, terminalCols || OVERLAY_PANEL_WIDTH)
   return lines.map((line) => {
     const text = String(line)
-    const visibleWidth = displayWidth(text)
+    const fitted = truncateAnsiWidth(text, panelWidth, { ellipsis: '' })
+    const visibleWidth = displayWidth(fitted)
     const padding = ' '.repeat(Math.max(0, panelWidth - visibleWidth))
-    return bgColor(text + padding)
+    return bgColor(fitted + padding)
   })
 }
 

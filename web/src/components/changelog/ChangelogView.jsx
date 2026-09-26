@@ -12,18 +12,20 @@ import { useState } from 'react'
 import { IconArrowLeft, IconX, IconCalendar } from '@tabler/icons-react'
 import { useChangelog } from '../../hooks/useChangelog.js'
 import styles from './ChangelogView.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 // 📖 Section order matches the changelog files (`### Added` / `### Fixed` /
 // 📖 `### Changed` / `### Updated`). The TUI uses the same order in
 // 📖 formatChangelogForDisplay.
 const SECTION_LABELS = [
-  { key: 'added', label: '✨ Added', icon: '✨' },
-  { key: 'fixed', label: '🐛 Fixed', icon: '🐛' },
-  { key: 'changed', label: '🔄 Changed', icon: '🔄' },
-  { key: 'updated', label: '📝 Updated', icon: '📝' },
+  { key: 'added', icon: '✨' },
+  { key: 'fixed', icon: '🐛' },
+  { key: 'changed', icon: '🔄' },
+  { key: 'updated', icon: '📝' },
 ]
 
 export default function ChangelogView({ onClose, defaultVersion = null }) {
+  const { t } = useI18n()
   const { sortedVersions, getVersion, loading, error } = useChangelog()
   // 📖 Two-phase navigation: 'index' (version list) or 'details' (one version).
   // 📖 `selectedVersion` is null on the index and a version string on details.
@@ -50,32 +52,32 @@ export default function ChangelogView({ onClose, defaultVersion = null }) {
               {phase === 'index' ? '📋 Changelog' : `📋 v${selectedVersion}`}
             </h2>
             {phase === 'details' && (
-              <button className={styles.backBtn} onClick={backToIndex} title="Back to index (TUI: B)">
-                <IconArrowLeft size={14} stroke={1.5} /> Index
+              <button className={styles.backBtn} onClick={backToIndex} title={t('changelog.backToIndex')}>
+                <IconArrowLeft size={14} stroke={1.5} /> {t('changelog.index')}
               </button>
             )}
-            <button className={styles.closeBtn} onClick={onClose} aria-label="Close changelog">
+            <button className={styles.closeBtn} onClick={onClose} aria-label={t('common.close')}>
               <IconX size={18} stroke={1.5} />
             </button>
           </div>
         </div>
 
         <div className={styles.body}>
-          {loading && <div className={styles.empty}>Loading changelog…</div>}
-          {error && !loading && <div className={styles.empty}>Failed to load changelog: {error}</div>}
+          {loading && <div className={styles.empty}>{t('changelog.loading')}</div>}
+          {error && !loading && <div className={styles.empty}>{t('changelog.failed', { error })}</div>}
 
           {!loading && !error && phase === 'index' && (
             <div className={styles.indexWrap}>
               <p className={styles.indexHint}>
-                {sortedVersions.length} versions. Click any to read the release notes.
+                {t('changelog.versionHint', { count: sortedVersions.length })}
               </p>
               <ul className={styles.versionList}>
                 {sortedVersions.map((version) => {
                   const changes = getVersion(version)
                   const summary = []
-                  if (changes?.added?.length) summary.push(`${changes.added.length} added`)
-                  if (changes?.fixed?.length) summary.push(`${changes.fixed.length} fixed`)
-                  if (changes?.changed?.length) summary.push(`${changes.changed.length} changed`)
+                  if (changes?.added?.length) summary.push(`${changes.added.length} ${t('changelog.added')}`)
+                  if (changes?.fixed?.length) summary.push(`${changes.fixed.length} ${t('changelog.fixed')}`)
+                  if (changes?.changed?.length) summary.push(`${changes.changed.length} ${t('changelog.changed')}`)
                   return (
                     <li key={version}>
                       <button
@@ -96,12 +98,12 @@ export default function ChangelogView({ onClose, defaultVersion = null }) {
 
           {!loading && !error && phase === 'details' && details && (
             <div className={styles.details}>
-              {SECTION_LABELS.map(({ key, label }) => {
+              {SECTION_LABELS.map(({ key, icon }) => {
                 const items = details[key]
                 if (!items || items.length === 0) return null
                 return (
                   <section key={key} className={styles.section}>
-                    <h3 className={styles.sectionTitle}>{label}</h3>
+                    <h3 className={styles.sectionTitle}>{icon} {t(`changelog.${key}`)}</h3>
                     <ul className={styles.itemList}>
                       {items.map((item, idx) => (
                         <li key={idx} className={styles.item}>{formatItem(item)}</li>
@@ -111,13 +113,13 @@ export default function ChangelogView({ onClose, defaultVersion = null }) {
                 )
               })}
               {SECTION_LABELS.every(({ key }) => !details[key]?.length) && (
-                <div className={styles.empty}>No release notes for v{selectedVersion}.</div>
+                <div className={styles.empty}>{t('changelog.noReleaseNotes', { version: selectedVersion })}</div>
               )}
             </div>
           )}
 
           {!loading && !error && phase === 'details' && !details && (
-            <div className={styles.empty}>No notes for v{selectedVersion}.</div>
+            <div className={styles.empty}>{t('changelog.noNotes', { version: selectedVersion })}</div>
           )}
         </div>
       </div>

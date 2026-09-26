@@ -16,124 +16,53 @@
 import { useState, useMemo } from 'react'
 import { IconSearch, IconX } from '@tabler/icons-react'
 import styles from './HelpView.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 const SECTIONS = [
-  {
-    id: 'navigation',
-    title: '🧭 Navigation',
-    items: [
-      { key: '↑ / ↓', desc: 'Navigate rows in the main table (planned — currently mouse-only)' },
-      { key: 'Enter', desc: 'Open the detail panel for the focused row' },
-      { key: 'Esc', desc: 'Close any open modal or detail panel' },
-    ],
-  },
-  {
-    id: 'filters',
-    title: '🔍 Filters',
-    items: [
-      { key: 'Tier chip', desc: 'Click to cycle: All → S+ → S → A+ → A → A- → B+ → B → C → All' },
-      { key: 'Status chip', desc: 'Click to cycle: All → Up → Down → Pending' },
-      { key: 'Verdict chip', desc: 'Click to cycle: All → Perfect → Normal → Spiky → Slow → Overloaded → Down → Unstable → Pending' },
-      { key: 'Health chip', desc: 'Click to cycle: All → Up → Timeout → Down → Pending → No key → Auth err' },
-      { key: 'Visibility', desc: 'Normal (all) / Configured only (hide no-key) / Usable only (UP + good verdict)' },
-      { key: 'Provider dropdown', desc: 'Filter by provider' },
-      { key: 'Custom text filter', desc: 'Apply via ⌘K palette or `Apply text filter` — clear with the X chip' },
-      { key: 'Reset button', desc: 'Clears every active filter + sort back to defaults' },
-    ],
-  },
-  {
-    id: 'sort',
-    title: '📶 Sort',
-    items: [
-      { key: 'Click any column header', desc: 'Sort asc → desc → reset (no sort, default order)' },
-      { key: 'Resizable columns', desc: 'Drag the right edge of any header to resize. Double-click resets one column.' },
-    ],
-  },
-  {
-    id: 'favorites',
-    title: '⭐ Favorites',
-    items: [
-      { key: 'Star button (per row)', desc: 'Click to favorite / unfavorite the model (TUI: F key)' },
-      { key: 'Detail panel', desc: 'Favorite + Up/Down reorder + current priority rank (TUI: Shift+↑/↓)' },
-      { key: 'Pinned mode', desc: 'In the Settings view, toggle "Pinned + always visible" (TUI: Y key)' },
-      { key: 'Shared with TUI', desc: 'Favorites are persisted in the same ~/.free-coding-models.json the TUI uses' },
-    ],
-  },
-  {
-    id: 'benchmark',
-    title: '🤖 AI Speed Test (benchmark)',
-    items: [
-      { key: 'Header button', desc: 'Run a global AI Speed Test on every visible model' },
-      { key: 'AI Lat. cell', desc: 'Click any AI Lat. cell to benchmark just that model (TUI: Ctrl+A)' },
-      { key: 'Detail panel', desc: 'Dedicated "AI Speed Test" button (TUI: Ctrl+A)' },
-      { key: 'TPS column', desc: 'Tokens per second for the model — appears after a benchmark run' },
-      { key: 'Latency column', desc: 'Real completion latency (not just ping) for the model' },
-    ],
-  },
-  {
-    id: 'tools',
-    title: '🧰 Tool mode (M3)',
-    items: [
-      { key: 'M3 shipped', desc: 'Endpoint target picker, per-row Install Endpoint button, and incompatible-target fallback modal' },
-    ],
-  },
-  {
-    id: 'palette',
-    title: '⚡ Command palette',
-    items: [
-      { key: '⌘K / Ctrl+P', desc: 'The Web\'s only global keyboard shortcut — toggles the command palette' },
-      { key: 'Type to search', desc: 'Fuzzy match across all filters, sorts, tools, pages, and theme / ping / reset actions' },
-      { key: '↑ / ↓ + Enter', desc: 'Navigate the results and execute the highlighted command' },
-      { key: 'Esc', desc: 'Close the palette without running anything' },
-    ],
-  },
-  {
-    id: 'theme',
-    title: '🌗 Theme',
-    items: [
-      { key: 'Theme button (header)', desc: 'Click to cycle: auto → dark → light (TUI: G key)' },
-      { key: 'Auto mode', desc: 'Follows the OS prefers-color-scheme preference and updates live' },
-    ],
-  },
-  {
-    id: 'ping',
-    title: '⚡ Ping mode',
-    items: [
-      { key: 'Speed / Normal / Slow / Forced', desc: 'Ping cadence (2s / 10s / 30s / 4s) — TUI: W key' },
-      { key: 'next ping in Xs', desc: 'Live countdown shown in the FilterBar (TUI footer style)' },
-    ],
-  },
-  {
-    id: 'url',
-    title: '🔗 URL deep-linking',
-    items: [
-      { key: '?tier=S+&sort=verdict&origin=groq&view=dashboard', desc: 'Every filter / sort / view is reflected in the URL — share pre-filtered links' },
-    ],
-  },
-  {
-    id: 'cli',
-    title: '⌨️ CLI parity',
-    items: [
-      { key: 'Same storage', desc: 'The Web reads + writes the same ~/.free-coding-models.json as the TUI' },
-      { key: 'Same engine', desc: 'All model parsing, ping, and benchmark code is shared with the TUI' },
-    ],
-  },
-  {
-    id: 'how-router-works',
-    title: '🌐 How the FCM Router works',
-    items: [
-      { key: 'Smart router', desc: 'Point any OpenAI client at http://localhost:19280/v1 with model: "fcm". The daemon picks the healthiest model in the active set and forwards the request with automatic failover.' },
-      { key: 'Pre-prompt', desc: 'A first-class system message is injected on every proxied request. The default introduces the assistant as the FCM routing agent. Edit from Settings.' },
-      { key: 'Probes', desc: 'Every 10s/30s/120s (eco/balanced/aggressive) the daemon sends a 1-token chat-completion ping to every model in the active set. The probe measures latency + status code, not just URL reachability — so a wrong API key is caught and the circuit opens.' },
-      { key: 'Circuit breaker', desc: 'Per-model state. Healthy (green) = last probe 2xx, route here. Down (red) = last 3 probes failed, skip until cooldown. Recovering (yellow) = cooldown expired, retrying. Auth error (orange) = 401/403, your key is wrong. Deprecated (gray) = removed from catalog, will be replaced by auto-heal.' },
-      { key: 'Failover order', desc: 'Models are tried in priority order. A model in Recovering/Down/Auth error is skipped — the request goes to the next healthy one. If ALL fail, you get 503 with the "models_tried" list in the error body.' },
-      { key: 'Auto-heal', desc: 'On daemon start, every Auth-error / Deprecated model in the active set is swapped for a working alternative (same provider first, then cross-provider). The first time you add/remove/reorder a model, auto-heal switches off.' },
-      { key: 'Rate limits', desc: 'Each provider has its own quota. Common free-tier limits: Groq 14 400 RPD, Mistral 1 RPS, NVIDIA ~40 RPM, OpenRouter 50 RPD. When a provider returns 429, the router fails over. When daily quota is exhausted, the model goes Auth error and auto-heal swaps it out next start.' },
-    ],
-  },
-]
+  { id: 'navigation', icon: '🧭', titleKey: 'help.navigation', items: [
+    ['navigation.rows', '↑ / ↓'], ['navigation.details', 'Enter'], ['navigation.close', 'Esc'],
+  ] },
+  { id: 'filters', icon: '🔍', titleKey: 'help.filters', items: [
+    ['filters.tier', 'Tier chip'], ['filters.status', 'Status chip'], ['filters.verdict', 'Verdict chip'],
+    ['filters.health', 'Health chip'], ['filters.visibility', 'Visibility'], ['filters.provider', 'Provider dropdown'],
+    ['filters.text', 'Custom text filter'], ['filters.reset', 'Reset button'],
+  ] },
+  { id: 'sort', icon: '📶', titleKey: 'help.sort', items: [
+    ['sort.columns', 'Click any column header'], ['sort.resize', 'Resizable columns'],
+  ] },
+  { id: 'favorites', icon: '⭐', titleKey: 'help.favorites', items: [
+    ['favorites.row', 'Star button (per row)'], ['favorites.detail', 'Detail panel'],
+    ['favorites.pinned', 'Pinned mode'], ['favorites.shared', 'Shared with TUI'],
+  ] },
+  { id: 'benchmark', icon: '🤖', titleKey: 'help.speedTest', items: [
+    ['benchmark.global', 'Header button'], ['benchmark.single', 'AI Lat. cell'], ['benchmark.detail', 'Detail panel'],
+    ['benchmark.tps', 'TPS column'], ['benchmark.latency', 'Latency column'],
+  ] },
+  { id: 'tools', icon: '🧰', titleKey: 'help.toolMode', items: [['tools.shipped', 'M3 shipped']] },
+  { id: 'palette', icon: '⚡', titleKey: 'help.palette', items: [
+    ['palette.shortcut', '⌘K / Ctrl+P'], ['palette.search', 'Type to search'],
+    ['palette.execute', '↑ / ↓ + Enter'], ['palette.close', 'Esc'],
+  ] },
+  { id: 'theme', icon: '🌗', titleKey: 'help.theme', items: [['theme.cycle', 'Theme button (header)'], ['theme.auto', 'Auto mode']] },
+  { id: 'ping', icon: '⚡', titleKey: 'help.pingMode', items: [['ping.cadence', 'Speed / Normal / Slow / Forced'], ['ping.countdown', 'Next ping countdown']] },
+  { id: 'url', icon: '🔗', titleKey: 'help.deepLinks', items: [['url.filters', '?tier=S+&sort=verdict&origin=groq&view=dashboard']] },
+  { id: 'cli', icon: '⌨️', titleKey: 'help.cliParity', items: [['cli.storage', 'Same storage'], ['cli.engine', 'Same engine']] },
+  { id: 'how-router-works', icon: '🌐', titleKey: 'help.routerHow', items: [
+    ['router.smart', 'Smart router'], ['router.prePrompt', 'Pre-prompt'], ['router.probes', 'Probes'],
+    ['router.breaker', 'Circuit breaker'], ['router.failover', 'Failover order'],
+    ['router.autoHeal', 'Auto-heal'], ['router.rateLimits', 'Rate limits'],
+  ] },
+].map((section) => ({
+  ...section,
+  items: section.items.map(([id, fallbackLabel]) => ({
+    labelKey: `help.item.${id}.label`,
+    descriptionKey: `help.item.${id}.description`,
+    fallbackLabel,
+  })),
+}))
 
 export default function HelpView({ onClose }) {
+  const { locale, t } = useI18n()
   const [query, setQuery] = useState('')
 
   // 📖 Filter every section's items by the live query. Case-insensitive
@@ -141,22 +70,30 @@ export default function HelpView({ onClose }) {
   // 📖 section entirely.
   const filteredSections = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return SECTIONS
-    return SECTIONS.map((section) => ({
+    const localized = SECTIONS.map((section) => ({
+      ...section,
+      items: section.items.map((item) => ({
+        ...item,
+        label: t(item.labelKey),
+        description: t(item.descriptionKey),
+      })),
+    }))
+    if (!q) return localized
+    return localized.map((section) => ({
       ...section,
       items: section.items.filter(
-        (item) => item.key.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q),
+        (item) => `${item.label} ${item.description} ${item.fallbackLabel}`.toLowerCase().includes(q),
       ),
     })).filter((section) => section.items.length > 0)
-  }, [query])
+  }, [query, locale, t])
 
   return (
     <div className={styles.backdrop} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div className={styles.titleRow}>
-            <h2 className={styles.title}>❓ Help & Keyboard Shortcuts</h2>
-            <button className={styles.closeBtn} onClick={onClose} aria-label="Close help">
+            <h2 className={styles.title}>❓ {t('help.title')} · {t('help.shortcuts')}</h2>
+            <button className={styles.closeBtn} onClick={onClose} aria-label={t('help.close')}>
               <IconX size={18} stroke={1.5} />
             </button>
           </div>
@@ -164,30 +101,28 @@ export default function HelpView({ onClose }) {
             <IconSearch size={14} stroke={1.5} className={styles.searchIcon} />
             <input
               className={styles.searchInput}
-              placeholder="Search help (filters, hotkeys, TUI parity)…"
+              placeholder={t('help.searchPlaceholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
             />
           </div>
           <p className={styles.note}>
-            The Web Dashboard is mouse-first. The only global keyboard shortcut is{' '}
-            <kbd>⌘K</kbd> / <kbd>Ctrl+P</kbd> for the command palette — everything else
-            lives here, in the header menu, or in modals.
+            {t('help.note')} <kbd>⌘K</kbd> / <kbd>Ctrl+P</kbd>
           </p>
         </div>
         <div className={styles.body}>
           {filteredSections.length === 0 ? (
-            <div className={styles.empty}>No help matches "{query}".</div>
+            <div className={styles.empty}>{t('help.noMatches', { query })}</div>
           ) : (
             filteredSections.map((section) => (
               <section key={section.id} className={styles.section}>
-                <h3 className={styles.sectionTitle}>{section.title}</h3>
+                <h3 className={styles.sectionTitle}>{section.icon} {t(section.titleKey)}</h3>
                 <ul className={styles.itemList}>
                   {section.items.map((item) => (
-                    <li key={item.key + item.desc} className={styles.item}>
-                      <span className={styles.itemKey}>{item.key}</span>
-                      <span className={styles.itemDesc}>{item.desc}</span>
+                    <li key={item.labelKey} className={styles.item}>
+                      <span className={styles.itemKey}>{item.label}</span>
+                      <span className={styles.itemDesc}>{item.description}</span>
                     </li>
                   ))}
                 </ul>

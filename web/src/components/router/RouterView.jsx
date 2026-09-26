@@ -14,6 +14,7 @@ import {
 } from '@tabler/icons-react'
 import styles from './RouterView.module.css'
 import PlaygroundChat from '../playground/PlaygroundChat.jsx'
+import { useI18n } from '../../i18n.jsx'
 
 function formatUptime(seconds) {
   if (!seconds || seconds <= 0) return '—'
@@ -46,18 +47,19 @@ function formatNumber(n) {
 // 📖 (CLOSED/OPEN/HALF_OPEN/AUTH_ERROR) are jargon — translate them
 // 📖 to words a normal developer can scan in <1 second.
 const CIRCUIT_STATE_LABELS = {
-  CLOSED:     { label: 'Healthy',    cls: 'circuitClosed' },
-  OPEN:       { label: 'Down',       cls: 'circuitOpen' },
-  HALF_OPEN:  { label: 'Recovering', cls: 'circuitHalfOpen' },
-  AUTH_ERROR: { label: 'Auth error', cls: 'circuitAuth' },
-  STALE:      { label: 'Deprecated', cls: 'circuitUnknown' },
-  UNSUPPORTED:{ label: 'Unsupported',cls: 'circuitUnknown' },
-  UNKNOWN:    { label: 'Unknown',    cls: 'circuitUnknown' },
+  CLOSED:     { labelKey: 'router.circuit.healthy',    cls: 'circuitClosed' },
+  OPEN:       { labelKey: 'router.circuit.down',       cls: 'circuitOpen' },
+  HALF_OPEN:  { labelKey: 'router.circuit.recovering', cls: 'circuitHalfOpen' },
+  AUTH_ERROR: { labelKey: 'router.circuit.authError',  cls: 'circuitAuth' },
+  STALE:      { labelKey: 'router.circuit.deprecated', cls: 'circuitUnknown' },
+  UNSUPPORTED:{ labelKey: 'router.circuit.unsupported',cls: 'circuitUnknown' },
+  UNKNOWN:    { labelKey: 'router.circuit.unknown',    cls: 'circuitUnknown' },
 }
 
 function CircuitBadge({ state }) {
+  const { t } = useI18n()
   const entry = CIRCUIT_STATE_LABELS[state] || CIRCUIT_STATE_LABELS.UNKNOWN
-  return <span className={`${styles.circuitBadge} ${styles[entry.cls]}`}>{entry.label}</span>
+  return <span className={`${styles.circuitBadge} ${styles[entry.cls]}`}>{t(entry.labelKey)}</span>
 }
 
 const SAVE_STATUS_IDLE = { kind: 'idle' }
@@ -66,6 +68,7 @@ const SAVE_STATUS_SAVED = { kind: 'saved' }
 const SAVE_STATUS_ERROR = (message) => ({ kind: 'error', message })
 
 export default function RouterView({ onClose, onToast, favorites }) {
+  const { t } = useI18n()
   const [status, setStatus] = useState(null)
   const [stats, setStats] = useState(null)
   const [quickSetup, setQuickSetup] = useState(null)
@@ -165,19 +168,19 @@ export default function RouterView({ onClose, onToast, favorites }) {
       const resp = await fetch('/api/router/start', { method: 'POST' })
       const data = await resp.json()
       if (data.ok || data.alreadyRunning) {
-        onToast?.('Router daemon started.', 'success')
+        onToast?.(t('router.daemonStarted'), 'success')
         await fetchStatus()
         await fetchSets()
       } else {
-        onToast?.(`Failed to start: ${data.error || data.message || 'unknown'}`, 'error')
+        onToast?.(t('router.startFailed', { error: data.error || data.message || t('common.unknown') }), 'error')
       }
     } catch (err) {
       // 📖 Distinguish between "daemon not running" (fetch itself fails) and
       // 📖 other network errors so the user gets an actionable error message.
       const msg = err.name === 'TypeError' && err.message?.includes('fetch')
-        ? 'Cannot reach daemon — it may not be installed or the port is blocked'
+        ? t('router.cannotReachDaemon')
         : err.message
-      onToast?.(`Start failed: ${msg}`, 'error')
+      onToast?.(t('router.startFailed', { error: msg }), 'error')
     } finally { setActionLoading(false) }
   }
 
@@ -187,14 +190,14 @@ export default function RouterView({ onClose, onToast, favorites }) {
       const resp = await fetch('/api/router/stop', { method: 'POST' })
       const data = await resp.json()
       if (data.ok) {
-        onToast?.('Router daemon stopped.', 'success')
+        onToast?.(t('router.daemonStopped'), 'success')
         setStatus({ ok: false, running: false })
         setStats(null)
       } else {
-        onToast?.(`Failed to stop: ${data.error || 'unknown'}`, 'error')
+        onToast?.(t('router.stopFailed', { error: data.error || t('common.unknown') }), 'error')
       }
     } catch (err) {
-      onToast?.(`Stop failed: ${err.message}`, 'error')
+      onToast?.(t('router.stopFailed', { error: err.message }), 'error')
     } finally { setActionLoading(false) }
   }
 
@@ -212,7 +215,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ probeMode: mode }),
       })
-      onToast?.(`Probe mode set to ${mode}.`, 'info')
+      onToast?.(t('router.probeModeSet', { mode }), 'info')
       await fetchStatus()
     } catch {}
   }
@@ -225,7 +228,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
   const setActiveSet = async (name) => {
     try {
       await fetch(`/api/router/sets/${encodeURIComponent(name)}/activate`, { method: 'POST' })
-      onToast?.(`Active set: ${name}`, 'info')
+      onToast?.(t('router.activeSet', { name }), 'info')
       await fetchSets()
       await fetchStatus()
     } catch (err) {
@@ -242,7 +245,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
   const handleSyncBest = async () => {
     if (!activeSetName) return
     setSaveStatus(SAVE_STATUS_SAVING)
-    onToast?.('Probing models with your keys…', 'info')
+    onToast?.(t('router.probingModels'), 'info')
     try {
       const resp = await fetch(`/api/router/sets/${encodeURIComponent(activeSetName)}/sync`, { method: 'POST' })
       if (!resp.ok) {
@@ -252,13 +255,13 @@ export default function RouterView({ onClose, onToast, favorites }) {
       const data = await resp.json()
       const picked = data.selected?.length || 0
       const probed = data.probeCount || 0
-      onToast?.(`Synced ${activeSetName}: ${picked} working model${picked === 1 ? '' : 's'} from ${probed} probes.`, 'success')
+      onToast?.(t('router.syncedModels', { set: activeSetName, working: picked, probes: probed }), 'success')
       await fetchSets()
       await fetchStatus()
       setSaveStatus(SAVE_STATUS_SAVED)
     } catch (err) {
       setSaveStatus(SAVE_STATUS_ERROR(err.message || String(err)))
-      onToast?.(`Sync failed: ${err.message}`, 'error')
+      onToast?.(t('router.syncFailed', { error: err.message }), 'error')
     }
   }
 
@@ -267,7 +270,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
     if (!activeSetName) return
     const favList = favorites?.favorites || []
     if (favList.length === 0) {
-      onToast?.('You do not have any favorite models yet. Star some models first!', 'info')
+      onToast?.(t('router.noFavorites'), 'info')
       return
     }
 
@@ -607,9 +610,9 @@ export default function RouterView({ onClose, onToast, favorites }) {
         <div className={styles.header}>
           <h2 className={styles.title}>
             <IconRoute size={20} stroke={1.5} />
-            Router Dashboard
+            {t('router.title')}
           </h2>
-          <button className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
+          <button className={styles.closeBtn} onClick={onClose} aria-label={t('common.close')}>✕</button>
         </div>
 
         <div className={styles.body}>
@@ -623,21 +626,20 @@ export default function RouterView({ onClose, onToast, favorites }) {
                 <span className={styles.autoHealIcon}>⚠</span>
                 <div>
                   <div className={styles.autoHealTitle}>
-                    {status.brokenModelCount} model{status.brokenModelCount === 1 ? '' : 's'} in the active set are not responding
+                    {t('router.brokenModels', { count: status.brokenModelCount })}
                   </div>
                   <div className={styles.autoHealHint}>
-                    Auto-heal ran on startup but the replacement may also be broken.
-                    Click <strong>Sync best</strong> below to re-probe with your current keys,
-                    or click <strong>Fix now</strong> to manually replace the broken entries.
+                    {t('router.autoHealWarning')}
+                    {' '}{t('router.syncBest')} / {t('router.fixNow')}
                   </div>
                 </div>
               </div>
               <div className={styles.autoHealActions}>
                 <button className={styles.smallBtn} onClick={handleSyncBest}>
                   <IconWand size={11} />
-                  Fix now
+                  {t('router.fixNow')}
                 </button>
-                <button className={styles.iconBtn} onClick={() => setAutoHealDismissed(true)} aria-label="Dismiss">
+                <button className={styles.iconBtn} onClick={() => setAutoHealDismissed(true)} aria-label={t('toast.dismiss')}>
                   <IconX size={12} />
                 </button>
               </div>
@@ -648,22 +650,22 @@ export default function RouterView({ onClose, onToast, favorites }) {
           <div className={`${styles.quickSetup} ${running ? styles.quickSetupHero : ''}`}>
             <h3 className={styles.sectionTitle}>
               <IconCopy size={14} />
-              Quick Setup
+              {t('router.quickSetup')}
               <button className={styles.copyAllBtn} onClick={() => handleCopy(qsAllText, 'all')}>
                 {copied === 'all' ? <IconCheck size={12} /> : <IconCopy size={12} />}
-                {copied === 'all' ? 'Copied!' : 'Copy all'}
+                {copied === 'all' ? t('router.copied') : t('router.copyAll')}
               </button>
             </h3>
             <div className={styles.quickRows}>
               <div className={styles.quickRow}>
-                <span className={styles.quickLabel}>Base URL</span>
+                <span className={styles.quickLabel}>{t('router.baseUrl')}</span>
                 <code className={styles.quickValue}>{qsBaseUrl}</code>
                 <button className={styles.copyBtn} onClick={() => handleCopy(qsBaseUrl, 'url')}>
                   {copied === 'url' ? <IconCheck size={12} /> : <IconCopy size={12} />}
                 </button>
               </div>
               <div className={styles.quickRow}>
-                <span className={styles.quickLabel}>Model</span>
+                <span className={styles.quickLabel}>{t('router.model')}</span>
                 <code className={styles.quickValue}>{qsModel}</code>
                 <button className={styles.copyBtn} onClick={() => handleCopy(qsModel, 'model')}>
                   {copied === 'model' ? <IconCheck size={12} /> : <IconCopy size={12} />}
@@ -684,20 +686,20 @@ export default function RouterView({ onClose, onToast, favorites }) {
             <div className={styles.heroLeft}>
               <div className={styles.heroStatus}>
                 <span className={`${styles.statusDot} ${running ? styles.dotGreen : styles.dotGray}`} />
-                <span className={styles.heroLabel}>{running ? 'Running' : 'Stopped'}</span>
+                <span className={styles.heroLabel}>{running ? t('router.status.running') : t('router.status.stopped')}</span>
               </div>
               {running && (
                 <div className={styles.heroMeta}>
                   <span>Port {status.port}</span>
                   <span>·</span>
-                  <span>Uptime {formatUptime(status.uptimeSeconds)}</span>
+                  <span>{t('router.uptime')} {formatUptime(status.uptimeSeconds)}</span>
                   <span>·</span>
-                  <span>{status.requestsRouted} requests</span>
+                  <span>{t('router.requestsCount', { count: status.requestsRouted })}</span>
                 </div>
               )}
               {!running && (
                 <div className={styles.heroMeta}>
-                  Smart failover router — start to route requests to the healthiest model.
+                {t('router.stoppedHint')}
                 </div>
               )}
             </div>
@@ -705,15 +707,15 @@ export default function RouterView({ onClose, onToast, favorites }) {
               {!running ? (
                 <button className={`${styles.startBtn} ${styles.startBtnBig}`} onClick={handleStart} disabled={actionLoading}>
                   <IconPlayerPlay size={16} />
-                  {actionLoading ? 'Starting…' : 'Start Router'}
+                  {actionLoading ? t('router.starting') : t('router.title')}
                 </button>
               ) : (
                 <button className={styles.stopBtn} onClick={handleStop} disabled={actionLoading}>
                   <IconPlayerStop size={14} />
-                  {actionLoading ? 'Stopping…' : 'Stop'}
+                  {actionLoading ? t('router.stopping') : t('router.stop')}
                 </button>
               )}
-              <button className={styles.refreshBtn} onClick={fetchStatus} title="Refresh">
+              <button className={styles.refreshBtn} onClick={fetchStatus} title={t('common.refresh')} aria-label={t('common.refresh')}>
                 <IconRefresh size={14} />
               </button>
             </div>
@@ -724,7 +726,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>
                 <IconList size={14} />
-                Active Set ({localModels.length} models)
+                {t('router.activeSetModels', { count: localModels.length })}
               </h3>
 
               <div className={styles.setMeta}>
@@ -735,7 +737,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
                       className={styles.pickerSelect}
                       value={activeSetName}
                       onChange={(e) => setActiveSet(e.target.value)}
-                      title="Switch the active set"
+                      title={t('router.switchSetHint')}
                     >
                       {setNames.map((n) => (
                         <option key={n} value={n}>{n}</option>
@@ -746,10 +748,10 @@ export default function RouterView({ onClose, onToast, favorites }) {
                     className={`${styles.smallBtn} ${(activeSet?.familyFailover !== false) ? styles.probeBtnActive : ''}`}
                     onClick={handleToggleFamilyFailover}
                     disabled={saveStatus.kind === 'saving'}
-                    title="When a model fails, first retry the same family on another provider (e.g. DeepSeek on NIM -> DeepSeek on Together) before falling back to set order"
+                    title={t('router.familyFailoverHint')}
                   >
                     <IconRoute size={11} />
-                    Family failover: {activeSet?.familyFailover !== false ? 'on' : 'off'}
+                    {t('router.familyFailover')}: {activeSet?.familyFailover !== false ? t('common.enabled') : t('common.disabled')}
                   </button>
                 </div>
                 <div className={styles.setActions}>
@@ -758,20 +760,20 @@ export default function RouterView({ onClose, onToast, favorites }) {
                     className={styles.smallBtn}
                     onClick={handleSyncBest}
                     disabled={saveStatus.kind === 'saving'}
-                    title="Probe your API keys and rebuild the set with only models that actually work"
+                    title={t('router.testKeyHint')}
                   >
                     <IconWand size={11} />
-                    Sync best
+                    {t('router.syncBest')}
                   </button>
                   {favorites && (
                     <button
                       className={styles.smallBtn}
                       onClick={handleUseFavorites}
                       disabled={saveStatus.kind === 'saving'}
-                      title="Replace current router models with your favorite models"
+                      title={t('router.useFavoritesHint')}
                     >
                       <IconList size={11} />
-                      Use favorites
+                      {t('router.useFavorites')}
                     </button>
                   )}
                   {/* 📖 Probe all — run AI Latency benchmarks on every model in the
@@ -780,10 +782,10 @@ export default function RouterView({ onClose, onToast, favorites }) {
                     className={`${styles.smallBtn} ${probeActive ? styles.probeBtnActive : ''}`}
                     onClick={handleProbeAll}
                     disabled={probeActive || saveStatus.kind === 'saving' || localModels.length === 0}
-                    title="Benchmark AI Latency + TPS on every model in this set"
+                    title={t('router.benchmarkSetHint')}
                   >
                     <IconBolt size={11} />
-                    {probeActive ? 'Probing…' : 'Probe all'}
+                    {probeActive ? t('router.probing') : t('router.probeAll')}
                   </button>
                   <button
                     className={styles.primaryBtn}
@@ -791,7 +793,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
                     disabled={saveStatus.kind === 'saving'}
                   >
                     {pickerOpen ? <IconX size={11} /> : <IconPlus size={11} />}
-                    {pickerOpen ? 'Close' : 'Add model'}
+                    {pickerOpen ? t('common.close') : t('router.addModel')}
                   </button>
                 </div>
               </div>
@@ -802,7 +804,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
                 <div className={styles.probeProgress}>
                   <div className={styles.probeProgressLabel}>
                     <IconBolt size={11} />
-                    AI Latency probe
+                    {t('dashboard.aiLatency')} {t('filters.ping')}
                     <span className={styles.probeProgressCount}>
                       {globalBenchmark.completed} / {globalBenchmark.total || localModels.length}
                     </span>
@@ -818,9 +820,9 @@ export default function RouterView({ onClose, onToast, favorites }) {
 
               {localModels.length === 0 ? (
                 <div className={styles.setEmpty}>
-                  <div className={styles.setEmptyTitle}>No models in the active set</div>
+                  <div className={styles.setEmptyTitle}>{t('router.noActiveSetModels')}</div>
                   <div className={styles.setEmptyHint}>
-                    Add models from the picker below, or click <strong>Sync best</strong> above to auto-pick working models.
+                    {t('router.addSetModelsHint')}
                   </div>
                 </div>
               ) : (
@@ -829,12 +831,12 @@ export default function RouterView({ onClose, onToast, favorites }) {
                       understand WHY the top model serves every request (issue #120).
                       Higher priority = tried first; the rest are failover targets. */}
                   <div className={styles.priorityLegend}>
-                    <span className={styles.legendPrimary}><IconArrowRight size={11} /> Primary</span>
-                    <span className={styles.legendSeparator}>tries first</span>
-                    <span className={styles.legendFallback}>Fallback</span>
-                    <span className={styles.legendSeparator}>on failure / rate-limit</span>
+                    <span className={styles.legendPrimary}><IconArrowRight size={11} /> {t('router.primary')}</span>
+                    <span className={styles.legendSeparator}>{t('router.triesFirst')}</span>
+                    <span className={styles.legendFallback}>{t('router.fallback')}</span>
+                    <span className={styles.legendSeparator}>{t('router.onFailure')}</span>
                     {running && nextToServeKey && (
-                      <span className={styles.legendNext}>Next up: <code>{nextToServeKey}</code></span>
+                      <span className={styles.legendNext}>{t('router.nextUp')}: <code>{nextToServeKey}</code></span>
                     )}
                   </div>
                   <div className={styles.setList} onDragLeave={handleDragLeave}>
@@ -871,9 +873,9 @@ export default function RouterView({ onClose, onToast, favorites }) {
                         </span>
                         <span
                           className={`${styles.setPriority} ${isPrimary ? styles.setPriorityPrimary : styles.setPriorityFallback}`}
-                          title={isPrimary ? 'Primary model — tried first on every request' : `Fallback #${idx + 1} — used when higher-priority models fail or rate-limit`}
+                          title={isPrimary ? t('router.primaryTitle') : t('router.fallbackTitle', { index: idx + 1 })}
                         >
-                          {isPrimary ? 'Primary' : `#${idx + 1}`}
+                          {isPrimary ? t('router.primary') : `#${idx + 1}`}
                         </span>
                         <span className={styles.setKey}>{key}</span>
                         {m.tier && <span className={styles.setTier}>{m.tier}</span>}
@@ -881,13 +883,13 @@ export default function RouterView({ onClose, onToast, favorites }) {
                         {/* 📖 AI Latency — populated by "Probe all". Shows a spinner
                             while benchmarking, the latency+TPS once done, or a dim
                             placeholder before the first probe. */}
-                        <span className={styles.aiLatencyCell} title={bm ? `AI Latency: ${Math.round(bm.totalMs)}ms · TPS: ${(bm.tokensPerSecond ?? 0).toFixed(1)}` : 'Run Probe all to measure AI Latency'}>
+                        <span className={styles.aiLatencyCell} title={bm ? `AI Latency: ${Math.round(bm.totalMs)}ms · TPS: ${(bm.tokensPerSecond ?? 0).toFixed(1)}` : t('router.benchmarkSetHint')}>
                           {bmLoading
                             ? <span className={styles.aiLatencySpin}>···</span>
                             : bm?.ok
                               ? <><span className={styles.aiLatencyMs}>{Math.round(bm.totalMs)}ms</span>{bm.tokensPerSecond != null && bm.tokensPerSecond > 0 && <span className={styles.aiLatencyTps}>{bm.tokensPerSecond.toFixed(1)} t/s</span>}</>
                               : bm && !bm.ok
-                                ? <span className={styles.aiLatencyErr}>fail</span>
+                                ? <span className={styles.aiLatencyErr}>{t('router.v2.failed')}</span>
                                 : <span className={styles.aiLatencyNone}>—</span>}
                         </span>
                         <div className={styles.setRowBtns}>
@@ -895,8 +897,8 @@ export default function RouterView({ onClose, onToast, favorites }) {
                             className={styles.iconBtn}
                             onClick={() => handleMove(idx, 'up')}
                             disabled={idx === 0 || saveStatus.kind === 'saving'}
-                            title="Move up"
-                            aria-label={`Move ${key} up`}
+                            title={t('router.moveUp')}
+                            aria-label={`${t('router.moveUp')}: ${key}`}
                           >
                             <IconArrowUp size={12} />
                           </button>
@@ -904,8 +906,8 @@ export default function RouterView({ onClose, onToast, favorites }) {
                             className={styles.iconBtn}
                             onClick={() => handleMove(idx, 'down')}
                             disabled={idx === localModels.length - 1 || saveStatus.kind === 'saving'}
-                            title="Move down"
-                            aria-label={`Move ${key} down`}
+                            title={t('router.moveDown')}
+                            aria-label={`${t('router.moveDown')}: ${key}`}
                           >
                             <IconArrowDown size={12} />
                           </button>
@@ -913,8 +915,8 @@ export default function RouterView({ onClose, onToast, favorites }) {
                             className={`${styles.iconBtn} ${styles.removeBtn}`}
                             onClick={() => handleRemove(idx)}
                             disabled={saveStatus.kind === 'saving'}
-                            title="Remove from set"
-                            aria-label={`Remove ${key}`}
+                            title={t('router.removeFromSet')}
+                            aria-label={`${t('router.removeFromSet')}: ${key}`}
                           >
                             <IconTrash size={12} />
                           </button>
@@ -929,7 +931,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
               {pickerOpen && (
                 <div className={styles.pickerPanel}>
                   <div className={styles.pickerHeader}>
-                    <span>Add a model to <code>{activeSetName}</code></span>
+                    <span>{t('router.addModelTo')} <code>{activeSetName}</code></span>
                     <span style={{ color: 'var(--text-muted, #888)' }}>
                       {filteredCatalog.length} of {catalog.length}
                     </span>
@@ -937,7 +939,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
                   <div className={styles.pickerSearch}>
                     <input
                       className={styles.pickerInput}
-                      placeholder="Search by provider, model, or label…"
+                      placeholder={t('router.searchModels')}
                       value={pickerSearch}
                       onChange={(e) => setPickerSearch(e.target.value)}
                       autoFocus
@@ -947,7 +949,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
                       value={pickerProvider}
                       onChange={(e) => setPickerProvider(e.target.value)}
                     >
-                      <option value="">All providers</option>
+                      <option value="">{t('dashboard.allProviders')}</option>
                       {providers.map((p) => (
                         <option key={p} value={p}>{p}</option>
                       ))}
@@ -955,7 +957,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
                   </div>
                   <div className={styles.pickerList}>
                     {filteredCatalog.length === 0 ? (
-                      <div className={styles.pickerEmpty}>No models match your filter.</div>
+                      <div className={styles.pickerEmpty}>{t('router.noModelsMatch')}</div>
                     ) : (
                       filteredCatalog.map((entry) => {
                         const inSet = modelKeyInSet(entry.provider, entry.model)
@@ -964,14 +966,14 @@ export default function RouterView({ onClose, onToast, favorites }) {
                             key={entry.key}
                             className={`${styles.pickerItem} ${inSet ? styles.pickerItemAdded : ''}`}
                             onClick={() => { if (!inSet) void persistAdd(entry.provider, entry.model) }}
-                            title={inSet ? 'Already in set' : `Add ${entry.key}`}
+                            title={inSet ? t('router.alreadyInSet') : `${t('router.addModel')}: ${entry.key}`}
                           >
                             <span className={styles.pickerProvider}>{entry.provider}</span>
                             <span className={styles.pickerModel}>{entry.label || entry.model}</span>
                             {entry.tier && <span className={styles.setTier}>{entry.tier}</span>}
                             {entry.hasKey
-                              ? <span className={`${styles.pickerBadge} ${styles.pickerBadgeOk}`}>key</span>
-                              : <span className={styles.pickerBadge}>no key</span>}
+                              ? <span className={`${styles.pickerBadge} ${styles.pickerBadgeOk}`}>{t('settings.apiKey')}</span>
+                              : <span className={styles.pickerBadge}>{t('dashboard.noApiKey')}</span>}
                           </div>
                         )
                       })
@@ -987,7 +989,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>
                 <IconActivity size={14} />
-                Probe Mode
+                {t('router.probeMode')}
               </h3>
               <div className={styles.probeModes}>
                 {['eco', 'balanced', 'aggressive'].map((mode) => (
@@ -1008,7 +1010,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>
                 <IconBolt size={14} className={activeRequests.length > 0 ? styles.pulse : ''} />
-                Active Requests ({activeRequests.length})
+                {t('router.activeRequests')} ({activeRequests.length})
               </h3>
               {activeRequests.length > 0 ? (
                 <div className={styles.activeList}>
@@ -1023,9 +1025,9 @@ export default function RouterView({ onClose, onToast, favorites }) {
                         </span>
                         <span className={styles.activeStatus}>
                           {req.stalled ? (
-                            <span className={styles.stalledText}>Stalled?</span>
+                            <span className={styles.stalledText}>{t('router.stalled')}</span>
                           ) : (
-                            <span className={styles.processingText}>Processing...</span>
+                            <span className={styles.processingText}>{t('router.processing')}</span>
                           )}
                         </span>
                       </div>
@@ -1038,7 +1040,7 @@ export default function RouterView({ onClose, onToast, favorites }) {
                   ))}
                 </div>
               ) : (
-                <div className={styles.logEmpty}>No active requests.</div>
+                <div className={styles.logEmpty}>{t('router.noActiveRequests')}</div>
               )}
             </div>
           )}
@@ -1048,12 +1050,12 @@ export default function RouterView({ onClose, onToast, favorites }) {
             <div className={styles.section}>
               <h3 className={styles.sectionTitle} onClick={() => setLogExpanded(!logExpanded)} style={{ cursor: 'pointer' }}>
                 <IconActivity size={14} />
-                Request Log ({requestLog.length})
+                {t('router.requestLog')} ({requestLog.length})
                 {logExpanded ? <IconChevronUp size={12} /> : <IconChevronDown size={12} />}
               </h3>
               {logExpanded && (
                 requestLog.length === 0 ? (
-                  <div className={styles.logEmpty}>No requests yet. Start coding to see traffic here.</div>
+                  <div className={styles.logEmpty}>{t('router.noRequestsYet')}</div>
                 ) : (
                   <div className={styles.logList}>
                     {requestLog.map((entry, i) => (
@@ -1101,16 +1103,16 @@ export default function RouterView({ onClose, onToast, favorites }) {
             <div className={styles.section}>
               <h3 className={styles.sectionTitle}>
                 <IconSend size={14} />
-                Test Router
-                <span className={styles.miniPgHint}>routes through <code>fcm</code> — try the fallback chain</span>
+                {t('router.testRouter')}
+                <span className={styles.miniPgHint}>{t('router.routesVia')} <code>fcm</code> — {t('router.fallbackHint')}</span>
               </h3>
               <PlaygroundChat
                 model="fcm"
                 variant="mini"
                 disabled={!running}
                 targetLabel={nextToServeKey || 'fcm'}
-                placeholder="Test the router… (e.g. write a haiku about TypeScript)"
-                emptyHint="Send a message to see which model the router picks, with latency + TPS."
+                placeholder={t('router.miniPlaceholder')}
+                emptyHint={t('router.testEmptyHint')}
               />
             </div>
           )}
@@ -1122,8 +1124,8 @@ export default function RouterView({ onClose, onToast, favorites }) {
           {stats?.runtimeTelemetry?.stats?.modelsTracked > 0 && (
             <div className={styles.section} style={{ marginTop: 12 }}>
               <h3 className={styles.sectionTitle}>
-                📈 Runtime Telemetry
-                <span className={styles.miniPgHint}>{stats.runtimeTelemetry.stats.totalCalls} calls tracked · local-only</span>
+                📈 {t('router.runtimeTelemetry')}
+                <span className={styles.miniPgHint}>{t('router.callsTrackedLocal', { count: stats.runtimeTelemetry.stats.totalCalls })}</span>
               </h3>
               <div className={styles.quotaGrid}>
                 {Object.entries(stats.runtimeTelemetry.models)
@@ -1154,8 +1156,8 @@ export default function RouterView({ onClose, onToast, favorites }) {
           {stats?.quota && Object.keys(stats.quota).length > 0 && (
             <div className={styles.section} style={{ marginTop: 12 }}>
               <h3 className={styles.sectionTitle}>
-                📊 Provider Quota
-                <span className={styles.miniPgHint}>live from response headers (no extra requests)</span>
+                📊 {t('router.providerQuota')}
+                <span className={styles.miniPgHint}>{t('router.liveHeaders')}</span>
               </h3>
               <div className={styles.quotaGrid}>
                 {Object.entries(stats.quota)

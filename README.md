@@ -129,6 +129,10 @@ The TUI is the heart of FCM: a live, sortable table of every model with real lat
 
 Mouse support: click headers to sort, double-click a row to launch, right-click to favorite, scroll to navigate.
 
+### Languages
+
+The TUI and Web Dashboard support English (default) and Simplified Chinese (`zh-CN`). Change **Language** in Settings; the preference is shared and saved in your local config.
+
 > 📖 **Full key table, mouse reference and workflows:** [`docs/tui.md`](./docs/tui.md) · Stability score and columns: [`docs/stability.md`](./docs/stability.md)
 
 ---

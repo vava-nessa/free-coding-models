@@ -18,6 +18,7 @@
 import { TOOL_METADATA, TOOL_MODE_ORDER } from '../core/tool-metadata.js'
 import { sources } from '../../sources.js'
 import { sanitizePingInterval } from './tui-state.js'
+import { getLocale, hasTranslation, t } from '../core/i18n/index.js'
 
 // 📖 Max result rows the palette renders (overlays.js slices to this). The
 // 📖 cursor must never point past the rendered slice, so key-handler clamps
@@ -284,7 +285,24 @@ export function buildCommandPaletteTree(visibleModels = [], config = null) {
     }
   }
   
-  return tree
+  const localize = (nodes) => nodes.map((node) => {
+    const labelKey = `palette.command.${node.id}`
+    const descriptionKey = `palette.description.${node.id}`
+    const isProviderModelsDescription = node.id.startsWith('filter-provider-')
+      && node.id !== 'filter-provider-cycle'
+      && node.id !== 'filter-provider-all'
+    const effectiveDescriptionKey = isProviderModelsDescription
+      ? 'palette.description.providerModels'
+      : descriptionKey
+    if (hasTranslation(getLocale(), labelKey)) node.label = t(labelKey)
+    if (hasTranslation(getLocale(), effectiveDescriptionKey)) {
+      const provider = isProviderModelsDescription ? node.description?.replace(/ models$/, '') : undefined
+      node.description = t(effectiveDescriptionKey, { provider })
+    }
+    if (Array.isArray(node.children)) node.children = localize(node.children)
+    return node
+  })
+  return localize(tree)
 }
 
 /**

@@ -95,6 +95,7 @@ import { randomUUID } from 'crypto'
 import { MODELS, sources } from '../../sources.js'
 import { getAvg, getVerdict, getUptime, getP95, getJitter, getStabilityScore, sortResults, filterByTier, parseArgs, TIER_ORDER, VERDICT_ORDER, TIER_LETTER_MAP, scoreModelForTask, getTopRecommendations, TASK_TYPES, PRIORITY_TYPES, CONTEXT_BUDGETS, formatResultsAsJSON } from '../core/utils.js'
 import { loadConfig, saveConfig, getApiKey, resolveApiKeys, addApiKey, removeApiKey, isProviderEnabled, persistApiKeysForProvider } from '../core/config.js'
+import { setLocale } from '../core/i18n/index.js'
 import { buildMergedModels } from '../core/model-merger.js'
 import { loadOpenCodeConfig, saveOpenCodeConfig } from '../core/opencode-config.js'
 import { usageForRow as _usageForRow } from '../core/usage-reader.js'
@@ -256,6 +257,7 @@ const LOCAL_VERSION = pkg.version
 // 📖 OpenCode helpers are imported from ../src/opencode.js
 
 export async function runApp(cliArgs, config, startupOptions = {}) {
+  setLocale(config.settings?.language || 'en')
   // 📖 t4: prime the sync extended-benchmark stats so the footer chip is
   // 📖 accurate on the first render (no async, no network — just a sync read).
   ensureBenchStatsLoaded()

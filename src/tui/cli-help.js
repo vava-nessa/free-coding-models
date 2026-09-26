@@ -19,6 +19,7 @@
  */
 
 import { getToolModeOrder, getToolMeta } from '../core/tool-metadata.js'
+import { t } from '../core/i18n/index.js'
 
 const ANALYSIS_FLAGS = [
   { flag: '--best', description: 'Show only top tiers (A+, S, S+)' },
@@ -71,6 +72,29 @@ const EXAMPLES = [
   "free-coding-models --json | jq '.[0]'",
 ]
 
+const FLAG_DESCRIPTION_KEYS = Object.freeze({
+  '--best': 'cli.flag.best', '--fiable': 'cli.flag.fiable', '--json': 'cli.flag.json',
+  '--tier <S|A|B|C>': 'cli.flag.tier', '--recommend': 'cli.flag.recommend',
+  '--premium': 'cli.flag.premium', '--sort <column>': 'cli.flag.sort',
+  '--desc | --asc': 'cli.flag.direction', '--origin <provider>': 'cli.flag.origin',
+  '--ping-interval <ms>': 'cli.flag.pingInterval', '--hide-unconfigured': 'cli.flag.hideUnconfigured',
+  '--show-unconfigured': 'cli.flag.showUnconfigured', '--reprobe, --no-cache': 'cli.flag.reprobe',
+  '--probe-ttl <ms>': 'cli.flag.probeTtl', '--show-broken': 'cli.flag.showBroken',
+  '--check-drift': 'cli.flag.checkDrift', '--drift-threshold <N>': 'cli.flag.driftThreshold',
+  'web | --web | --gui': 'cli.flag.web', 'playground | --playground': 'cli.flag.playground',
+  '--daemon': 'cli.flag.daemon', '--daemon-bg': 'cli.flag.daemonBg', '--daemon-status': 'cli.flag.daemonStatus',
+  '--daemon-stop': 'cli.flag.daemonStop', '--router-v2': 'cli.flag.routerV2', '--router-v2-bg': 'cli.flag.routerV2Bg',
+  '--router-v2-status': 'cli.flag.routerV2Status', '--router-v2-stop': 'cli.flag.routerV2Stop',
+  '--sync-set [name]': 'cli.flag.syncSet', '--config-dir <dir>': 'cli.flag.configDir',
+  '--fix-permissions, --yes, -y': 'cli.flag.fixPermissions', '--no-telemetry': 'cli.flag.noTelemetry',
+  '--help, -h': 'cli.flag.help',
+})
+
+function entryDescription(entry) {
+  const key = FLAG_DESCRIPTION_KEYS[entry.flag]
+  return key ? t(key) : entry.description
+}
+
 /**
  * 📖 buildHowTheRouterWorks — a single-source explanation of the router
  * 📖 internals (circuit breaker, probe mechanism, pre-prompt) that the
@@ -83,10 +107,10 @@ export function buildHowTheRouterWorksLines({ chalk = null, indent = '' } = {}) 
   const body = (text) => `${indent}${paint(chalk, chalk?.dim, text)}`
   const bullet = (text) => `${indent}  • ${text}`
 
-  lines.push(header('How the FCM Router Works'))
+  lines.push(header(t('cli.routerHowItWorks')))
   lines.push('')
 
-  lines.push(header('1. The smart router daemon'))
+  lines.push(header(`1. ${t('cli.routerDaemon')}`))
   lines.push(body('Point any OpenAI-compatible client at http://localhost:19280/v1'))
   lines.push(body('with model: "fcm". The daemon picks the healthiest model in'))
   lines.push(body('your active set and forwards the request — with automatic'))
@@ -95,14 +119,14 @@ export function buildHowTheRouterWorksLines({ chalk = null, indent = '' } = {}) 
   lines.push(body('Family failover on the Router Dashboard) before switching family.'))
   lines.push('')
 
-  lines.push(header('2. The pre-prompt (system message)'))
+  lines.push(header(`2. ${t('cli.prePrompt')}`))
   lines.push(body('A first-class system message is injected on every proxied'))
   lines.push(body('request. The default text introduces the assistant as the FCM'))
   lines.push(body('routing agent and points the user to the dashboard URL.'))
   lines.push(body('You can edit it from Settings (Settings → Pre-prompt).'))
   lines.push('')
 
-  lines.push(header('3. The probe mechanism (every 10s/30s/120s)'))
+  lines.push(header(`3. ${t('cli.probeMechanism')}`))
   lines.push(body('The daemon sends a 1-token chat-completion ping to every model'))
   lines.push(body('in the active set. The probe measures latency + status code, not'))
   lines.push(body('just URL reachability — so a wrong API key is caught and the'))
@@ -112,7 +136,7 @@ export function buildHowTheRouterWorksLines({ chalk = null, indent = '' } = {}) 
   lines.push(bullet('aggressive: probe every 10s (uses more quota)'))
   lines.push('')
 
-  lines.push(header('4. The circuit breaker (per-model state)'))
+  lines.push(header(`4. ${t('cli.circuitBreaker')}`))
   lines.push(body('Each model has a tiny disjoncteur that flips between 3 states.'))
   lines.push(body('The raw jargon is hidden in the UI — here is what the colors mean:'))
   lines.push(bullet('Healthy (green)  — last probe returned 2xx, route here freely'))
@@ -125,21 +149,21 @@ export function buildHowTheRouterWorksLines({ chalk = null, indent = '' } = {}) 
   lines.push(body('then falls through to any provider.'))
   lines.push('')
 
-  lines.push(header('5. Failover order'))
+  lines.push(header(`5. ${t('cli.failoverOrder')}`))
   lines.push(body('Models in the active set are tried in priority order. A model'))
   lines.push(body('in Recovering/Down/Auth error is skipped — the request goes to'))
   lines.push(body('the next healthy one. If ALL models fail, you get a 503 with the'))
   lines.push(body('"models_tried" list in the error body — useful for debugging.'))
   lines.push('')
 
-  lines.push(header('6. Auto-heal (default behavior)'))
+  lines.push(header(`6. ${t('cli.autoHeal')}`))
   lines.push(body('On daemon start, the active set is checked. Any model in Auth'))
   lines.push(body('error or Deprecated is swapped for a working alternative. The'))
   lines.push(body('first time you add/remove/reorder a model, auto-heal switches off'))
   lines.push(body('and your manual choices are preserved.'))
   lines.push('')
 
-  lines.push(header('7. Rate limits (RPD / RPM / TPM)'))
+  lines.push(header(`7. ${t('cli.rateLimits')}`))
   lines.push(body('Each provider has its own quota. Common free-tier limits:'))
   lines.push(bullet('Groq on-demand: 14 400 RPD, 30 RPM per model'))
   lines.push(bullet('Mistral La Plateforme: 1 RPS, 1B TPM (experiment plan)'))
@@ -164,35 +188,35 @@ function formatEntry(label, description, { chalk = null, indent = '', labelWidth
   return `${indent}${coloredLabel} ${coloredDescription}`
 }
 
-export function buildCliHelpLines({ chalk = null, indent = '', title = 'CLI Help' } = {}) {
+export function buildCliHelpLines({ chalk = null, indent = '', title = null } = {}) {
   const lines = []
   const launchFlags = getToolModeOrder()
     .map((mode) => getToolMeta(mode))
     .filter((meta) => meta.flag)
-    .map((meta) => ({ flag: meta.flag, description: `${meta.label} mode` }))
+    .map((meta) => ({ flag: meta.flag, description: `${meta.label} ${t('cli.mode')}` }))
 
-  lines.push(`${indent}${paint(chalk, chalk?.bold, title)}`)
-  lines.push(`${indent}${paint(chalk, chalk?.dim, 'Usage: free-coding-models [apiKey] [options]')}`)
+  lines.push(`${indent}${paint(chalk, chalk?.bold, title || t('cli.helpTitle'))}`)
+  lines.push(`${indent}${paint(chalk, chalk?.dim, `${t('cli.usage')}: free-coding-models [apiKey] [options]`)}`)
   lines.push('')
-  lines.push(`${indent}${paint(chalk, chalk?.bold, 'Tool Flags')}`)
+  lines.push(`${indent}${paint(chalk, chalk?.bold, t('cli.toolFlags'))}`)
   for (const entry of launchFlags) {
-    lines.push(formatEntry(entry.flag, entry.description, { chalk, indent }))
+    lines.push(formatEntry(entry.flag, entryDescription(entry), { chalk, indent }))
   }
   lines.push('')
-  lines.push(`${indent}${paint(chalk, chalk?.bold, 'Analysis Flags')}`)
+  lines.push(`${indent}${paint(chalk, chalk?.bold, t('cli.analysisFlags'))}`)
   for (const entry of ANALYSIS_FLAGS) {
-    lines.push(formatEntry(entry.flag, entry.description, { chalk, indent }))
+    lines.push(formatEntry(entry.flag, entryDescription(entry), { chalk, indent }))
   }
   lines.push('')
-  lines.push(`${indent}${paint(chalk, chalk?.bold, 'Config & Maintenance')}`)
+  lines.push(`${indent}${paint(chalk, chalk?.bold, t('cli.configMaintenance'))}`)
   for (const entry of CONFIG_FLAGS) {
-    lines.push(formatEntry(entry.flag, entry.description, { chalk, indent }))
+    lines.push(formatEntry(entry.flag, entryDescription(entry), { chalk, indent }))
   }
   lines.push('')
-  lines.push(`${indent}${paint(chalk, chalk?.dim, 'Default launcher with no tool flag: OpenCode CLI')}`)
-  lines.push(`${indent}${paint(chalk, chalk?.dim, 'Flags can be combined: --openclaw --tier S --json')}`)
+  lines.push(`${indent}${paint(chalk, chalk?.dim, t('cli.defaultLauncher'))}`)
+  lines.push(`${indent}${paint(chalk, chalk?.dim, t('cli.combineFlags'))}`)
   lines.push('')
-  lines.push(`${indent}${paint(chalk, chalk?.bold, 'Examples')}`)
+  lines.push(`${indent}${paint(chalk, chalk?.bold, t('cli.examples'))}`)
   for (const example of EXAMPLES) {
     lines.push(`${indent}${paint(chalk, chalk?.cyan, example)}`)
   }

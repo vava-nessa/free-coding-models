@@ -34,6 +34,7 @@ import {
 } from '@tabler/icons-react'
 import PlaygroundChat from './PlaygroundChat.jsx'
 import styles from './PlaygroundView.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 const SUGGESTIONS = [
   'Write a Python fizzbuzz with type hints',
@@ -48,11 +49,12 @@ const SUGGESTIONS = [
  * 📖 pure chrome (not part of the chat core).
  */
 function StatusPill({ routerStatus, daemonRunning }) {
+  const { t } = useI18n()
   if (daemonRunning === true) {
     return (
       <span className={styles.metaChip}>
         <IconBolt size={11} />
-        Router online
+        {t('playground.routerOnline')}
       </span>
     )
   }
@@ -60,19 +62,20 @@ function StatusPill({ routerStatus, daemonRunning }) {
     return (
       <span className={`${styles.metaChip} ${styles.error}`}>
         <IconAlertTriangle size={11} />
-        Router offline
+        {t('playground.routerOffline')}
       </span>
     )
   }
   return (
     <span className={styles.metaChip}>
       <IconLoader size={11} className={styles.spin} />
-      Checking router…
+      {t('playground.checkingRouter')}
     </span>
   )
 }
 
 export default function PlaygroundView({ onClose, onToast, models, routerStatus }) {
+  const { t } = useI18n()
   // ── Chrome state (host-owned) ──────────────────────────────────────────
   const [model, setModel] = useState(null) // null = computing best model
   const [streamOn, setStreamOn] = useState(true)
@@ -210,7 +213,7 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
   // 📖 Stable list of model identifiers for the dropdown — defaults to `fcm`
   // 📖 (the auto-router) and lets the user pin a specific catalog entry.
   const modelOptions = useMemo(() => {
-    const opts = [{ value: 'fcm', label: 'fcm — auto router (recommended)' }]
+    const opts = [{ value: 'fcm', label: t('playground.autoRouterRecommended') }]
     if (Array.isArray(models)) {
       for (const m of models.slice(0, 200)) {
         const id = m.modelId || m.id
@@ -220,7 +223,7 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
       }
     }
     return opts
-  }, [models])
+  }, [models, t])
 
   // 📖 PlaygroundChat turn callback → keep the header counter in sync and
   // 📖 drive the daemon-panel gate (only show it when there are no messages).
@@ -247,22 +250,22 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
 
   return (
     <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className={styles.modal} role="dialog" aria-label="Free Coding Models Playground">
+      <div className={styles.modal} role="dialog" aria-label={t('playground.title')}>
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <div className={styles.headerTitle}>
               <IconMessageChatbot size={18} />
-              Playground
+              {t('playground.title')}
             </div>
             <div className={styles.headerSubtitle}>
-              Chat with the FCM router · {chatStats.count} message{chatStats.count === 1 ? '' : 's'} · {chatStats.totalTokens} tokens
+              {t('playground.messagesTokens', { messages: chatStats.count, tokens: chatStats.totalTokens })}
             </div>
           </div>
           <div className={styles.headerActions}>
             <button
               className={styles.iconBtn}
               onClick={handleClear}
-              title="Clear conversation"
+              title={t('playground.clear')}
               disabled={!hasMessages}
             >
               <IconTrash size={16} />
@@ -270,7 +273,7 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
             <button
               className={styles.iconBtn}
               onClick={onClose}
-              title="Close (Esc)"
+              title={`${t('common.close')} (Esc)`}
             >
               <IconX size={16} />
             </button>
@@ -278,7 +281,7 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
         </div>
 
         <div className={styles.modelBar}>
-          <span className={styles.modelLabel}>Model:</span>
+          <span className={styles.modelLabel}>{t('playground.model')}:</span>
           <select
             className={styles.modelSelect}
             value={model ?? 'fcm'}
@@ -292,24 +295,24 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
           <button
             className={styles.presetChip}
             onClick={() => setStreamOn((v) => !v)}
-            title="Toggle streaming"
+            title={t('playground.toggleStreaming')}
           >
-            {streamOn ? '⚡ Streaming' : '🐢 One-shot'}
+            {streamOn ? t('playground.streamOn') : t('playground.streamOff')}
           </button>
-          <label className={styles.prePromptToggle} title="Router persona injected as the first system message">
+          <label className={styles.prePromptToggle} title={t('playground.prePromptHint')}>
             <input
               type="checkbox"
               checked={prePromptEnabled}
               onChange={(e) => setPrePromptEnabled(e.target.checked)}
             />
-            Pre-prompt
+            {t('playground.persona')}
           </label>
           <StatusPill routerStatus={routerStatus} daemonRunning={daemonRunning} />
         </div>
 
         {prePromptEnabled && prePromptText && (
           <div className={styles.modelBar} style={{ borderTop: 'none', background: 'transparent', paddingTop: 4, paddingBottom: 8, fontSize: 11 }}>
-            <span className={styles.modelLabel} style={{ flexShrink: 0 }}>Persona:</span>
+            <span className={styles.modelLabel} style={{ flexShrink: 0 }}>{t('playground.persona')}:</span>
             <span style={{ opacity: 0.7, fontStyle: 'italic' }}>
               {prePromptText.length > 160 ? `${prePromptText.slice(0, 160)}…` : prePromptText}
             </span>
@@ -320,31 +323,31 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
           {showDaemonStartPanel ? (
             <div className={styles.daemonStartPanel}>
               <IconAlertTriangle size={32} style={{ color: '#fbbf24', opacity: 0.8 }} />
-              <div className={styles.daemonStartTitle}>Router daemon is not running</div>
+              <div className={styles.daemonStartTitle}>{t('playground.daemonStopped')}</div>
               <div className={styles.daemonStartHint}>
-                The playground routes your chats through the FCM router daemon. Start it to begin chatting with free coding models, or pick a specific model above.
+                {t('playground.routerHint')}
               </div>
               <button
                 className={styles.daemonStartBtn}
                 onClick={startDaemon}
-                title="Start the router daemon"
+                title={t('playground.startDaemon')}
               >
                 {daemonStarting ? (
-                  <><IconLoader size={14} className={styles.spin} /> Starting…</>
+                  <><IconLoader size={14} className={styles.spin} /> {t('playground.startingDaemon')}</>
                 ) : (
-                  <><IconPlayerPlay size={14} /> Start Router{autoStartSec > 0 && !autoStartTriggered.current ? ` (auto in ${autoStartSec}s)` : ''}</>
+                  <><IconPlayerPlay size={14} /> {t('playground.startRouter')}{autoStartSec > 0 && !autoStartTriggered.current ? ` (${t('playground.autoStartIn', { seconds: autoStartSec })})` : ''}</>
                 )}
               </button>
               <div className={styles.daemonStartAlt}>
-                Or run <code>free-coding-models --daemon-bg</code> in your terminal
+                {t('playground.runCommand')} <code>free-coding-models --daemon-bg</code>
               </div>
             </div>
           ) : showDaemonStartingPanel ? (
             <div className={styles.daemonStartPanel}>
               <IconLoader size={32} className={styles.spin} style={{ color: 'var(--accent, #22c55e)' }} />
-              <div className={styles.daemonStartTitle}>Starting router daemon…</div>
+              <div className={styles.daemonStartTitle}>{t('playground.startingDaemon')}</div>
               <div className={styles.daemonStartHint}>
-                The daemon is being launched. This usually takes a few seconds. You'll be able to chat as soon as it's ready.
+                {t('playground.waitingForDaemon')}
               </div>
             </div>
           ) : null}
@@ -358,10 +361,10 @@ export default function PlaygroundView({ onClose, onToast, models, routerStatus 
               disabled={!canSend}
               onTurnComplete={handleTurnComplete}
               suggestions={SUGGESTIONS}
-              emptyTitle="Try the FCM router in 10 seconds"
-              emptyHint="Each request is auto-routed to the healthiest free coding model in your active set, or sent directly to the model you picked. Every reply shows the served model, latency, and TPS below it."
+              emptyTitle={t('playground.emptyTitle')}
+              emptyHint={t('playground.emptyHint')}
               emptyIcon={<IconMessageChatbot size={42} style={{ opacity: 0.5 }} />}
-              placeholder="Ask anything. Enter to send, Shift+Enter for a newline."
+              placeholder={t('playground.fullPlaceholder')}
             />
           )}
         </div>

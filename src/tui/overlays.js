@@ -26,6 +26,7 @@ import { renderPlayground as renderPlaygroundOverlay } from '../core/playground.
 import { themeColors, getThemeStatusLabel, getProviderRgb } from './theme.js'
 import { getProviderBillingNote, getProviderLabelWithBilling } from '../core/provider-metadata.js'
 import { pickAccountIdFromSettings } from '../core/cloudflare-account.js'
+import { t } from '../core/i18n/index.js'
 import { detectTerminalCapabilities } from '../core/utils.js'
 import { truncateAnsiWidth, loadChangelogCached } from './render-helpers.js'
 import { COMMAND_PALETTE_MAX_RESULTS } from './command-palette.js'
@@ -72,22 +73,20 @@ export function createOverlayRenderers(state, deps) {
   // 📖 the overlay instead of turning into one truncated red line.
   // 📖 Uses 100% of terminal width minus padding for better readability.
   const wrapPlainText = (text, width = null) => {
-    const effectiveWidth = width || (state.terminalCols - 16)
+    const effectiveWidth = Math.max(1, width || (state.terminalCols - 16))
     const normalized = typeof text === 'string' ? text.trim() : ''
     if (!normalized) return []
-    const words = normalized.split(/\s+/)
     const lines = []
     let current = ''
-    for (const word of words) {
-      const next = current ? `${current} ${word}` : word
-      if (next.length > effectiveWidth && current) {
-        lines.push(current)
-        current = word
+    for (const character of [...normalized]) {
+      if (displayWidth(current + character) > effectiveWidth && current) {
+        lines.push(current.trimEnd())
+        current = character.trimStart()
       } else {
-        current = next
+        current += character
       }
     }
-    if (current) lines.push(current)
+    if (current.trim()) lines.push(current.trimEnd())
     return lines
   }
 
@@ -123,7 +122,8 @@ export function createOverlayRenderers(state, deps) {
     const providerKeys = Object.keys(sources)
     const updateRowIdx = providerKeys.length
     const themeRowIdx = updateRowIdx + 1
-    const favoritesModeRowIdx = themeRowIdx + 1
+    const languageRowIdx = themeRowIdx + 1
+    const favoritesModeRowIdx = languageRowIdx + 1
     const startupAiSpeedScanRowIdx = favoritesModeRowIdx + 1
     const autoHideBrokenModelsRowIdx = startupAiSpeedScanRowIdx + 1
     const cleanupLegacyProxyRowIdx = autoHideBrokenModelsRowIdx + 1
@@ -135,14 +135,14 @@ export function createOverlayRenderers(state, deps) {
 
     // 📖 Branding header
     lines.push(`  ${themeColors.accent('🚀')} ${themeColors.accentBold('free-coding-models')} ${themeColors.dim(`v${LOCAL_VERSION}`)}`)
-    lines.push(`  ${themeColors.textBold('⚙  Settings')}`)
+    lines.push(`  ${themeColors.textBold(`⚙  ${t('settings.title')}`)}`)
 
     if (state.settingsErrorMsg) {
       lines.push(`  ${themeColors.errorBold(state.settingsErrorMsg)}`)
       lines.push('')
     }
 
-    lines.push(`  ${themeColors.textBold('🧩 Providers')}`)
+    lines.push(`  ${themeColors.textBold(`🧩 ${t('settings.providers')}`)}`)
     // 📖 Dynamic separator line using 100% terminal width
     const separatorWidth = Math.max(20, state.terminalCols - 10)
     lines.push(`  ${themeColors.dim('  ' + '─'.repeat(separatorWidth))}`)
@@ -174,25 +174,25 @@ export function createOverlayRenderers(state, deps) {
         const extra = keyCount > 1 ? themeColors.info(` (+${keyCount - 1} more)`) : ''
         keyDisplay = keyMasked + extra
       } else {
-        keyDisplay = themeColors.dim('(no key set)')
+        keyDisplay = themeColors.dim(t('settings.noApiKeySet'))
       }
 
       // 📖 Test result badge
       const testResult = state.settingsTestResults[pk]
       // 📖 Default badge reflects configuration first: a saved key should look
       // 📖 ready to test even before the user has run the probe once.
-      let testBadge = keyCount > 0 ? themeColors.info('[Test]') : themeColors.dim('[Missing Key 🔑]')
-      if (testResult === 'pending') testBadge = themeColors.warning('[Testing…]')
-      else if (testResult === 'ok')   testBadge = themeColors.successBold('[Test ✅]')
-      else if (testResult === 'missing_key') testBadge = themeColors.dim('[Missing Key 🔑]')
-      else if (testResult === 'auth_error') testBadge = themeColors.error('[Auth ❌]')
-      else if (testResult === 'rate_limited') testBadge = themeColors.warning('[Rate limit ⏳]')
-      else if (testResult === 'no_callable_model') testBadge = chalk.rgb(...getProviderRgb('openrouter'))('[No model ⚠]')
-      else if (testResult === 'fail') testBadge = themeColors.error('[Test ❌]')
+      let testBadge = keyCount > 0 ? themeColors.info(t('settings.badge.test')) : themeColors.dim(t('settings.badge.missingKey'))
+      if (testResult === 'pending') testBadge = themeColors.warning(t('settings.badge.testing'))
+      else if (testResult === 'ok')   testBadge = themeColors.successBold(t('settings.badge.testOk'))
+      else if (testResult === 'missing_key') testBadge = themeColors.dim(t('settings.badge.missingKey'))
+      else if (testResult === 'auth_error') testBadge = themeColors.error(t('settings.badge.authError'))
+      else if (testResult === 'rate_limited') testBadge = themeColors.warning(t('settings.badge.rateLimited'))
+      else if (testResult === 'no_callable_model') testBadge = chalk.rgb(...getProviderRgb('openrouter'))(t('settings.badge.noCallableModel'))
+      else if (testResult === 'fail') testBadge = themeColors.error(t('settings.badge.failed'))
       // 📖 No truncation of rate limits - overlay now uses 100% terminal width.
       // 📖 Paid/credits-required providers get an explicit money marker + parenthesized detail.
       const billingNote = getProviderBillingNote(pk)
-      const rateSummary = themeColors.dim(`${meta.rateLimits || 'No limit info'}${billingNote ? `  ${billingNote}` : ''}`)
+      const rateSummary = themeColors.dim(`${meta.rateLimits || t('settings.noLimitInfo')}${billingNote ? `  ${billingNote}` : ''}`)
 
       const enabledBadge = enabled ? themeColors.successBold('✅') : themeColors.errorBold('❌')
       // 📖 Color provider names the same way as in the main table
@@ -211,17 +211,17 @@ export function createOverlayRenderers(state, deps) {
     const selectedMeta = PROVIDER_METADATA[selectedProviderKey] || {}
     if (selectedSource && state.settingsCursor < providerKeys.length) {
       const selectedKey = getApiKey(state.config, selectedProviderKey)
-      const setupStatus = selectedKey ? themeColors.success('API key detected ✅') : themeColors.warning('API key missing ⚠')
+      const setupStatus = selectedKey ? themeColors.success(t('settings.keyDetected')) : themeColors.warning(t('settings.keyMissing'))
       // 📖 Color the provider name in the setup instructions header
       const selectedProviderRgb = PROVIDER_COLOR[selectedProviderKey] ?? [105, 190, 245]
       const selectedProviderLabel = getProviderLabelWithBilling(selectedProviderKey, selectedSource.name || selectedProviderKey)
       const selectedBillingNote = getProviderBillingNote(selectedProviderKey)
       const coloredProviderName = chalk.bold.rgb(...selectedProviderRgb)(selectedProviderLabel)
-      lines.push(`  ${themeColors.textBold('Setup Instructions')} — ${coloredProviderName}${selectedBillingNote ? ' ' + themeColors.warning(selectedBillingNote) : ''}`)
-      lines.push(themeColors.dim(`  1) Create a ${selectedMeta.label || selectedSource.name} account: ${selectedMeta.signupUrl || 'signup link missing'}`))
+      lines.push(`  ${themeColors.textBold(t('settings.setupInstructions'))} — ${coloredProviderName}${selectedBillingNote ? ' ' + themeColors.warning(selectedBillingNote) : ''}`)
+      lines.push(themeColors.dim(`  1) ${t('settings.createProviderAccount')} (${selectedMeta.label || selectedSource.name}): ${selectedMeta.signupUrl || 'signup link missing'}`))
       if (selectedBillingNote) lines.push(themeColors.warning(`     💰 Paid provider note: ${selectedBillingNote}`))
-      lines.push(themeColors.dim(`  2) ${selectedMeta.signupHint || 'Generate an API key and paste it with Enter on this row'}`))
-      lines.push(themeColors.dim(`  3) Press ${themeColors.hotkey('T')} to test your key. Status: ${setupStatus}`))
+      lines.push(themeColors.dim(`  2) ${selectedMeta.signupHint || t('settings.generateApiKeyHint')}`))
+      lines.push(themeColors.dim(`  3) ${t('settings.pressToTestKey', { key: themeColors.hotkey('T') })} ${setupStatus}`))
       if (selectedProviderKey === 'cloudflare') {
         // 📖 Account id resolution has fallbacks since issue #181: env var,
         // 📖 stored config setting, or zero-setup auto-discovery from the API key.
@@ -235,7 +235,7 @@ export function createOverlayRenderers(state, deps) {
       const testDetail = state.settingsTestDetails?.[selectedProviderKey]
       if (testDetail) {
         lines.push('')
-        lines.push(themeColors.errorBold('  Test Diagnostics'))
+        lines.push(themeColors.errorBold(`  ${t('settings.testDiagnostics')}`))
         for (const detailLine of wrapPlainText(testDetail)) {
           lines.push(themeColors.error(`  ${detailLine}`))
         }
@@ -252,38 +252,44 @@ export function createOverlayRenderers(state, deps) {
     const updateState = state.settingsUpdateState
     const latestFound = state.settingsUpdateLatestVersion
     const updateActionLabel = updateState === 'available' && latestFound
-      ? `Install update (v${latestFound})`
-      : 'Check for updates manually'
-    let updateStatus = themeColors.dim('Press Enter or U to check npm registry')
-    if (updateState === 'checking') updateStatus = themeColors.warning('Checking npm registry…')
-    if (updateState === 'available' && latestFound) updateStatus = themeColors.successBold(`Update available: v${latestFound} (Enter to install)`)
-    if (updateState === 'up-to-date') updateStatus = themeColors.success('Already on latest version')
-    if (updateState === 'error') updateStatus = themeColors.error('Check failed (press U to retry)')
-    if (updateState === 'installing') updateStatus = themeColors.info('Installing update…')
-    const updateRow = `${bullet(updateCursor)}${themeColors.textBold(updateActionLabel).padEnd(44)} ${updateStatus}`
+      ? t('settings.installUpdate', { version: latestFound })
+      : t('settings.checkUpdatesManually')
+    let updateStatus = themeColors.dim(t('settings.pressToCheckUpdates'))
+    if (updateState === 'checking') updateStatus = themeColors.warning(t('update.checking'))
+    if (updateState === 'available' && latestFound) updateStatus = themeColors.successBold(t('settings.updateAvailable', { version: latestFound }))
+    if (updateState === 'up-to-date') updateStatus = themeColors.success(t('settings.upToDate'))
+    if (updateState === 'error') updateStatus = themeColors.error(t('settings.updateCheckFailed'))
+    if (updateState === 'installing') updateStatus = themeColors.info(t('settings.installingUpdate'))
+    const updateRow = `${bullet(updateCursor)}${padEndDisplay(themeColors.textBold(updateActionLabel), 44)} ${updateStatus}`
     cursorLineByRow[updateRowIdx] = lines.length
     lines.push(updateCursor ? themeColors.bgCursor(updateRow) : updateRow)
     const themeStatus = getThemeStatusLabel(activeThemeSetting())
     const themeStatusColor = themeStatus.includes('Dark') ? themeColors.warningBold : themeColors.info
-    const themeRow = `${bullet(state.settingsCursor === themeRowIdx)}${themeColors.textBold('Global Theme').padEnd(44)} ${themeStatusColor(themeStatus)}`
+    const themeRow = `${bullet(state.settingsCursor === themeRowIdx)}${padEndDisplay(themeColors.textBold(t('settings.globalTheme')), 44)} ${themeStatusColor(themeStatus)}`
     cursorLineByRow[themeRowIdx] = lines.length
     lines.push(state.settingsCursor === themeRowIdx ? themeColors.bgCursor(themeRow) : themeRow)
+
+    const activeLanguage = state.config.settings?.language === 'zh-CN' ? 'zh-CN' : 'en'
+    const languageLabel = activeLanguage === 'zh-CN' ? t('common.language.simplifiedChinese') : t('common.language.english')
+    const languageRow = `${bullet(state.settingsCursor === languageRowIdx)}${padEndDisplay(themeColors.textBold(t('settings.language')), 44)} ${themeColors.info(languageLabel)}`
+    cursorLineByRow[languageRowIdx] = lines.length
+    lines.push(state.settingsCursor === languageRowIdx ? themeColors.bgCursorSettingsList(languageRow) : languageRow)
 
     // 📖 Favorites mode row mirrors Y-key behavior from the main table.
     const favoritesModeEnabled = state.favoritesPinnedAndSticky === true
     const favoritesModeStatus = favoritesModeEnabled
-      ? themeColors.warningBold('Pinned + always visible')
-      : themeColors.info('Normal rows (filter/sort)')
-    const favoritesModeRow = `${bullet(state.settingsCursor === favoritesModeRowIdx)}${themeColors.textBold('Favorites Display Mode').padEnd(44)} ${favoritesModeStatus}`
+      ? themeColors.warningBold(t('settings.favoritesPinned'))
+      : themeColors.info(t('settings.favoritesNormal'))
+    const favoritesModeRow = `${bullet(state.settingsCursor === favoritesModeRowIdx)}${padEndDisplay(themeColors.textBold(t('settings.favoritesMode')), 44)} ${favoritesModeStatus}`
     cursorLineByRow[favoritesModeRowIdx] = lines.length
     lines.push(state.settingsCursor === favoritesModeRowIdx ? themeColors.bgCursorSettingsList(favoritesModeRow) : favoritesModeRow)
 
     // 📖 Startup AI Speed Scan row controls the opt-in Ctrl+U auto-run at launch.
     const startupAiSpeedScanEnabled = state.config.settings?.runAiSpeedTestOnStartup === true
     const startupAiSpeedScanStatus = startupAiSpeedScanEnabled
-      ? themeColors.successBold('✅ Enabled — runs Ctrl+U after startup')
-      : themeColors.dim('❌ Disabled — manual Ctrl+U only')
-    const startupAiSpeedScanRow = `${bullet(state.settingsCursor === startupAiSpeedScanRowIdx)}${themeColors.textBold('Startup AI Speed Scan').padEnd(44)} ${startupAiSpeedScanStatus}`
+      ? themeColors.successBold(t('settings.startupSpeedTestEnabled'))
+      : themeColors.dim(t('settings.startupSpeedTestDisabled'))
+    const startupAiSpeedScanRow = `${bullet(state.settingsCursor === startupAiSpeedScanRowIdx)}${padEndDisplay(themeColors.textBold(t('settings.startupSpeedTest')), 44)} ${startupAiSpeedScanStatus}`
     cursorLineByRow[startupAiSpeedScanRowIdx] = lines.length
     lines.push(state.settingsCursor === startupAiSpeedScanRowIdx ? themeColors.bgCursorSettingsList(startupAiSpeedScanRow) : startupAiSpeedScanRow)
 
@@ -292,8 +298,8 @@ export function createOverlayRenderers(state, deps) {
     const hiddenCount = state.config.hiddenModels instanceof Set ? state.config.hiddenModels.size : 0
     const autoHideStatus = autoHideEnabled
       ? themeColors.successBold(`✅ Enabled (${hiddenCount} hidden)`)
-      : themeColors.errorBold('❌ Disabled')
-    const autoHideRow = `${bullet(state.settingsCursor === autoHideBrokenModelsRowIdx)}${themeColors.textBold('Auto-hide Broken Models').padEnd(44)} ${autoHideStatus}`
+      : themeColors.errorBold(t('common.disabled'))
+    const autoHideRow = `${bullet(state.settingsCursor === autoHideBrokenModelsRowIdx)}${padEndDisplay(themeColors.textBold(t('settings.autoHideBrokenModels')), 44)} ${autoHideStatus}`
     cursorLineByRow[autoHideBrokenModelsRowIdx] = lines.length
     lines.push(state.settingsCursor === autoHideBrokenModelsRowIdx ? themeColors.bgCursorSettingsList(autoHideRow) : autoHideRow)
 
@@ -302,23 +308,23 @@ export function createOverlayRenderers(state, deps) {
     }
 
     // 📖 Cleanup row removes stale proxy-era config left behind by older builds.
-    const cleanupLegacyProxyRow = `${bullet(state.settingsCursor === cleanupLegacyProxyRowIdx)}${themeColors.textBold('Clean Legacy Proxy Config').padEnd(44)} ${themeColors.warning('Enter remove discontinued bridge leftovers')}`
+    const cleanupLegacyProxyRow = `${bullet(state.settingsCursor === cleanupLegacyProxyRowIdx)}${padEndDisplay(themeColors.textBold(t('settings.cleanupLegacy')), 44)} ${themeColors.warning(t('settings.pressEnterCleanup'))}`
     cursorLineByRow[cleanupLegacyProxyRowIdx] = lines.length
     lines.push(state.settingsCursor === cleanupLegacyProxyRowIdx ? themeColors.bgCursorLegacy(cleanupLegacyProxyRow) : cleanupLegacyProxyRow)
 
     // 📖 Changelog viewer row
-    const changelogViewRow = `${bullet(state.settingsCursor === changelogViewRowIdx)}${themeColors.textBold('View Changelog').padEnd(44)} ${themeColors.dim('Enter browse version history')}`
+    const changelogViewRow = `${bullet(state.settingsCursor === changelogViewRowIdx)}${padEndDisplay(themeColors.textBold(t('settings.viewChangelog')), 44)} ${themeColors.dim(t('settings.pressEnterChangelog'))}`
     cursorLineByRow[changelogViewRowIdx] = lines.length
     lines.push(state.settingsCursor === changelogViewRowIdx ? themeColors.bgCursorSettingsList(changelogViewRow) : changelogViewRow)
 
     // 📖 Shell env toggle — expose API keys as shell environment variables
     const shellEnvSetting = state.config.settings?.shellEnvEnabled
     const shellEnvStatus = shellEnvSetting === true
-      ? themeColors.successBold('✅ Enabled — keys available in shell')
+      ? themeColors.successBold(t('settings.shellEnvEnabled'))
       : shellEnvSetting === false
-        ? themeColors.dim('❌ Disabled')
-        : themeColors.warning('🔘 Not configured — Enter to set up')
-    const shellEnvRow = `${bullet(state.settingsCursor === shellEnvRowIdx)}${themeColors.textBold('Shell Env Export').padEnd(44)} ${shellEnvStatus}`
+        ? themeColors.dim(t('common.disabled'))
+        : themeColors.warning(t('settings.shellEnvNotConfigured'))
+    const shellEnvRow = `${bullet(state.settingsCursor === shellEnvRowIdx)}${padEndDisplay(themeColors.textBold(t('settings.shellEnv')), 44)} ${shellEnvStatus}`
     cursorLineByRow[shellEnvRowIdx] = lines.length
     lines.push(state.settingsCursor === shellEnvRowIdx ? themeColors.bgCursorSettingsList(shellEnvRow) : shellEnvRow)
 
@@ -326,9 +332,9 @@ export function createOverlayRenderers(state, deps) {
 
     lines.push('')
     if (state.settingsEditMode) {
-      lines.push(themeColors.dim('  Type API key  •  Enter Save  •  Esc Cancel'))
+      lines.push(themeColors.dim(`  ${t('settings.typeApiKey')}  •  Enter ${t('common.save')}  •  Esc ${t('common.cancel')}`))
     } else {
-      lines.push(themeColors.dim('  ↑↓ Navigate  •  Enter Edit/Run/Cycle  •  + Add key  •  - Remove key  •  Space Toggle/Cycle  •  T Test key  •  U Updates  •  G Theme  •  Y Favorites  •  Esc Close'))
+      lines.push(themeColors.dim(`  ↑↓ ${t('settings.navigate')}  •  Enter ${t('settings.editRunCycle')}  •  + ${t('settings.addKey')}  •  - ${t('settings.removeKey')}  •  Space ${t('settings.toggleCycle')}  •  T ${t('settings.testKey')}  •  U ${t('settings.updates')}  •  G ${t('settings.theme')}  •  Y ${t('settings.favorites')}  •  Esc ${t('common.close')}`))
     }
     // 📖 Show sync/restore status message if set
     if (state.settingsSyncStatus) {
@@ -390,13 +396,13 @@ export function createOverlayRenderers(state, deps) {
     const scopeChoices = [
       {
         key: 'all',
-        label: 'Install all models',
-        hint: 'Recommended — FCM will refresh this provider catalog automatically later.',
+        label: t('install.scope.all.label'),
+        hint: t('install.scope.all.hint'),
       },
       {
         key: 'selected',
-        label: 'Install selected models only',
-        hint: 'Choose a smaller curated subset for a cleaner model picker.',
+        label: t('install.scope.selected.label'),
+        hint: t('install.scope.selected.hint'),
       },
     ]
     const selectedProviderLabel = state.installEndpointsProviderKey === 'fcm_router' 
@@ -414,40 +420,40 @@ export function createOverlayRenderers(state, deps) {
         })()
       : '—'
 
-    const selectedConnectionLabel = 'Direct Provider'
+    const selectedConnectionLabel = t('install.directProvider')
 
     lines.push('')
     // 📖 Branding header
     lines.push(`  ${themeColors.accent('🚀')} ${themeColors.accentBold('free-coding-models')} ${themeColors.dim(`v${LOCAL_VERSION}`)}`)
-    lines.push(`  ${themeColors.textBold('🔌 Install Endpoints')}`)
+    lines.push(`  ${themeColors.textBold(`🔌 ${t('install.title')}`)}`)
     lines.push('')
-    lines.push(themeColors.dim('  — install provider catalogs into supported coding tools'))
+    lines.push(themeColors.dim(`  — ${t('install.tuiSubtitle')}`))
     if (state.installEndpointsErrorMsg) {
       lines.push(`  ${themeColors.warning(state.installEndpointsErrorMsg)}`)
     }
     lines.push('')
 
     if (state.installEndpointsPhase === 'providers') {
-      lines.push(`  ${themeColors.textBold(`Step 1/${totalSteps}`)}  ${themeColors.info('Choose a configured provider')}`)
+      lines.push(`  ${themeColors.textBold(t('common.stepNumber', { step: 1, total: totalSteps }))}  ${themeColors.info(t('install.chooseConfiguredProvider'))}`)
       lines.push('')
 
       if (providerChoices.length === 0) {
-        lines.push(themeColors.dim('  No configured providers can be installed directly right now.'))
-        lines.push(themeColors.dim('  Add an API key in Settings (`P`) first, then reopen this screen.'))
+        lines.push(themeColors.dim(t('install.noProvidersConfigured')))
+        lines.push(themeColors.dim(t('install.keyRequired')))
       } else {
         providerChoices.forEach((provider, idx) => {
           const isCursor = idx === state.installEndpointsCursor
-          const row = `${bullet(isCursor)}${themeColors.textBold(provider.label.padEnd(24))} ${themeColors.dim(`${provider.modelCount} models`)}`
+          const row = `${bullet(isCursor)}${themeColors.textBold(provider.label.padEnd(24))} ${themeColors.dim(t('install.modelsCount', { count: provider.modelCount }))}`
           cursorLineByRow[idx] = lines.length
           lines.push(isCursor ? themeColors.bgCursorInstall(row) : row)
         })
       }
 
       lines.push('')
-      lines.push(themeColors.dim('  ↑↓ Navigate  •  Enter Choose provider  •  Esc Close'))
+      lines.push(themeColors.dim(`  ↑↓ ${t('settings.navigate')}  •  Enter ${t('install.selectProvider')}  •  Esc ${t('common.close')}`))
     } else if (state.installEndpointsPhase === 'tools') {
-      lines.push(`  ${themeColors.textBold(`Step 2/${totalSteps}`)}  ${themeColors.info('Choose the target tool')}`)
-      lines.push(themeColors.dim(`  Provider: ${selectedProviderLabel}`))
+      lines.push(`  ${themeColors.textBold(t('common.stepNumber', { step: 2, total: totalSteps }))}  ${themeColors.info(t('install.chooseTargetTool'))}`)
+      lines.push(themeColors.dim(`  ${t('install.provider')}: ${selectedProviderLabel}`))
       lines.push('')
 
       // 📖 Use getToolMeta for labels instead of hard-coded ternary chains
@@ -456,20 +462,20 @@ export function createOverlayRenderers(state, deps) {
         const meta = getToolMeta(toolMode)
         const label = `${meta.emoji} ${meta.label}`
         const note = toolMode.startsWith('opencode')
-          ? themeColors.dim('shared config file')
+          ? themeColors.dim(t('install.sharedConfigFile'))
           : toolMode === 'openhands'
-            ? themeColors.dim('env file (~/.fcm-*-env)')
-            : themeColors.dim('managed config install')
+            ? themeColors.dim(t('install.envFile'))
+            : themeColors.dim(t('install.managedConfig'))
         const row = `${bullet(isCursor)}${themeColors.textBold(label.padEnd(26))} ${note}`
         cursorLineByRow[idx] = lines.length
         lines.push(isCursor ? themeColors.bgCursorInstall(row) : row)
       })
 
       lines.push('')
-      lines.push(themeColors.dim('  ↑↓ Navigate  •  Enter Choose tool  •  Esc Back'))
+      lines.push(themeColors.dim(`  ↑↓ ${t('settings.navigate')}  •  Enter ${t('install.selectTool')}  •  Esc ${t('common.back')}`))
     } else if (state.installEndpointsPhase === 'scope') {
-      lines.push(`  ${themeColors.textBold(`Step 3/${totalSteps}`)}  ${themeColors.info('Choose the install scope')}`)
-      lines.push(themeColors.dim(`  Provider: ${selectedProviderLabel}  •  Tool: ${selectedToolLabel}  •  ${selectedConnectionLabel}`))
+      lines.push(`  ${themeColors.textBold(t('common.stepNumber', { step: 3, total: totalSteps }))}  ${themeColors.info(t('install.chooseInstallScope'))}`)
+      lines.push(themeColors.dim(`  ${t('install.provider')}: ${selectedProviderLabel}  •  ${t('install.tool')}: ${selectedToolLabel}  •  ${selectedConnectionLabel}`))
       lines.push('')
 
       scopeChoices.forEach((scope, idx) => {
@@ -481,14 +487,14 @@ export function createOverlayRenderers(state, deps) {
         lines.push('')
       })
 
-      lines.push(themeColors.dim('  Enter Continue  •  Esc Back'))
+      lines.push(themeColors.dim(`  Enter ${t('install.next')}  •  Esc ${t('common.back')}`))
     } else if (state.installEndpointsPhase === 'models') {
       const models = getProviderCatalogModels(state.installEndpointsProviderKey)
       const selectedCount = state.installEndpointsSelectedModelIds.size
 
-      lines.push(`  ${themeColors.textBold(`Step 4/${totalSteps}`)}  ${themeColors.info('Choose which models to install')}`)
-      lines.push(themeColors.dim(`  Provider: ${selectedProviderLabel}  •  Tool: ${selectedToolLabel}  •  ${selectedConnectionLabel}`))
-      lines.push(themeColors.dim(`  Selected: ${selectedCount}/${models.length}`))
+      lines.push(`  ${themeColors.textBold(t('common.stepNumber', { step: 4, total: totalSteps }))}  ${themeColors.info(t('install.chooseModelsToInstall'))}`)
+      lines.push(themeColors.dim(`  ${t('install.provider')}: ${selectedProviderLabel}  •  ${t('install.tool')}: ${selectedToolLabel}  •  ${selectedConnectionLabel}`))
+      lines.push(themeColors.dim(`  ${t('install.selectedCount', { selected: selectedCount, total: models.length })}`))
       lines.push('')
 
       models.forEach((model, idx) => {
@@ -502,11 +508,11 @@ export function createOverlayRenderers(state, deps) {
       })
 
       lines.push('')
-      lines.push(themeColors.dim('  ↑↓ Navigate  •  Space Toggle model  •  A All/None  •  Enter Install  •  Esc Back'))
+      lines.push(themeColors.dim(`  ↑↓ ${t('settings.navigate')}  •  Space ${t('install.selectModels')}  •  A ${t('install.scope.all')}  •  Enter ${t('install.install')}  •  Esc ${t('common.back')}`))
     } else if (state.installEndpointsPhase === 'result') {
       const result = state.installEndpointsResult
       const accent = result?.type === 'success' ? themeColors.successBold : themeColors.errorBold
-      lines.push(`  ${themeColors.textBold('Result')}  ${accent(result?.title || 'Install result unavailable')}`)
+      lines.push(`  ${themeColors.textBold(t('install.result'))}  ${accent(result?.title || t('install.resultUnavailable'))}`)
       lines.push('')
 
       for (const detail of result?.lines || []) {
@@ -515,11 +521,11 @@ export function createOverlayRenderers(state, deps) {
 
       if (result?.type === 'success') {
         lines.push('')
-        lines.push(themeColors.dim('  Future FCM launches will refresh this catalog automatically when the provider list evolves.'))
+        lines.push(themeColors.dim(`  ${t('install.futureRefresh')}`))
       }
 
       lines.push('')
-      lines.push(themeColors.dim('  Enter or Esc Close'))
+      lines.push(themeColors.dim(`  Enter / Esc ${t('common.close')}`))
     }
 
     const targetLine = cursorLineByRow[state.installEndpointsCursor] ?? 0
@@ -815,7 +821,7 @@ export function createOverlayRenderers(state, deps) {
     }
 
     if (allResults.length === 0) {
-      panelLines.push(sty.dim('  No commands found. Try a different search.'))
+      panelLines.push(sty.dim(`  ${t('palette.noResults')}`))
     } else {
       for (let idx = 0; idx < allResults.length; idx++) {
         const entry = allResults[idx]
@@ -883,7 +889,7 @@ export function createOverlayRenderers(state, deps) {
     const query = state.commandPaletteQuery || ''
     const queryWithCursor = query.length > 0
       ? `${query}${sty.accentBold('▏')}`
-      : sty.accentBold('▏') + sty.dim(' Search commands…')
+      : sty.accentBold('▏') + sty.dim(t('palette.searchPlaceholder'))
 
     // 📖 Header: title left, Esc hint right, search input, separator. Each piece is
     // 📖 width-budgeted so the header can never push past the panel on tiny screens.
@@ -891,17 +897,17 @@ export function createOverlayRenderers(state, deps) {
     const titleBudget = Math.max(1, panelInnerWidth - 1 - displayWidth('Esc'))
     const queryBudget = Math.max(1, panelInnerWidth - 1)
     const headerLines = [
-      ` ${padEndDisplay(truncateAnsiWidth(sty.headerBold('⚡️ Command Palette'), titleBudget, { ellipsis: '…' }), titleBudget)} ${escHint}`,
+      ` ${padEndDisplay(truncateAnsiWidth(sty.headerBold(`⚡️ ${t('palette.title')}`), titleBudget, { ellipsis: '…' }), titleBudget)} ${escHint}`,
       ` ${padEndDisplay(truncateAnsiWidth(`> ${queryWithCursor}`, queryBudget, { ellipsis: '…' }), queryBudget)}`,
       sty.dim(` ${'─'.repeat(Math.max(1, panelInnerWidth - 1))}`),
     ]
 
     const sepLine = sty.dim(` ${'─'.repeat(Math.max(1, panelInnerWidth - 1))}`)
     const footerLines = caps.compact
-      ? [sepLine, ` ${sty.dim(truncateAnsiWidth('↵ Select • ↑↓ Navigate • Type search', panelInnerWidth - 1))}`]
+      ? [sepLine, ` ${sty.dim(truncateAnsiWidth(`↵ ${t('common.select')} • ↑↓ ${t('settings.navigate')} • ${t('common.search')}`, panelInnerWidth - 1))}`]
       : [
           sepLine,
-          ` ${padEndDisplay(sty.dim('↵ Select • ← → Expand'), panelInnerWidth - 1)}`,
+          ` ${padEndDisplay(sty.dim(`↵ ${t('common.select')} • ← → ${t('common.expand')}`), panelInnerWidth - 1)}`,
           ` ${padEndDisplay(sty.dim('↑↓ Navigate • Type search'), panelInnerWidth - 1)}`,
         ]
 
@@ -964,11 +970,11 @@ export function createOverlayRenderers(state, deps) {
 
     // 📖 Branding header
     lines.push(`  ${themeColors.accent('🚀')} ${themeColors.accentBold('free-coding-models')} ${themeColors.dim(`v${LOCAL_VERSION}`)}`)
-    lines.push(`  ${heading('❓ Help & Keyboard Shortcuts')}`)
+    lines.push(`  ${heading(`❓ ${t('help.title')} · ${t('help.shortcuts')}`)}`)
     lines.push(`  ${themeColors.successBold('🔑 Yellow = active key')}`)
     lines.push('')
     lines.push(`  ${hint('— ↑↓ / PgUp / PgDn / Home / End scroll • K or ')}${themeColors.successBold('Esc close')}`)
-    lines.push(`  ${heading('Columns')}`)
+    lines.push(`  ${heading(t('help.columns'))}`)
     lines.push('')
     lines.push(`  ${label('Rank')}        SWE-bench rank (1 = best coding score)  ${hint('Sort:')} ${key('R')}`)
     lines.push(`              ${hint('Quick glance at which model is objectively the best coder right now.')}`)
@@ -1012,13 +1018,13 @@ export function createOverlayRenderers(state, deps) {
 
 
     lines.push('')
-    lines.push(`  ${heading('Main TUI')}`)
-    lines.push(`  ${heading('Navigation')}`)
+    lines.push(`  ${heading(t('help.mainTui'))}`)
+    lines.push(`  ${heading(t('help.navigation'))}`)
     lines.push(`  ${key('↑↓ / J/K')}     Navigate rows  ${hint('(J/K = vim-style scroll)')}`)
     lines.push(`  ${key('Enter')}        Select model and launch`)
     lines.push(`              ${hint('If the active CLI is missing, FCM offers a one-click install prompt first.')}`)
     lines.push('')
-    lines.push(`  ${heading('Controls')}`)
+    lines.push(`  ${heading(t('help.controls'))}`)
     lines.push(`  ${key('W')}  Toggle ping mode  ${hint('(speed 2s → normal 10s → slow 30s → forced 4s)')}`)
     lines.push(`  ${key('Ctrl+P')}  Open ⚡️ command palette  ${hint('(search and run actions quickly)')}`)
     lines.push(`  ${key('Ctrl+A')}  AI Speed Test  ${hint('(benchmark selected model → time + TPS)')}`)
@@ -1044,7 +1050,7 @@ export function createOverlayRenderers(state, deps) {
     lines.push(`  ${key('I')} / ${key('Esc')}  Show/hide this help`)
     lines.push(`  ${key('Ctrl+C')}  Exit`)
     lines.push('')
-    lines.push(`  ${heading('Settings (P)')}`)
+    lines.push(`  ${heading(`${t('settings.title')} (P)`)}`)
     lines.push(`  ${key('↑↓')}           Navigate rows`)
     lines.push(`  ${key('PgUp/PgDn')}    Jump by page`)
     lines.push(`  ${key('Home/End')}     Jump first/last row`)
@@ -1077,27 +1083,27 @@ export function createOverlayRenderers(state, deps) {
     // 📖 Branding header
     lines.push('')
     lines.push(`  ${themeColors.accent('🚀')} ${themeColors.accentBold('free-coding-models')} ${themeColors.dim(`v${LOCAL_VERSION}`)}`)
-    lines.push(`  ${themeColors.textBold('🎯 Smart Recommend')}`)
+    lines.push(`  ${themeColors.textBold(`🎯 ${t('recommend.title')}`)}`)
     lines.push('')
-    lines.push(themeColors.dim('  — find the best model for your task'))
+    lines.push(themeColors.dim(`  — ${t('recommend.subtitle')}`))
     lines.push('')
 
     if (state.recommendPhase === 'questionnaire') {
       // 📖 Question definitions — each has a title, options array, and answer key
       const questions = [
         {
-          title: 'What are you working on?',
-          options: Object.entries(TASK_TYPES).map(([key, val]) => ({ key, label: val.label })),
+          title: t('recommend.questionTask'),
+          options: Object.entries(TASK_TYPES).map(([key, val]) => ({ key, label: t(`recommend.taskType.${key}`) || val.label })),
           answerKey: 'taskType',
         },
         {
-          title: 'What matters most?',
-          options: Object.entries(PRIORITY_TYPES).map(([key, val]) => ({ key, label: val.label })),
+          title: t('recommend.questionPriority'),
+          options: Object.entries(PRIORITY_TYPES).map(([key, val]) => ({ key, label: t(`recommend.priority.${key}`) || val.label })),
           answerKey: 'priority',
         },
         {
-          title: 'How big is your context?',
-          options: Object.entries(CONTEXT_BUDGETS).map(([key, val]) => ({ key, label: val.label })),
+          title: t('recommend.questionContext'),
+          options: Object.entries(CONTEXT_BUDGETS).map(([key, val]) => ({ key, label: t(`recommend.contextBudget.${key}`) || val.label })),
           answerKey: 'contextBudget',
         },
       ]
@@ -1120,7 +1126,7 @@ export function createOverlayRenderers(state, deps) {
         lines.push('')
       }
 
-      lines.push(`  ${themeColors.textBold(`Question ${qNum}/${qTotal}:`)} ${themeColors.info(q.title)}`)
+      lines.push(`  ${themeColors.textBold(t('recommend.questionProgress', { step: qNum, total: qTotal }))}: ${themeColors.info(q.title)}`)
       lines.push('')
 
       for (let i = 0; i < q.options.length; i++) {
@@ -1145,7 +1151,7 @@ export function createOverlayRenderers(state, deps) {
       const empty = barWidth - filled
       const bar = themeColors.successBold('█'.repeat(filled)) + themeColors.dim('░'.repeat(empty))
 
-      lines.push(`  ${themeColors.textBold('Analyzing models...')}`)
+      lines.push(`  ${themeColors.textBold(t('recommend.analyzing'))}`)
       lines.push('')
       lines.push(`  ${bar}  ${themeColors.textBold(String(pct) + '%')}`)
       lines.push('')
@@ -1172,9 +1178,9 @@ export function createOverlayRenderers(state, deps) {
       lines.push('')
 
       if (state.recommendResults.length === 0) {
-        lines.push(`  ${themeColors.warning('No models could be scored. Try different criteria or wait for more pings.')}`)
+        lines.push(`  ${themeColors.warning(t('recommend.noResults'))}`)
       } else {
-        lines.push(`  ${themeColors.textBold('Top Recommendations:')}`)
+        lines.push(`  ${themeColors.textBold(`${t('recommend.topPicks')}:`)}`)
         lines.push('')
 
         for (let i = 0; i < state.recommendResults.length; i++) {
@@ -1367,8 +1373,8 @@ export function createOverlayRenderers(state, deps) {
               let displayText = item.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1')
               // 📖 Wrap long lines
               const maxWidth = state.terminalCols - 16
-              if (displayText.length > maxWidth) {
-                displayText = displayText.substring(0, maxWidth - 3) + '…'
+              if (displayWidth(displayText) > maxWidth) {
+                displayText = truncateAnsiWidth(displayText, maxWidth, { ellipsis: '…' })
               }
               lines.push(`    • ${displayText}`)
             }

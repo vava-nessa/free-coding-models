@@ -11,9 +11,11 @@ import { useEffect, useRef, useState } from 'react'
 import { IconChevronDown, IconRefresh } from '@tabler/icons-react'
 import { TOOL_METADATA, getToolMeta } from '../../../../src/core/tool-metadata.js'
 import { INSTALL_ENDPOINT_TOOL_MODES } from '../../utils/m3.js'
+import { useI18n } from '../../i18n.jsx'
 import styles from './ToolPicker.module.css'
 
 export default function ToolPicker({ toolMode = 'opencode', onSetToolMode, onCycleToolMode, compact = false, tools = INSTALL_ENDPOINT_TOOL_MODES }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
   const active = getToolMeta(toolMode)
@@ -40,7 +42,7 @@ export default function ToolPicker({ toolMode = 'opencode', onSetToolMode, onCyc
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={`Install endpoint into: ${active.label}`}
+        title={t('dashboard.installTargetTitle', { tool: active.label })}
       >
         <span className={styles.emoji}>{active.emoji}</span>
         <span className={styles.label}>{compact ? active.label.replace(/ CLI$/, '') : active.label}</span>
@@ -50,14 +52,14 @@ export default function ToolPicker({ toolMode = 'opencode', onSetToolMode, onCyc
         type="button"
         className={styles.cycle}
         onClick={onCycleToolMode}
-        title="Cycle endpoint target"
-        aria-label="Cycle endpoint target"
+        title={t('dashboard.cycleEndpointTarget')}
+        aria-label={t('dashboard.cycleEndpointTarget')}
       >
         <IconRefresh size={13} stroke={1.7} />
       </button>
 
       {open && (
-        <div className={styles.menu} role="listbox" aria-label="Endpoint install target">
+        <div className={styles.menu} role="listbox" aria-label={t('dashboard.endpointInstallTarget')}>
           {tools.map((mode) => {
             const meta = TOOL_METADATA[mode]
             const activeMode = mode === toolMode

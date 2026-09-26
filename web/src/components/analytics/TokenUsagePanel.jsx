@@ -5,6 +5,7 @@
  */
 import { useTokenUsage } from '../../hooks/useTokenUsage.js'
 import styles from './TokenUsagePanel.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 function formatTokens(n) {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '0'
@@ -14,13 +15,14 @@ function formatTokens(n) {
 }
 
 export default function TokenUsagePanel() {
+  const { t } = useI18n()
   const { data, loading } = useTokenUsage()
 
   if (loading) {
     return (
       <div className={styles.card}>
-        <h3 className={styles.cardTitle}>Token Usage</h3>
-        <div className={styles.empty}>Loading…</div>
+        <h3 className={styles.cardTitle}>{t('analytics.tokenUsage')}</h3>
+        <div className={styles.empty}>{t('analytics.loading')}</div>
       </div>
     )
   }
@@ -28,8 +30,8 @@ export default function TokenUsagePanel() {
   if (!data || !data.hasData) {
     return (
       <div className={styles.card}>
-        <h3 className={styles.cardTitle}>Token Usage</h3>
-        <div className={styles.empty}>No token data yet. Start the router and send requests to track usage.</div>
+        <h3 className={styles.cardTitle}>{t('analytics.tokenUsage')}</h3>
+        <div className={styles.empty}>{t('analytics.noTokenData')}</div>
       </div>
     )
   }
@@ -41,27 +43,27 @@ export default function TokenUsagePanel() {
       {/* Summary cards */}
       <div className={styles.summaryGrid}>
         <div className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>Today</span>
+          <span className={styles.summaryLabel}>{t('analytics.today')}</span>
           <span className={styles.summaryValue}>{formatTokens(data.today.totalTokens)}</span>
-          <span className={styles.summarySub}>{data.today.requests} requests</span>
+          <span className={styles.summarySub}>{t('analytics.requests', { count: data.today.requests })}</span>
         </div>
         <div className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>All Time</span>
+          <span className={styles.summaryLabel}>{t('analytics.allTime')}</span>
           <span className={styles.summaryValue}>{formatTokens(data.allTime.totalTokens)}</span>
-          <span className={styles.summarySub}>{data.allTime.requests} requests</span>
+          <span className={styles.summarySub}>{t('analytics.requests', { count: data.allTime.requests })}</span>
         </div>
       </div>
 
       {/* 7-day chart */}
       <div className={styles.card}>
-        <h3 className={styles.cardTitle}>7-Day Usage</h3>
+        <h3 className={styles.cardTitle}>{t('analytics.sevenDayUsage')}</h3>
         <div className={styles.chart}>
           {data.sevenDays.map((day) => (
             <div key={day.date} className={styles.chartBar}>
               <div
                 className={styles.chartFill}
                 style={{ height: `${Math.max(2, (day.totalTokens / maxDayTokens) * 100)}%` }}
-                title={`${day.date}: ${formatTokens(day.totalTokens)} tokens`}
+                title={`${day.date}: ${t('analytics.tokens', { count: formatTokens(day.totalTokens) })}`}
               />
               <span className={styles.chartLabel}>{day.label}</span>
             </div>
@@ -72,13 +74,13 @@ export default function TokenUsagePanel() {
       {/* Top Models */}
       {data.topModels.length > 0 && (
         <div className={styles.card}>
-          <h3 className={styles.cardTitle}>Top Models</h3>
+          <h3 className={styles.cardTitle}>{t('analytics.topModels')}</h3>
           <div className={styles.topList}>
             {data.topModels.map((m) => (
               <div key={m.key} className={styles.topRow}>
                 <span className={styles.topKey}>{m.key}</span>
-                <span className={styles.topVal}>{formatTokens(m.total)} tokens</span>
-                <span className={styles.topReq}>{m.requests} req</span>
+                <span className={styles.topVal}>{t('analytics.tokens', { count: formatTokens(m.total) })}</span>
+                <span className={styles.topReq}>{t('analytics.requestsShort', { count: m.requests })}</span>
               </div>
             ))}
           </div>
@@ -88,13 +90,13 @@ export default function TokenUsagePanel() {
       {/* Top Providers */}
       {data.topProviders.length > 0 && (
         <div className={styles.card}>
-          <h3 className={styles.cardTitle}>Top Providers</h3>
+          <h3 className={styles.cardTitle}>{t('analytics.topProviders')}</h3>
           <div className={styles.topList}>
             {data.topProviders.map((p) => (
               <div key={p.key} className={styles.topRow}>
                 <span className={styles.topKey}>{p.key}</span>
-                <span className={styles.topVal}>{formatTokens(p.total)} tokens</span>
-                <span className={styles.topReq}>{p.requests} req</span>
+                <span className={styles.topVal}>{t('analytics.tokens', { count: formatTokens(p.total) })}</span>
+                <span className={styles.topReq}>{t('analytics.requestsShort', { count: p.requests })}</span>
               </div>
             ))}
           </div>

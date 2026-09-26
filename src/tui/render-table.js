@@ -52,7 +52,8 @@ import { TIER_COLOR } from './tier-colors.js'
 import { getAvg, getVerdict, getUptime, getStabilityScore, getVersionStatusInfo, isNewModel } from '../core/utils.js'
 import { supportsUsagePercent } from '../core/quota-capabilities.js'
 import { formatBenchmarkLatency, formatBenchmarkTps } from '../core/benchmark.js'
-import { calculateViewport, sortResultsWithPinnedFavorites, padEndDisplay, displayWidth, stripAnsi, fadedRow } from './render-helpers.js'
+import { calculateViewport, sortResultsWithPinnedFavorites, padEndDisplay, displayWidth, stripAnsi, fadedRow, truncateAnsiWidth } from './render-helpers.js'
+import { getLocale, t } from '../core/i18n/index.js'
 import { getToolMeta, TOOL_METADATA, TOOL_MODE_ORDER, isModelCompatibleWithTool } from '../core/tool-metadata.js'
 import { getColumnSpacing } from './ui-config.js'
 import { detectPackageManager, getManualInstallCmd } from '../core/updater.js'
@@ -251,10 +252,10 @@ export function renderTable({
 
   const intervalSec = Math.round(pingInterval / 1000)
   const pingModeMeta = {
-    speed: { label: 'fast', color: themeColors.warningBold },
-    normal: { label: 'normal', color: themeColors.accentBold },
-    slow: { label: 'slow', color: themeColors.info },
-    forced: { label: 'forced', color: themeColors.errorBold },
+    speed: { label: t('filters.pingSpeedShort'), color: themeColors.warningBold },
+    normal: { label: t('filters.pingNormalShort'), color: themeColors.accentBold },
+    slow: { label: t('filters.pingSlowShort'), color: themeColors.info },
+    forced: { label: t('filters.pingForcedShort'), color: themeColors.errorBold },
   }
   const activePingMode = pingModeMeta[pingMode] ?? pingModeMeta.normal
   const pingProgressText = `${completedPings}/${totalVisible}`
@@ -268,7 +269,7 @@ export function renderTable({
   const pingControlBadge =
     activePingMode.color(' [ ') +
     themeColors.hotkey('W') +
-    activePingMode.color(` Ping Interval : ${intervalSec}s (${activePingMode.label}) - ${pingProgressText} - next : `) +
+    activePingMode.color(` ${t('filters.pingInterval')} : ${intervalSec}s (${activePingMode.label}) - ${pingProgressText} - ${t('filters.nextPingShort')} : `) +
     nextCountdownColor(`${secondsUntilNextLabel}s`) +
     activePingMode.color(' ]')
 
@@ -278,7 +279,7 @@ export function renderTable({
   const toolMeta = getToolMeta(mode)
   const toolBadgeColor = mode === 'openclaw' ? themeColors.warningBold : themeColors.accentBold
   const toolColor = toolMeta.color ? chalk.rgb(...toolMeta.color) : toolBadgeColor
-  const modeBadge = toolBadgeColor(' [ ') + themeColors.hotkey('Z') + toolBadgeColor(' Tool : ') + toolColor.bold(`${toolMeta.emoji} ${toolMeta.label}`) + toolBadgeColor(' ]')
+  const modeBadge = toolBadgeColor(' [ ') + themeColors.hotkey('Z') + toolBadgeColor(` ${t('filters.tool')} : `) + toolColor.bold(`${toolMeta.emoji} ${toolMeta.label}`) + toolBadgeColor(' ]')
 
   const activeHeaderBadge = (text, bg) => themeColors.badge(text, bg, getReadableTextRgb(bg))
   const versionStatus = getVersionStatusInfo(settingsUpdateState, settingsUpdateLatestVersion, startupLatestVersion, versionAlertsEnabled)
@@ -319,7 +320,7 @@ export function renderTable({
   const W_MOOD = 2
   const W_RANK = 6
   const W_TIER = 5
-  const W_CTX = 4
+  const W_CTX = getLocale() === 'zh-CN' ? 6 : 4
   const W_SOURCE = 15
   // 📖 Provider names are display-capped at MAX_PROVIDER_NAME_LEN chars so an
   // 📖 over-long label can never push the following cells and desalign the
@@ -435,25 +436,29 @@ export function renderTable({
   if (showWidthWarning) {
     const lines = []
     const blankLines = Math.max(0, Math.floor(((terminalRows || 24) - 7) / 2))
-    const warning = '🖥️  Please maximize your terminal for optimal use.'
-    const warning2 = '⚠️  The current terminal is too small.'
-    const warning3 = '📏  Reduce font size or maximize width of terminal.'
-    const padLeft = Math.max(0, Math.floor((terminalCols - warning.length) / 2))
-    const padLeft2 = Math.max(0, Math.floor((terminalCols - warning2.length) / 2))
-    const padLeft3 = Math.max(0, Math.floor((terminalCols - warning3.length) / 2))
+    const warning = `🖥️  ${t('dashboard.terminalMaximize')}`
+    const warning2 = `⚠️  ${t('dashboard.terminalTooSmall')}`
+    const warning3 = `📏  ${t('dashboard.terminalReduceFont')}`
+    const centeredWarning = (text, color) => {
+      const clipped = truncateAnsiWidth(text, terminalCols, { ellipsis: '' })
+      const left = Math.max(0, Math.floor((terminalCols - displayWidth(clipped)) / 2))
+      return ' '.repeat(left) + color(clipped)
+    }
     for (let i = 0; i < blankLines; i++) lines.push('')
-    lines.push(' '.repeat(padLeft) + themeColors.errorBold(warning))
+    lines.push(centeredWarning(warning, themeColors.errorBold))
     lines.push('')
-    lines.push(' '.repeat(padLeft2) + themeColors.error(warning2))
+    lines.push(centeredWarning(warning2, themeColors.error))
     lines.push('')
-    lines.push(' '.repeat(padLeft3) + themeColors.error(warning3))
+    lines.push(centeredWarning(warning3, themeColors.error))
     lines.push('')
-    lines.push(' '.repeat(Math.max(0, Math.floor((terminalCols - 34) / 2))) + themeColors.warning(`this message will hide in ${(remainingMs / 1000).toFixed(1)}s`))
+    const dismissCountdown = t('dashboard.warningWillHide', { seconds: (remainingMs / 1000).toFixed(1) })
+    lines.push(centeredWarning(dismissCountdown, themeColors.warning))
     const barTotal = Math.max(0, Math.min(terminalCols - 4, 30))
     const barFill = Math.round((elapsed / warningDurationMs) * barTotal)
     const barStr = themeColors.success('█'.repeat(barFill)) + themeColors.dim('░'.repeat(barTotal - barFill))
     lines.push(' '.repeat(Math.max(0, Math.floor((terminalCols - barTotal) / 2))) + barStr)
-    lines.push(' '.repeat(Math.max(0, Math.floor((terminalCols - 20) / 2))) + themeColors.dim('press esc to dismiss'))
+    const dismissHint = t('dashboard.pressEscToDismiss')
+    lines.push(centeredWarning(dismissHint, themeColors.dim))
     while (terminalRows > 0 && lines.length < terminalRows) lines.push('')
     const EL = '\x1b[K'
     return lines.map(line => line + EL).join('\n')
@@ -487,26 +492,26 @@ export function renderTable({
 
   // 📖 Plain header labels — arrows are appended dynamically below.
   const moodLabel    = '❔'
-  const rankLabel    = 'Rank'
-  const tierLabel    = 'Tier'
-  const originLabel  = isCompact ? 'PrOD…' : 'Provider'
-  const modelLabel   = 'Model'
-  const sweLabel     = 'SWE%'
-  const ctxLabel     = 'CTX'
-  const pingLabel    = 'Last Ping'
-  const avgLabel     = 'Avg Ping'
-  const healthLabel  = 'Health'
-  const verdictLabel = 'Verdict'
-  const stabLabel    = isCompact ? 'StaB.' : 'Stability'
-  const uptimeLabel  = 'Up%'
+  const rankLabel    = t('dashboard.rank')
+  const tierLabel    = t('dashboard.tier')
+  const originLabel  = t('dashboard.provider')
+  const modelLabel   = t('dashboard.model')
+  const sweLabel     = t('dashboard.swe')
+  const ctxLabel     = t('dashboard.context')
+  const pingLabel    = t('dashboard.lastPing')
+  const avgLabel     = t('dashboard.avgPingShort')
+  const healthLabel  = t('dashboard.health')
+  const verdictLabel = t('dashboard.verdict')
+  const stabLabel    = t('dashboard.stability')
+  const uptimeLabel  = t('dashboard.uptimeShort')
 
   // 📖 Helper to colorize first letter for keyboard shortcuts
   // 📖 IMPORTANT: Pad PLAIN TEXT first, then apply colors to avoid alignment issues
   const colorFirst = (text, width, colorFn = themeColors.hotkey) => {
-    const first = text[0]
-    const rest = text.slice(1)
+    const [first, ...restChars] = [...text]
+    const rest = restChars.join('')
     const plainText = first + rest
-    const padding = ' '.repeat(Math.max(0, width - plainText.length))
+    const padding = ' '.repeat(Math.max(0, width - displayWidth(plainText)))
     return colorFn(first) + themeColors.dim(rest + padding)
   }
 
@@ -514,7 +519,7 @@ export function renderTable({
   // 📖 a vivid inverse style (bright accent bg + white bold fg) for ~250ms.
   // 📖 This gives satisfying visual feedback that the click was registered.
   const flashHeader = (plainText, width) => {
-    const padded = plainText.length <= width ? plainText.padEnd(width) : plainText.slice(0, width)
+    const padded = padEndDisplay(truncateAnsiWidth(plainText, width, { ellipsis: '' }), width)
     const bg = currentPalette().accentStrong
     const fg = getReadableTextRgb(bg)
     return chalk.bold.rgb(...fg).bgRgb(...bg)(padded)
@@ -527,8 +532,8 @@ export function renderTable({
   const sortActiveHeader = (label, width) => {
     const arrow = dir
     const prefixed = arrow + ' ' + label
-    const text = prefixed.length <= width ? prefixed : label + arrow
-    const padded = text.padEnd(width).slice(0, width)
+    const text = displayWidth(prefixed) <= width ? prefixed : label + arrow
+    const padded = padEndDisplay(truncateAnsiWidth(text, width, { ellipsis: '' }), width)
     // 📖 Subtle dark accent background — visible but not overwhelming.
     const bg = currentPalette().cursor.defaultBg
     const fg = getReadableTextRgb(bg)
@@ -545,7 +550,7 @@ export function renderTable({
   // 📖 colKey = sort key (e.g. 'rank', 'swe'), label = plain text, width = column width.
   const headerStyle = (colKey, label, width) => {
     const arrowText = dir + ' ' + label
-    const flashText = arrowText.length <= width ? arrowText : label + dir
+    const flashText = displayWidth(arrowText) <= width ? arrowText : label + dir
     if (headerFlashColumn === colKey) return flashHeader(flashText, width)
     if (sortColumn === colKey) return sortActiveHeader(label, width)
     return colorFirst(label, width)
@@ -572,30 +577,26 @@ export function renderTable({
   const verdictH_c = headerStyle('verdict', verdictLabel, W_VERDICT)
   const stabH_c    = (() => {
     if (headerFlashColumn === 'stability') {
-      const ft = (dir + ' ' + stabLabel).length <= wStab ? dir + ' ' + stabLabel : stabLabel + dir
+      const ft = displayWidth(dir + ' ' + stabLabel) <= wStab ? dir + ' ' + stabLabel : stabLabel + dir
       return flashHeader(ft, wStab)
     }
-    if (sortColumn === 'stability') return sortActiveHeader(stabLabel, wStab)
-    const plain = stabLabel
-    const padding = ' '.repeat(Math.max(0, wStab - plain.length))
-    return themeColors.dim('Sta') + themeColors.hotkey('B') + themeColors.dim((isCompact ? '.' : 'ility') + padding)
+    return headerStyle('stability', stabLabel, wStab)
   })()
   const uptimeH_c  = (() => {
     if (headerFlashColumn === 'uptime') {
-      const ft = (dir + ' ' + uptimeLabel).length <= W_UPTIME ? dir + ' ' + uptimeLabel : uptimeLabel + dir
+      const ft = displayWidth(dir + ' ' + uptimeLabel) <= W_UPTIME ? dir + ' ' + uptimeLabel : uptimeLabel + dir
       return flashHeader(ft, W_UPTIME)
     }
-    if (sortColumn === 'uptime') return sortActiveHeader(uptimeLabel, W_UPTIME)
-    const padding = ' '.repeat(Math.max(0, W_UPTIME - uptimeLabel.length))
-    return themeColors.hotkey('U') + themeColors.dim('p%' + padding)
+    return headerStyle('uptime', uptimeLabel, W_UPTIME)
   })()
   const originH_c  = (() => {
     if (headerFlashColumn === 'origin') {
-      const ft = (dir + ' ' + originLabel).length <= wSource ? dir + ' ' + originLabel : originLabel + dir
+      const ft = displayWidth(dir + ' ' + originLabel) <= wSource ? dir + ' ' + originLabel : originLabel + dir
       return flashHeader(ft, wSource)
     }
     if (sortColumn === 'origin') return sortActiveHeader(originLabel, wSource)
-    if (originFilterMode > 0) return themeColors.accentBold(originLabel.padEnd(wSource))
+    if (originFilterMode > 0) return themeColors.accentBold(padEndDisplay(originLabel, wSource))
+    if (getLocale() === 'zh-CN') return headerStyle('origin', originLabel, wSource)
     const plain = isCompact ? 'PrOD…' : 'PrOviDer'
     const padding = ' '.repeat(Math.max(0, wSource - plain.length))
     if (isCompact) {
@@ -605,16 +606,15 @@ export function renderTable({
   })()
 
   // 📖 Benchmark headers — split the old combined AI Speed field into latency + throughput.
-  const aiLatencyLabel = isCompact ? 'AI Lat.' : 'AI Latency'
+  const aiLatencyLabel = isCompact && getLocale() === 'en' ? 'AI Lat.' : t('dashboard.aiLatency')
   const aiLatencyH_c = (() => {
     if (headerFlashColumn === 'aiLatency') {
-      const ft = (dir + ' ' + aiLatencyLabel).length <= wAiLatency ? dir + ' ' + aiLatencyLabel : aiLatencyLabel + dir
+      const ft = displayWidth(dir + ' ' + aiLatencyLabel) <= wAiLatency ? dir + ' ' + aiLatencyLabel : aiLatencyLabel + dir
       return flashHeader(ft, wAiLatency)
     }
     if (sortColumn === 'aiLatency') return sortActiveHeader(aiLatencyLabel, wAiLatency)
     const plain = aiLatencyLabel
-    const padding = ' '.repeat(Math.max(0, wAiLatency - plain.length))
-    return themeColors.dim(plain + padding)
+    return themeColors.dim(padEndDisplay(plain, wAiLatency))
   })()
   const tpsH_c = (() => {
     if (headerFlashColumn === 'tps') {
@@ -632,7 +632,7 @@ export function renderTable({
       return flashHeader(ft, W_QUOTA)
     }
     if (sortColumn === 'usage') return sortActiveHeader('Quota', W_QUOTA)
-    return themeColors.dim('Quota'.padEnd(W_QUOTA))
+    return themeColors.dim(padEndDisplay(t('dashboard.quota'), W_QUOTA))
   })()
 
   // 📖 Header row: conditionally include columns based on responsive visibility
@@ -655,10 +655,10 @@ export function renderTable({
   if (sorted.length === 0) {
     lines.push('')
     if (hideUnconfiguredModels) {
-      lines.push(`  ${themeColors.errorBold('Press P to configure your API key.')}`)
-      lines.push(`  ${themeColors.dim('No configured provider currently exposes visible models in the table.')}`)
+      lines.push(`  ${themeColors.errorBold(t('dashboard.configureApiKeyHint'))}`)
+      lines.push(`  ${themeColors.dim(t('dashboard.noConfiguredVisibleModels'))}`)
     } else {
-      lines.push(`  ${themeColors.warningBold('No models match the current filters.')}`)
+      lines.push(`  ${themeColors.warningBold(t('dashboard.noModels'))}`)
     }
   }
 
@@ -746,8 +746,8 @@ export function renderTable({
     const isCursor = cursor !== null && i === cursor
 
     // 📖 Left-aligned columns - pad plain text first, then colorize
-    const num = themeColors.dim(String(r.idx).padEnd(W_RANK))
-    const tier = tierFn(r.tier.padEnd(W_TIER))
+    const num = themeColors.dim(padEndDisplay(String(r.idx), W_RANK))
+    const tier = tierFn(padEndDisplay(r.tier, W_TIER))
     // 📖 Keep terminal view provider-specific so each row is monitorable per provider
     // 📖 In compact mode, truncate provider name to 4 chars + '…'
     // 📖 In normal mode, cap names at MAX_PROVIDER_NAME_LEN chars (13 + '…')
@@ -759,7 +759,7 @@ export function renderTable({
       : providerName.length > MAX_PROVIDER_NAME_LEN
         ? providerName.slice(0, MAX_PROVIDER_NAME_LEN - 1).trimEnd() + '…'
         : providerName
-    const source = themeColors.provider(r.providerKey, providerDisplay.padEnd(wSource))
+    const source = themeColors.provider(r.providerKey, padEndDisplay(providerDisplay, wSource))
     // 📖 Prefix: ⭐ favorite > 🎯 recommended > 🆕 new — only one emoji, never shifts the line
     const modelIsNew = isNewModel(r.addedDate)
     let favoritePrefix = ''
@@ -782,10 +782,10 @@ export function renderTable({
     //   ≥20% red (B), <20% dark red (C), '—' dim
     let sweCell
     if (sweScore === '—') {
-      sweCell = themeColors.dim(sweScore.padEnd(W_SWE))
+      sweCell = themeColors.dim(padEndDisplay(sweScore, W_SWE))
     } else {
       const sweVal = parseFloat(sweScore)
-      const swePadded = sweScore.padEnd(W_SWE)
+      const swePadded = padEndDisplay(sweScore, W_SWE)
       sweCell = paintSweScore(sweVal, swePadded)
     }
     
@@ -793,31 +793,31 @@ export function renderTable({
     const ctxRaw = r.ctx ?? '—'
     let ctxCell
     if (ctxRaw === '—') {
-      ctxCell = themeColors.dim(ctxRaw.padEnd(W_CTX))
+      ctxCell = themeColors.dim(padEndDisplay(ctxRaw, W_CTX))
     } else {
       const ctxMatch = ctxRaw.match(/^(\d+)k$|^(\d+)M$/)
       if (ctxMatch) {
         const numK = ctxMatch[1] ? parseInt(ctxMatch[1]) : parseInt(ctxMatch[2]) * 1024
         ctxCell = numK <= 32
-          ? themeColors.metricBad(ctxRaw.padEnd(W_CTX))
+          ? themeColors.metricBad(padEndDisplay(ctxRaw, W_CTX))
           : numK <= 64
-          ? themeColors.metricWarn(ctxRaw.padEnd(W_CTX))
+          ? themeColors.metricWarn(padEndDisplay(ctxRaw, W_CTX))
           : numK <= 128
-          ? chalk.rgb(...currentPalette().ctxGold).bold(ctxRaw.padEnd(W_CTX))
+          ? chalk.rgb(...currentPalette().ctxGold).bold(padEndDisplay(ctxRaw, W_CTX))
           : numK <= 256
-          ? chalk.rgb(...currentPalette().ctxGreen).bold(ctxRaw.padEnd(W_CTX))
+          ? chalk.rgb(...currentPalette().ctxGreen).bold(padEndDisplay(ctxRaw, W_CTX))
           : numK <= 400
-          ? chalk.rgb(...currentPalette().ctxTeal).bold(ctxRaw.padEnd(W_CTX))
-          : chalk.rgb(...currentPalette().ctxCyan).bold.underline(ctxRaw.padEnd(W_CTX))
+          ? chalk.rgb(...currentPalette().ctxTeal).bold(padEndDisplay(ctxRaw, W_CTX))
+          : chalk.rgb(...currentPalette().ctxCyan).bold.underline(padEndDisplay(ctxRaw, W_CTX))
       } else {
-        ctxCell = themeColors.dim(ctxRaw.padEnd(W_CTX))
+        ctxCell = themeColors.dim(padEndDisplay(ctxRaw, W_CTX))
       }
     }
 
     // 📖 Keep the row-local spinner small and inline so users can still read the last measured latency.
     const buildLatestPingDisplay = (value) => {
       const spinner = r.isPinging ? ` ${FRAMES[frame % FRAMES.length]}` : ''
-      return `${value}${spinner}`.padEnd(wPing)
+      return padEndDisplay(`${value}${spinner}`, wPing)
     }
 
     // 📖 Latest ping - pings are objects: { ms, code }
@@ -825,7 +825,7 @@ export function renderTable({
     const latestPing = r.pings.length > 0 ? r.pings[r.pings.length - 1] : null
     let pingCell
     if (!latestPing) {
-      const placeholder = r.isPinging ? buildLatestPingDisplay('———') : '———'.padEnd(wPing)
+      const placeholder = r.isPinging ? buildLatestPingDisplay('———') : padEndDisplay('———', wPing)
       pingCell = themeColors.dim(placeholder)
     } else if (latestPing.code === '200') {
       // 📖 Success - show response time
@@ -836,7 +836,7 @@ export function renderTable({
       pingCell = themeColors.dim(buildLatestPingDisplay(String(latestPing.ms)))
     } else {
       // 📖 Error or timeout - show "———" (error code is already in Status column)
-      const placeholder = r.isPinging ? buildLatestPingDisplay('———') : '———'.padEnd(wPing)
+      const placeholder = r.isPinging ? buildLatestPingDisplay('———') : padEndDisplay('———', wPing)
       pingCell = themeColors.dim(placeholder)
     }
 
@@ -844,10 +844,10 @@ export function renderTable({
     const avg = getAvg(r)
     let avgCell
     if (avg !== Infinity) {
-      const str = String(avg).padEnd(wAvg)
+      const str = padEndDisplay(String(avg), wAvg)
       avgCell = avg < 500 ? themeColors.metricGood(str) : avg < 1500 ? themeColors.metricWarn(str) : themeColors.metricBad(str)
     } else {
-      avgCell = themeColors.dim('———'.padEnd(wAvg))
+      avgCell = themeColors.dim(padEndDisplay('———', wAvg))
     }
 
     // 📖 Status column - build plain text with emoji, pad, then colorize
@@ -855,21 +855,21 @@ export function renderTable({
     let statusText, statusColor
     if (r.status === 'noauth') {
       // 📖 Server responded but needs an API key — shown dimly since it IS reachable
-      statusText = `🔑 NO KEY`
+      statusText = `🔑 ${t('dashboard.noKeyShort')}`
       statusColor = themeColors.dim
     } else if (r.status === 'auth_error') {
       // 📖 A key is configured but the provider rejected it — keep this distinct
       // 📖 from "no key" so configured-only mode does not look misleading.
-      statusText = `🔐 AUTH FAIL`
+      statusText = `🔐 ${t('dashboard.authFailShort')}`
       statusColor = themeColors.errorBold
     } else if (r.status === 'pending') {
-      statusText = `${FRAMES[frame % FRAMES.length]} wait`
+      statusText = `${FRAMES[frame % FRAMES.length]} ${t('common.wait')}`
       statusColor = themeColors.warning
     } else if (r.status === 'up') {
-      statusText = `✅ UP`
+      statusText = `✅ ${t('dashboard.upShort')}`
       statusColor = themeColors.success
     } else if (r.status === 'timeout') {
-      statusText = `⏳ TIMEOUT`
+      statusText = `⏳ ${t('filters.health.timeout').toUpperCase()}`
       statusColor = themeColors.warning
     } else if (r.status === 'down') {
       const code = r.httpCode ?? 'ERR'
@@ -899,10 +899,10 @@ export function renderTable({
     const statusDisplayText = isCompact ? (() => {
       // 📖 Strip emoji prefix to measure text length, then truncate if needed
       const plainText = statusText.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]\s*/u, '')
-      if (plainText.length > 6) {
+      if (displayWidth(plainText) > 6) {
         const emojiMatch = statusText.match(/^([\p{Emoji_Presentation}\p{Extended_Pictographic}]\s*)/u)
         const prefix = emojiMatch ? emojiMatch[1] : ''
-        return prefix + plainText.slice(0, 6) + '…'
+        return prefix + truncateAnsiWidth(plainText, 6, { ellipsis: '…' })
       }
       return statusText
     })() : statusText
@@ -915,53 +915,53 @@ export function renderTable({
   switch (verdict) {
     case 'Perfect':
       verdictIcon = '🟩'
-      verdictText = `${verdictIcon} Perfect`
+      verdictText = `${verdictIcon} ${t('filters.verdict.perfect')}`
       verdictColor = themeColors.successBold
       break
     case 'Normal':
       verdictIcon = '🟢'
-      verdictText = `${verdictIcon} Normal`
+      verdictText = `${verdictIcon} ${t('filters.verdict.normal')}`
       verdictColor = themeColors.metricGood
       break
     case 'Spiky':
       verdictIcon = '🟡'
-      verdictText = `${verdictIcon} Spiky`
+      verdictText = `${verdictIcon} ${t('filters.verdict.spiky')}`
       verdictColor = (text) => chalk.bold.rgb(...getTierRgb('A+'))(text)
       break
     case 'Slow':
       verdictIcon = '🟠'
-      verdictText = `${verdictIcon} Slow`
+      verdictText = `${verdictIcon} ${t('filters.verdict.slow')}`
       verdictColor = (text) => chalk.bold.rgb(...getTierRgb('A-'))(text)
       break
     case 'Very Slow':
       verdictIcon = '🔴'
-      verdictText = `${verdictIcon} Very Slow`
+      verdictText = `${verdictIcon} ${t('filters.verdict.verySlow')}`
       verdictColor = (text) => chalk.bold.rgb(...getTierRgb('B+'))(text)
       break
     case 'Overloaded':
       verdictIcon = '🔥'
-      verdictText = `${verdictIcon} Overloaded`
+      verdictText = `${verdictIcon} ${t('filters.verdict.overloaded')}`
       verdictColor = (text) => chalk.bold.rgb(...getTierRgb('B'))(text)
       break
     case 'Unstable':
       // 📖 Avoid ⚠️ here: its variation selector has inconsistent terminal width and shifts the tiny ❔ column.
       verdictIcon = '🟥'
-      verdictText = `${verdictIcon} Unstable`
+      verdictText = `${verdictIcon} ${t('filters.verdict.unstable')}`
       verdictColor = themeColors.errorBold
       break
     case 'Not Active':
       verdictIcon = '⚫'
-      verdictText = `${verdictIcon} Not Active`
+      verdictText = `${verdictIcon} ${t('filters.verdict.notActive')}`
       verdictColor = themeColors.dim
       break
     case 'Pending':
       verdictIcon = '⏳'
-      verdictText = `${verdictIcon} Pending`
+      verdictText = `${verdictIcon} ${t('dashboard.pending')}`
       verdictColor = themeColors.dim
       break
     default:
       verdictIcon = '💀'
-      verdictText = `${verdictIcon} Unusable`
+      verdictText = `${verdictIcon} ${t('filters.verdict.unusable')}`
       verdictColor = (text) => chalk.bold.rgb(...getTierRgb('C'))(text)
       break
   }
@@ -973,15 +973,15 @@ export function renderTable({
     const stabScore = getStabilityScore(r)
     let stabCell
     if (stabScore < 0) {
-      stabCell = themeColors.dim('———'.padEnd(wStab))
+      stabCell = themeColors.dim(padEndDisplay('———', wStab))
     } else if (stabScore >= 80) {
-      stabCell = themeColors.metricGood(String(stabScore).padEnd(wStab))
+      stabCell = themeColors.metricGood(padEndDisplay(String(stabScore), wStab))
     } else if (stabScore >= 60) {
-      stabCell = themeColors.metricOk(String(stabScore).padEnd(wStab))
+      stabCell = themeColors.metricOk(padEndDisplay(String(stabScore), wStab))
     } else if (stabScore >= 40) {
-      stabCell = themeColors.metricWarn(String(stabScore).padEnd(wStab))
+      stabCell = themeColors.metricWarn(padEndDisplay(String(stabScore), wStab))
     } else {
-      stabCell = themeColors.metricBad(String(stabScore).padEnd(wStab))
+      stabCell = themeColors.metricBad(padEndDisplay(String(stabScore), wStab))
     }
 
     // 📖 Uptime column - percentage of successful pings
@@ -990,19 +990,19 @@ export function renderTable({
     const uptimeStr = uptimePercent + '%'
     let uptimeCell
     if (uptimePercent >= 90) {
-      uptimeCell = themeColors.metricGood(uptimeStr.padEnd(W_UPTIME))
+      uptimeCell = themeColors.metricGood(padEndDisplay(uptimeStr, W_UPTIME))
     } else if (uptimePercent >= 70) {
-      uptimeCell = themeColors.metricWarn(uptimeStr.padEnd(W_UPTIME))
+      uptimeCell = themeColors.metricWarn(padEndDisplay(uptimeStr, W_UPTIME))
     } else if (uptimePercent >= 50) {
-      uptimeCell = chalk.rgb(...getTierRgb('A-'))(uptimeStr.padEnd(W_UPTIME))
+      uptimeCell = chalk.rgb(...getTierRgb('A-'))(padEndDisplay(uptimeStr, W_UPTIME))
     } else {
-      uptimeCell = themeColors.metricBad(uptimeStr.padEnd(W_UPTIME))
+      uptimeCell = themeColors.metricBad(padEndDisplay(uptimeStr, W_UPTIME))
     }
 
     // 📖 Model text now mirrors the provider hue so provider affinity is visible
     // 📖 even before the eye reaches the Provider column.
     const nameCell = themeColors.provider(r.providerKey, name, { bold: isCursor })
-    const sourceCursorText = providerDisplay.padEnd(wSource)
+    const sourceCursorText = padEndDisplay(providerDisplay, wSource)
     const sourceCell = isCursor ? themeColors.provider(r.providerKey, sourceCursorText, { bold: true }) : source
 
     // 📖 Check if this model is incompatible with the active tool mode
@@ -1165,7 +1165,7 @@ export function renderTable({
   const configuredBadgeBg = getTheme() === 'dark' ? [52, 120, 88] : [195, 234, 206]
 
   const configuredFilterActive = hideUnconfiguredModels || bestModeOnly
-  const configuredFilterText = bestModeOnly ? 'Usable only' : (hideUnconfiguredModels ? 'Configured only' : 'Active only')
+  const configuredFilterText = bestModeOnly ? t('dashboard.workingOnly') : (hideUnconfiguredModels ? t('filters.visibility.configured') : t('filters.visibility.all'))
   const activeHotkey = (keyLabel, text, bg) => themeColors.badge(`${keyLabel}${text}`, bg, getReadableTextRgb(bg))
   const activeFilterHotkey = (keyLabel, text, bg) => themeColors.hotkey(keyLabel) + themeColors.badge(text, bg, getReadableTextRgb(bg))
 
@@ -1179,23 +1179,23 @@ export function renderTable({
   {
     const parts = [
       { text: '  ', key: null },
-      { text: 'F Favorite', key: 'f' },
+      { text: `F ${t('dashboard.favorite')}`, key: 'f' },
       { text: '  •  ', key: null },
-      { text: 'Y  Fav Mode', key: 'y' },
+      { text: `Y  ${t('dashboard.favorites')}`, key: 'y' },
       { text: '  •  ', key: null },
-      { text: tierFilterMode > 0 ? `T Tier (${activeTierLabel})` : 'T Tier', key: 't' },
+      { text: tierFilterMode > 0 ? `T ${t('dashboard.tier')} (${activeTierLabel})` : `T ${t('dashboard.tier')}`, key: 't' },
       { text: '  •  ', key: null },
-      { text: originFilterMode > 0 ? `D Provider (${activeOriginLabel})` : 'D Provider', key: 'd' },
+      { text: originFilterMode > 0 ? `D ${t('dashboard.provider')} (${activeOriginLabel})` : `D ${t('dashboard.provider')}`, key: 'd' },
       { text: '  •  ', key: null },
       { text: `E ${configuredFilterText}`, key: 'e' },
       { text: '  •  ', key: null },
-      { text: 'P Settings', key: 'p' },
+      { text: `P ${t('settings.title')}`, key: 'p' },
       { text: '  •  ', key: null },
-      { text: 'I Help', key: 'i' },
+      { text: `I ${t('help.title')}`, key: 'i' },
       { text: '  •  ', key: null },
-      { text: 'N Reset', key: 'n' },
+      { text: `N ${t('common.reset')}`, key: 'n' },
       { text: '  •  ', key: null },
-      { text: 'G Theme', key: 'g' },
+      { text: `G ${t('settings.theme')}`, key: 'g' },
     ]
     const footerRow1 = lines.length + 1 // 📖 1-based terminal row (line hasn't been pushed yet)
     let xPos = 1
@@ -1207,34 +1207,34 @@ export function renderTable({
   }
 
   lines.push(
-    '  ' + hotkey('F', ' Favorite') +
+    '  ' + hotkey('F', ` ${t('dashboard.favorite')}`) +
     themeColors.dim(`  •  `) +
-    hotkey('Y', ' Fav Mode') +
+    hotkey('Y', ` ${t('dashboard.favorites')}`) +
     themeColors.dim(`  •  `) +
     (tierFilterMode > 0
       ? activeHotkey('T', ` Tier (${activeTierLabel})`, getTierRgb(activeTierLabel))
-      : hotkey('T', ' Tier')) +
+      : hotkey('T', ` ${t('dashboard.tier')}`)) +
     themeColors.dim(`  •  `) +
     (originFilterMode > 0
       ? activeHotkey('D', ` Provider (${activeOriginLabel})`, PROVIDER_COLOR[[null, ...Object.keys(sources)][originFilterMode]] || [255, 255, 255])
-      : hotkey('D', ' Provider')) +
+      : hotkey('D', ` ${t('dashboard.provider')}`)) +
     themeColors.dim(`  •  `) +
     (configuredFilterActive
       ? activeFilterHotkey('E', configuredFilterText, configuredBadgeBg)
-      : hotkey('E', ' Active only')) +
+      : hotkey('E', ` ${t('filters.visibility.all')}`)) +
     themeColors.dim(`  •  `) +
-    hotkey('P', ' Settings') +
+    hotkey('P', ` ${t('settings.title')}`) +
     themeColors.dim(`  •  `) +
-    hotkey('I', ' Help') +
+    hotkey('I', ` ${t('help.title')}`) +
     themeColors.dim(`  •  `) +
-    hotkey('N', ' Reset') +
+    hotkey('N', ` ${t('common.reset')}`) +
     themeColors.dim(`  •  `) +
-    themeColors.hotkey('G') + themeColors.infoBold(' Theme')
+    themeColors.hotkey('G') + themeColors.infoBold(` ${t('settings.theme')}`)
   )
 
   // 📖 Line 2: command palette + GitHub
   {
-    const cpText = ' Ctrl+P Cmd Palette '
+  const cpText = ` Ctrl+P ${t('palette.footerTitle')} `
     const parts = [
       { text: '  ', key: null },
       { text: cpText, key: 'ctrl+p' },
@@ -1250,7 +1250,7 @@ export function renderTable({
   }
 
   // 📖 Line 2: command palette (simple color, no background) + GitHub link.
-  const paletteLabel = chalk.rgb(...currentPalette().cmdPalette).bold('Ctrl+P Cmd Palette')
+  const paletteLabel = chalk.rgb(...currentPalette().cmdPalette).bold(`Ctrl+P ${t('palette.footerTitle')}`)
   const starLink = '⭐ ' + themeColors.link('\x1b]8;;https://github.com/vava-nessa/free-coding-models\x1b\\GitHub\x1b]8;;\x1b\\')
   lines.push(
     '  ' + paletteLabel + themeColors.dim(`  •  `) + starLink + themeColors.dim(`  •  `) +
@@ -1258,9 +1258,14 @@ export function renderTable({
   )
 
   if (versionStatus.isOutdated) {
+    const retryHint = t('update.retryHint')
+    const retryTail = `  •  ${retryHint}  `
+    const warningText = updateWarningMessage && terminalCols > 0
+      ? truncateAnsiWidth(updateWarningMessage, Math.max(1, terminalCols - displayWidth(`  ${retryTail}`)), { ellipsis: '…' })
+      : updateWarningMessage
     const updateMsg = updateWarningMessage
-      ? `  ${updateWarningMessage}  •  Press Shift+U to retry update  `
-      : `  🚀⬆️ UPDATE AVAILABLE — v${LOCAL_VERSION} → v${versionStatus.latestVersion}  •  Click here or press Shift+U to update  🚀⬆️  `
+      ? `  ${warningText}${retryTail}`
+      : `  🚀⬆️ ${t('update.available').toUpperCase()} — v${LOCAL_VERSION} → v${versionStatus.latestVersion}  •  ${t('update.clickToInstall')}  🚀⬆️  `
     const paddedBanner = terminalCols > 0
       ? updateMsg + ' '.repeat(Math.max(0, terminalCols - displayWidth(updateMsg)))
       : updateMsg
@@ -1281,14 +1286,14 @@ export function renderTable({
   let filterBadge = ''
   if (hasCustomFilter) {
     const normalizedFilter = customTextFilter.trim().replace(/\s+/g, ' ')
-    const filterPrefix = 'X Disable filter: "'
+    const filterPrefix = `X ${t('filters.disableFilter')}: "`
     const filterSuffix = '"'
     const baseBadgeWidth = displayWidth(` ${filterPrefix}${filterSuffix} `)
     const availableFilterWidth = terminalCols > 0
       ? Math.max(8, terminalCols - 4 - baseBadgeWidth)
-      : normalizedFilter.length
-    const visibleFilter = normalizedFilter.length > availableFilterWidth
-      ? `${normalizedFilter.slice(0, Math.max(3, availableFilterWidth - 3))}...`
+      : displayWidth(normalizedFilter)
+    const visibleFilter = displayWidth(normalizedFilter) > availableFilterWidth
+      ? truncateAnsiWidth(normalizedFilter, availableFilterWidth, { ellipsis: '…' })
       : normalizedFilter
     filterBadge = chalk.bgYellow.black.bold(` ${filterPrefix}${visibleFilter}${filterSuffix} `)
   }
@@ -1296,7 +1301,7 @@ export function renderTable({
   if (hasCustomFilter) {
     // 📖 Mouse support: register click zone for the X-clear filter badge
     const lastFooterRow = lines.length + 1
-    const badgePlain = `X Disable filter: "${customTextFilter.trim().replace(/\s+/g, ' ')}"`
+    const badgePlain = `X ${t('filters.disableFilter')}: "${customTextFilter.trim().replace(/\s+/g, ' ')}"`
     const fullText = '  ' + ` ${badgePlain} `
     const xStart = 3 // 📖 after the leading 2 spaces
     const xEnd = xStart + displayWidth(` ${badgePlain} `) - 1
@@ -1308,8 +1313,8 @@ export function renderTable({
   const releaseLabel = lastReleaseDate
     ? chalk.rgb(...currentPalette().releaseDate)(`Last release: ${lastReleaseDate}`)
     : ''
-  const speedTestLabel = chalk.bgRgb(...currentPalette().badgeSpeedTestBg).rgb(...currentPalette().badgeSpeedTestFg).bold(' NEW ⭐️ Ctrl+A 🤖 AI Speed Test ')
-  const globalBenchmarkLabel = chalk.bgRgb(...currentPalette().badgeBenchmarkBg).rgb(...currentPalette().badgeBenchmarkFg).bold(' NEW Ctrl+U : Global AI Speed Test (Uses a lot of requests!) ')
+  const speedTestLabel = chalk.bgRgb(...currentPalette().badgeSpeedTestBg).rgb(...currentPalette().badgeSpeedTestFg).bold(` ⭐️ Ctrl+A 🤖 ${t('dashboard.aiSpeedTest')} `)
+  const globalBenchmarkLabel = chalk.bgRgb(...currentPalette().badgeBenchmarkBg).rgb(...currentPalette().badgeBenchmarkFg).bold(` Ctrl+U : ${t('dashboard.globalBenchmark')} `)
 
   // 📖 Probe badge: show progress when 404 probe is running or recently completed.
   // 📖 Bar width is clamped to 0-20 cells (issue #168 kick-out fix): a transient
@@ -1465,5 +1470,5 @@ export function renderTable({
   // 📖 Every line is prefixed with the theme bg so content always renders on
   // 📖 the correct background. \x1b[K fills to end-of-line. The app-level render
   // 📖 loop applies patchThemeBg() to undo chalk's \x1b[49m resets globally.
-  return cleared.join('\n')
+  return cleared.map(line => terminalCols > 0 ? truncateAnsiWidth(line, terminalCols, { ellipsis: '' }) + '\x1b[K' : line).join('\n')
 }

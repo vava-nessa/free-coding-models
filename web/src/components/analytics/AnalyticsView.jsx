@@ -9,6 +9,7 @@ import { IconActivity, IconTrophy } from '@tabler/icons-react'
 import TierBadge from '../atoms/TierBadge.jsx'
 import TokenUsagePanel from './TokenUsagePanel.jsx'
 import styles from './AnalyticsView.module.css'
+import { useI18n } from '../../i18n.jsx'
 
 // 📖 TIER_COLORS is now derived from CSS custom properties so the chart fills
 // 📖 swap to AA-contrast shades in light mode automatically. The keys stay
@@ -45,6 +46,7 @@ function tierColor(key) {
 const TIERS = ['S+', 'S', 'A+', 'A', 'A-', 'B+', 'B', 'C']
 
 export default function AnalyticsView({ models }) {
+  const { t } = useI18n()
   const providerHealth = useMemo(() => {
     const map = {}
     models.forEach((m) => {
@@ -72,17 +74,17 @@ export default function AnalyticsView({ models }) {
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>
           <IconActivity size={24} stroke={1.5} style={{ marginRight: 8, verticalAlign: 'middle' }} />
-          Analytics
+          {t('analytics.title')}
         </h1>
-        <p className={styles.pageSubtitle}>Real-time insights across all providers and models</p>
+        <p className={styles.pageSubtitle}>{t('analytics.subtitle')}</p>
       </div>
 
       <div className={styles.grid}>
         <div className={`${styles.card} ${styles.cardWide}`}>
-          <h3 className={styles.cardTitle}>Provider Health Overview</h3>
+          <h3 className={styles.cardTitle}>{t('analytics.providerHealth')}</h3>
           <div className={styles.cardBody}>
             {providerHealth.length === 0 ? (
-              <div className={styles.empty}>Waiting for data...</div>
+              <div className={styles.empty}>{t('analytics.waiting')}</div>
             ) : (
               providerHealth.map(([name, data]) => {
                 const pct = data.total > 0 ? Math.round((data.online / data.total) * 100) : 0
@@ -104,11 +106,11 @@ export default function AnalyticsView({ models }) {
         <div className={styles.card}>
           <h3 className={styles.cardTitle} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <IconTrophy size={16} stroke={1.5} />
-            Fastest Models
+            {t('analytics.fastestModels')}
           </h3>
           <div className={styles.cardBody}>
             {leaderboard.length === 0 ? (
-              <div className={styles.empty}>Waiting for ping data...</div>
+              <div className={styles.empty}>{t('analytics.waitingPings')}</div>
             ) : (
               leaderboard.map((m, i) => {
                 const rankCls = i < 3 ? styles[`rank${i + 1}`] : ''
@@ -125,7 +127,7 @@ export default function AnalyticsView({ models }) {
         </div>
 
         <div className={styles.card}>
-          <h3 className={styles.cardTitle}>Tier Distribution</h3>
+          <h3 className={styles.cardTitle}>{t('analytics.tierDistribution')}</h3>
           <div className={styles.cardBody}>
             {tierCounts.map(({ tier, count, pct }) => (
               <div key={tier} className={styles.tierItem}>

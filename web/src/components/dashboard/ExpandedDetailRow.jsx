@@ -21,6 +21,7 @@ import { formatAvg, pingClass } from '../../utils/format.js'
 import { sweClass } from '../../utils/ranks.js'
 import LaunchButton from '../launch/LaunchButton.jsx'
 import PlaygroundChat from '../playground/PlaygroundChat.jsx'
+import { useI18n } from '../../i18n.jsx'
 import styles from './ExpandedDetailRow.module.css'
 
 /**
@@ -62,6 +63,7 @@ export default function ExpandedDetailRow({
   onCycleToolMode,
   onOpenFallback,
 }) {
+  const { t } = useI18n()
   // ─── AI Latency benchmark state ───
   const [benchState, setBenchState] = useState('idle') // 'idle' | 'running' | 'done' | 'error'
   const [benchMetrics, setBenchMetrics] = useState({ latency: null, tokens: null, tps: null })
@@ -201,7 +203,7 @@ export default function ExpandedDetailRow({
       <div className={styles.row}>
         <div className={styles.noKeyBanner}>
           <span className={styles.noKeyIcon}>🔒</span>
-          <span>No API key configured for {model.origin}. Open Settings (P) to add one.</span>
+          <span>{t('modelDetail.noApiKey', { provider: model.origin })}</span>
         </div>
       </div>
     )
@@ -213,9 +215,9 @@ export default function ExpandedDetailRow({
 
         {/* ═══════ Column 1: Info ═══════ */}
         <div className={styles.col}>
-          <div className={styles.colTitle}>📊 Model Info</div>
+          <div className={styles.colTitle}>📊 {t('modelDetail.modelInfo')}</div>
           <div className={styles.statGrid}>
-            <StatItem label="Tier">
+            <StatItem label={t('dashboard.tier')}>
               <TierBadge tier={model.tier} />
             </StatItem>
             <StatItem label="SWE-bench">
@@ -223,28 +225,37 @@ export default function ExpandedDetailRow({
                 {model.sweScore || '—'}
               </span>
             </StatItem>
-            <StatItem label="Context">
+            <StatItem label={t('dashboard.context')}>
               {model.ctx || '—'}
             </StatItem>
-            <StatItem label="Provider">
+            <StatItem label={t('dashboard.provider')}>
               {model.origin}
             </StatItem>
-            <StatItem label="Status">
+            <StatItem label={t('dashboard.status')}>
               <StatusDot status={model.status} />
-              <span style={{ fontSize: 11 }}>{model.status}</span>
+              <span style={{ fontSize: 11 }}>
+                {({
+                  up: t('dashboard.working'),
+                  down: t('dashboard.down'),
+                  timeout: t('filters.health.timeout'),
+                  noauth: t('filters.health.noKey'),
+                  auth_error: t('filters.health.authError'),
+                  pending: t('dashboard.pending'),
+                })[model.status] || model.status}
+              </span>
             </StatItem>
-            <StatItem label="Avg Ping">
+            <StatItem label={t('dashboard.avgPingShort')}>
               <span className={styles[avgCls]}>
                 {avgData.text}
               </span>
             </StatItem>
-            <StatItem label="Stability">
+            <StatItem label={t('dashboard.stability')}>
               <StabilityCell score={model.stability} />
             </StatItem>
-            <StatItem label="Verdict">
+            <StatItem label={t('dashboard.verdict')}>
               <VerdictBadge verdict={model.verdict} httpCode={model.httpCode} />
             </StatItem>
-            <StatItem label="Uptime">
+            <StatItem label={t('dashboard.uptime')}>
               {model.uptime > 0 ? `${model.uptime}%` : '—'}
             </StatItem>
           </div>
@@ -253,13 +264,13 @@ export default function ExpandedDetailRow({
               <button
                 className={`${styles.favBtn} ${isFav ? styles.favBtnActive : ''}`}
                 onClick={() => favorites.toggle(model)}
-                title={isFav ? `Unfavorite ${model.label}` : `Favorite ${model.label}`}
+                title={t(isFav ? 'dashboard.unfavoriteModelTitle' : 'dashboard.favoriteModelTitle', { model: model.label })}
               >
                 {isFav
                   ? <IconStarFilled size={13} stroke={1.5} />
                   : <IconStar size={13} stroke={1.5} />
                 }
-                <span>{isFav ? 'Favorited' : 'Favorite'}</span>
+                <span>{isFav ? t('dashboard.favorited') : t('dashboard.favorite')}</span>
               </button>
             )}
             {onLaunch && (
@@ -276,16 +287,16 @@ export default function ExpandedDetailRow({
         {/* ═══════ Column 2: Mini Playground (shared PlaygroundChat core) ═══════ */}
         <div className={styles.col}>
           <div className={styles.playgroundHeader}>
-            💬 Mini Playground — {model.label}
+            💬 {t('modelDetail.miniPlayground', { model: model.label })}
           </div>
           <div className={styles.playgroundWrap}>
             <PlaygroundChat
               model={`${model.providerKey}/${model.modelId}`}
               variant="mini"
               disabled={!model.hasApiKey}
-              placeholder="Type a message…"
-              emptyTitle={`Test ${model.label}`}
-              emptyHint="Send a message to test this model. Responses stream in real time with latency + TPS."
+              placeholder={t('modelDetail.playgroundPlaceholder')}
+              emptyTitle={t('modelDetail.testModel', { model: model.label })}
+              emptyHint={t('modelDetail.playgroundEmptyHint')}
             />
           </div>
         </div>
@@ -296,26 +307,26 @@ export default function ExpandedDetailRow({
             className={styles.benchBtn}
             onClick={handleBenchStart}
             disabled={benchState === 'running'}
-            title={benchState === 'running' ? 'Running benchmark…' : 'Test AI Latency'}
+            title={benchState === 'running' ? t('modelDetail.runningBenchmark') : t('modelDetail.testAiLatency')}
           >
             {benchState === 'running' ? (
               <IconLoader size={13} stroke={1.8} className={styles.spinning} />
             ) : (
               <IconPlayerPlayFilled size={13} stroke={1.8} />
             )}
-            <span>{benchState === 'running' ? 'Running…' : 'Test AI Latency'}</span>
+            <span>{benchState === 'running' ? t('modelDetail.running') : t('modelDetail.testAiLatency')}</span>
           </button>
 
           {/* Live metrics grid */}
           <div className={styles.metricsGrid}>
             <div className={styles.metricCard}>
-              <span className={styles.metricLabel}>Latency</span>
+              <span className={styles.metricLabel}>{t('dashboard.latency')}</span>
               <span className={styles.metricValue}>
                 {benchMetrics.latency != null ? `${benchMetrics.latency}s` : '—'}
               </span>
             </div>
             <div className={styles.metricCard}>
-              <span className={styles.metricLabel}>Tokens</span>
+              <span className={styles.metricLabel}>{t('modelDetail.tokens')}</span>
               <span className={styles.metricValue}>
                 {benchMetrics.tokens != null ? benchMetrics.tokens : '—'}
               </span>
@@ -327,7 +338,7 @@ export default function ExpandedDetailRow({
               </span>
             </div>
             <div className={styles.metricCard}>
-              <span className={styles.metricLabel}>Status</span>
+              <span className={styles.metricLabel}>{t('dashboard.status')}</span>
               <span className={styles.metricValue}>
                 {benchState === 'idle' && '⏳'}
                 {benchState === 'running' && '⚡'}
@@ -349,7 +360,7 @@ export default function ExpandedDetailRow({
           <div className={styles.streamText}>
             {benchText || (
               <span className={styles.responsePlaceholder}>
-                Generated text will appear here…
+                {t('modelDetail.generatedText')}
               </span>
             )}
           </div>
