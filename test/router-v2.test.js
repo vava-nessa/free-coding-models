@@ -971,3 +971,42 @@ describe('schema normalizer: parallel tool results (router v2 E2E fix)', () => {
     assert.equal(normalized.messages.filter((m) => m.role === 'tool').length, 0)
   })
 })
+
+// ── Router v2 failover field round-trip (PR #191) ────────────────────────────
+describe('router failover v2 field round-trip', () => {
+  it('preserves documented v2 failover fields through normalizeRouterConfig', () => {
+    const v2Fields = {
+      lastResortModel: 'cloudflare/@cf/openai/gpt-oss-120b',
+      bodyReadTimeoutMs: 30000,
+      totalBudgetMs: 120000,
+      contentValidation: 'strict',
+    }
+    const router = normalizeRouterConfig({
+      enabled: true,
+      port: 19380,
+      activeSet: 'main',
+      sets: { main: { models: [{ modelId: 'x', provider: 'p', providerKey: 'p', modelName: 'x' }] } },
+      failover: {
+        maxRetries: 3,
+        streamStallTimeoutMs: 25000,
+        requestTimeoutMs: 60000,
+        ...v2Fields,
+      },
+    })
+    for (const [key, value] of Object.entries(v2Fields)) {
+      assert.deepEqual(router.failover[key], value, `${key} must survive load()/save() normalization`)
+    }
+    // 📖 The three v1 knobs stay clamped/normalized, not passthrough
+    assert.equal(router.failover.maxRetries, 3)
+    assert.equal(router.failover.streamStallTimeoutMs, 25000)
+    assert.equal(router.failover.requestTimeoutMs, 60000)
+  })
+
+  it('still clamps invalid v1 knobs even when extras are carried through', () => {
+    const router = normalizeRouterConfig({
+      failover: { maxRetries: 999, unknownFutureKnob: 'keep-me' },
+    })
+    assert.ok(router.failover.maxRetries <= 20, 'maxRetries must stay clamped to the documented max')
+    assert.equal(router.failover.unknownFutureKnob, 'keep-me')
+  })
+})
