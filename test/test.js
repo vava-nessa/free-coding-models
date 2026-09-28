@@ -928,7 +928,11 @@ describe('sources.js data integrity', () => {
     assert.ok(Array.isArray(sources['vercel-gateway'].models))
     assert.ok(sources['vercel-gateway'].models.length >= 3, 'vercel-gateway should list its $0 models')
     for (const m of sources['vercel-gateway'].models) {
-      assert.ok(m[0].endsWith('-free'), `vercel-gateway model ${m[0]} should be an explicit $0 model`)
+      // 📖 stealth/* ids are the gateway's free canary models (no -free suffix upstream)
+      assert.ok(
+        m[0].endsWith('-free') || m[0].startsWith('stealth/'),
+        `vercel-gateway model ${m[0]} should be an explicit $0 model`
+      )
     }
   })
 
@@ -1096,11 +1100,12 @@ describe('provider key test model discovery', () => {
 
   it('uses discovered repo-known ids before the static catalog head for NVIDIA', () => {
     assert.deepEqual(
-      listProviderTestModels('nvidia', sources.nvidia, ['openai/gpt-oss-120b', 'moonshotai/kimi-k3']).slice(0, 5),
+      listProviderTestModels('nvidia', sources.nvidia, ['openai/gpt-oss-120b', 'moonshotai/kimi-k3']).slice(0, 6),
       [
         'moonshotai/kimi-k3',
         'openai/gpt-oss-120b',
         'z-ai/glm-5.3-flash',
+        'z-ai/glm-5.3',
         'nvidia/nemotron-3-ultra-550b-a55b',
         'poolside/laguna-xs-2.1',
       ]
@@ -3288,7 +3293,7 @@ describe('router daemon integration hardening', () => {
     }), async (zaiProvider) => {
       await withSourceUrls({ zai: zaiProvider.url }, async () => {
         const config = buildRouterTestConfig([
-          { provider: 'zai', model: 'zai/glm-4.7-flash', priority: 1 },
+          { provider: 'zai', model: 'zai/glm-5.3-flash', priority: 1 },
         ], { maxRetries: 1 })
         config.apiKeys.zai = 'zai-test-key'
         await withRouterTestServer(config, async ({ baseUrl }) => {
@@ -3302,7 +3307,7 @@ describe('router daemon integration hardening', () => {
           assert.equal(zaiProvider.requests.length, 1)
           const sentBody = zaiProvider.requests[0].body
           assert.ok(!('parallel_tool_calls' in sentBody), 'parallel_tool_calls must be stripped for zai')
-          assert.equal(sentBody.model, 'glm-4.7-flash', 'zai/ prefix is stripped for upstream')
+          assert.equal(sentBody.model, 'glm-5.3-flash', 'zai/ prefix is stripped for upstream')
         })
       })
     })

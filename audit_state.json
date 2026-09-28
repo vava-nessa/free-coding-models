@@ -1,131 +1,135 @@
 {
   "_meta": {
-    "totalModels": 254,
-    "lastFullAudit": "2026-09-22"
+    "totalModels": 265,
+    "lastFullAudit": "2026-09-28"
   },
   "nvidia": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "8dd5e47e096f95137f5ce0a82f3e71cf",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "6638b25d26de2b99374ed57379b98d57",
     "modelCount": 0
   },
   "groq": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "41f321838b0d7b794f5b5b60d8e15c67",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "3a805bead843075cf5be35457aaf5e5c",
     "modelCount": 0
   },
   "cerebras": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "e9de46a51df58571036749d20a0e4e1b",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "90ea2dc9c6e04013bad607dd45cf4e60",
     "modelCount": 0
   },
   "googleai": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "677738e8a185426416a6fd334be8cab5",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "7554dacb807964f1625c70f1d8547115",
     "modelCount": 0
   },
   "github-models": {
-    "lastAudited": "2026-09-21",
-    "fingerprint": "fcm-42506d82479c",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "59129a123a5507ef8089aacb260c80e8",
     "modelCount": 35
   },
   "mistral": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "1c8df87e1cc0d803bd966e6b0d4fb4f6",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "85c53e0c0712ba99196c43f1aad259d9",
     "modelCount": 0
   },
   "cloudflare": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "557341c4f303ffe51591d1298af78df6",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "76ff17b28857c06fa726f49d20564839",
     "modelCount": 0
   },
   "openrouter": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "369ed7b4969a71996abe1310ce1f8d59",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "efee5f72b91124ec112359f9a364aea3",
     "modelCount": 0
   },
   "sambanova": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "7caa47144808ece92281dd0247d94d19",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "698ff5cc00ad48f73b0e8347d3dca36e",
     "modelCount": 0
   },
   "ovhcloud": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "773f5df933eb798946a9e5b94898c03e",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "2baf771c7fe8eada90b978f503809d36",
     "modelCount": 0
   },
   "codestral": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "b111d3fa9aa03990a29d4b435c0499db",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "fb9799279ef74ab4cb42f213ac5a82fc",
     "modelCount": 0
   },
   "zai": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "6f4a89d6b3fc29bf4263b5187825b814",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "f88a136e20adac20495ef441e145c62b",
     "modelCount": 0
   },
   "scaleway": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "196837d53f7846473b8987e98799cfdc",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "cae26672280fa4aab009e4b4c64e7640",
     "modelCount": 0
   },
   "qwen": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "1da513cca8b48ffe89885dfcec203d58",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "57dc65bad91be6c6afedddeabf8203fc",
     "modelCount": 0
   },
   "opencode-zen": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "1134c457215b94162f77d67d59b1d32e",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "6a4406b1b8a9e96cf5cdf2bb8b93ea4d",
     "modelCount": 0
   },
   "kilo": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "6fecca18ca224dcceeb45eae43fbe9cc",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "fee4ecf434d365dd06e784728f21ce7d",
     "modelCount": 0
   },
   "llm7": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "7ff7637c69c033472f35c1222ec65575",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "62a993a3257ca7f72991d86ec80969b7",
     "modelCount": 0
   },
   "routeway": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "b786dfb4b17f9e1180bccf498c8e3dd6",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "93c2be931efc4406cda119cbd20a2bb9",
     "modelCount": 0
   },
   "novita": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "282b47acb7a1765345d926ef0598b418",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "aafa0af69803cd9d0f4a9558dc7da654",
     "modelCount": 0
   },
   "ollama-cloud": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "558e968b80dd3c0ef7f3a09ff615d40b",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "857b98182523d7038311b74d400df47b",
     "modelCount": 0
   },
   "orcarouter": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "f9a10d3633e26fc434f73ce98a7f8e2c",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "b89a8fbfd432c876e502abeeb7eecc24",
     "modelCount": 0
   },
   "pollinations": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "afad02d3ee99fa3226f8408ed024597d",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "edf3abd73c8c96ed88902f9b8640fdc9",
     "modelCount": 0
   },
   "requesty": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "531359aead6a075fe981ca252d720de8",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "bd44a036931e4bd152e7a85038cb9ddd",
     "modelCount": 0
   },
   "siliconflow": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "efd143ae469e731141c21dd4ce92c893",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "e2ce8f0405a059073859861791aa307e",
     "modelCount": 0
   },
   "vercel-gateway": {
-    "lastAudited": "2026-09-22",
-    "fingerprint": "25fad38cb95173823bdfc0ce6555cf80",
+    "lastAudited": "2026-09-28",
+    "fingerprint": "74351bb8964d340d85a43df41ac9f3c3",
     "modelCount": 0
+  },
+  "onomeo": {
+    "lastAudited": "2026-09-28",
+    "fingerprint": "cca8abd789e3df9a0f4c19784b7725d3"
   }
 }
