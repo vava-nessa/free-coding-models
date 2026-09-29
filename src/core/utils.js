@@ -1168,3 +1168,25 @@ export function formatResultsAsJSON(results, sortBy = 'avg', limit = 0) {
 
   return JSON.stringify(formatted, null, 2)
 }
+
+// 📖 Issue #196: ${VAR} placeholder support inside config apiKeys values.
+// 📖 The config file on disk keeps the literal placeholder, so saveConfig never
+// 📖 writes the resolved secret back; expansion happens only in memory, at the
+// 📖 moment a consumer reads the key (getApiKey, tool env sync). Only the
+// 📖 explicit ${NAME} form is recognized, so a literal key containing a bare
+// 📖 "$" is never mangled. An unset variable leaves the placeholder untouched:
+// 📖 probes will fail auth, which is the honest signal that something is off.
+export function resolveEnvPlaceholderValue(value) {
+  if (typeof value !== 'string') return value
+  return value.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (placeholder, name) => {
+    const resolved = process.env[name]
+    return typeof resolved === 'string' ? resolved : placeholder
+  })
+}
+
+// 📖 True when the value is nothing but one ${VAR} reference. Used by the
+// 📖 shell rc/env generator to skip entries the user's own environment already
+// 📖 provides (exporting the literal placeholder would clobber the real var).
+export function isPureEnvPlaceholder(value) {
+  return typeof value === 'string' && /^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/.test(value.trim())
+}

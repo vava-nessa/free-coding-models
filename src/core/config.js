@@ -23,8 +23,14 @@
  *       "scaleway":   "scw-xxx",
  *       "googleai":   "AIza...",
  *       "cloudflare": "cf-xxx",
- *       "zai":        "zai-xxx"
+ *       "zai":        "zai-xxx",
+ *       "onomeo":     "${ONOMEO_API_KEY}"
  *     },
+ *
+ * 📖 ${VAR} values (issue #196): an apiKeys entry of the form "${MY_VAR}" is
+ * 📖 resolved from the environment at read time. The file on disk keeps the
+ * 📖 placeholder so secrets never land on disk; saveConfig never writes the
+ * 📖 resolved value back. See getApiKey() and resolveEnvPlaceholderValue().
  *     "providers": {
  *       "nvidia":     { "enabled": true },
  *       "groq":       { "enabled": true },
@@ -106,6 +112,7 @@ import { homedir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { syncShellEnv } from './shell-env.js'
 import { DEFAULT_LOCALE, normalizeLocale } from './i18n/index.js'
+import { resolveEnvPlaceholderValue } from './utils.js'
 
 // 📖 Expand leading ~/ or bare ~ to homedir so --config-dir ~/.config/... works.
 // 📖 resolve() alone does NOT expand tilde, it would treat ~ as a literal folder.
@@ -1157,12 +1164,14 @@ export function getApiKey(config, providerKey) {
   // 📖 but every consumer (ping Authorization header, tool env vars, daemon) needs
   // 📖 a single string: an array would stringify to "key1,key2" and get a
   // 📖 guaranteed 401. Return the first non-empty entry instead.
+  // 📖 ${VAR} references (issue #196) are expanded here so the file on disk
+  // 📖 can stay secret-free while every consumer gets the real value.
   const key = config?.apiKeys?.[providerKey]
   if (Array.isArray(key)) {
     const firstUsable = key.find(k => typeof k === 'string' && k.length > 0)
-    return firstUsable ?? null
+    return firstUsable !== undefined ? resolveEnvPlaceholderValue(firstUsable) : null
   }
-  if (key) return key
+  if (key) return resolveEnvPlaceholderValue(key)
 
   return null
 }

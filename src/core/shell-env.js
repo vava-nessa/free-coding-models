@@ -41,6 +41,7 @@ import { join } from 'node:path'
 import * as readline from 'node:readline'
 import chalk from 'chalk'
 import { ENV_VAR_NAMES } from './provider-metadata.js'
+import { isPureEnvPlaceholder } from './utils.js'
 import { saveConfig } from './config.js'
 
 // 📖 Unique marker used to identify the source line we inject into shell rc files.
@@ -125,6 +126,11 @@ export function buildEnvContent(config, shell) {
     // 📖 Support multi-key arrays — use the first key for shell env
     const value = Array.isArray(rawValue) ? rawValue[0] : rawValue
     if (!value || typeof value !== 'string') continue
+
+    // 📖 Issue #196: a config value of "${MY_KEY}" means the key comes from the
+    // 📖 user's own environment. Never export the literal placeholder into the
+    // 📖 rc/env file, it would clobber the real variable on every shell start.
+    if (isPureEnvPlaceholder(value)) continue
 
     const safeValue = value.replace(/'/g, "'\\''")
 
