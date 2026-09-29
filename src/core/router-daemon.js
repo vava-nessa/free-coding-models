@@ -310,7 +310,10 @@ export function isPrivateNetworkHostname(hostname) {
 }
 
 // 📖 Cache the FCM_ALLOWED_ORIGINS env var split into a Set on first access.
-// 📖 Format: comma-separated origin URLs, e.g. "http://mybox:19280,http://10.0.0.5:19280"
+// 📖 Format: comma-separated origin URLs, e.g. "http://mybox:19280,http://10.0.0.5:19280".
+// 📖 The special entry "*" allowlists every origin: the user explicitly opted
+// 📖 out of origin checking, which is handy for LAN/Docker setups where the
+// 📖 dashboard hostname changes (mDNS names, DHCP IPs).
 let _allowedOriginsCache = null
 function getAllowedOrigins() {
   if (_allowedOriginsCache === null) {
@@ -321,6 +324,16 @@ function getAllowedOrigins() {
       .filter(Boolean)
   }
   return _allowedOriginsCache
+}
+
+function isWildcardOriginsEnabled() {
+  return getAllowedOrigins().includes('*')
+}
+
+// 📖 Test-only: drop the cached FCM_ALLOWED_ORIGINS list so a test that
+// 📖 mutates process.env sees fresh parsing instead of the first-read value.
+export function resetAllowedOriginsCacheForTest() {
+  _allowedOriginsCache = null
 }
 
 // 📖 v2: CORS for loopback (and explicitly allowed) origins so a browser
@@ -335,7 +348,8 @@ function applyCors(req, res) {
   } catch {
     return
   }
-  const allowed = isLoopbackHostname(hostname) || getAllowedOrigins().includes(origin)
+  const allowed =
+    isWildcardOriginsEnabled() || isLoopbackHostname(hostname) || getAllowedOrigins().includes(origin)
   if (!allowed) return
   res.setHeader('Access-Control-Allow-Origin', origin)
   res.setHeader('Vary', 'Origin')
@@ -362,6 +376,11 @@ export function isSameOriginOrLocal(req) {
 
   // 📖 No Origin/Referer → non-browser caller (curl, native app). Allow.
   if (candidates.length === 0) return true
+
+  // 📖 FCM_ALLOWED_ORIGINS="*" is an explicit operator decision to trust any
+  // 📖 origin (LAN/Docker setups with changing hostnames). Host-header
+  // 📖 validation still applies to every request.
+  if (isWildcardOriginsEnabled()) return true
 
   let hostHeader = typeof req.headers.host === 'string' ? req.headers.host.toLowerCase() : ''
   for (const c of candidates) {

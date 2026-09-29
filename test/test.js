@@ -42,7 +42,8 @@ import {
   parseIcaclsOutput, shouldSkipSecurityWarn,
   formatResultsAsJSON,
   detectTerminalCapabilities,
-  isProbeFailedRow, selectProbeFailedRows, PROBE_FAILED_STATUSES
+  isProbeFailedRow, selectProbeFailedRows, PROBE_FAILED_STATUSES,
+  resolveEnvPlaceholderValue, isPureEnvPlaceholder
 } from '../src/core/utils.js'
 import {
   _emptyProfileSettings,
@@ -51,7 +52,7 @@ import {
   normalizeRouterConfig,
   DEFAULT_ROUTER_SETTINGS
 } from '../src/core/config.js'
-import { buildDefaultRouterSet, cloneHeadersForUpstream, createRouterRuntimeForTest, formatOpenAiError } from '../src/core/router-daemon.js'
+import { buildDefaultRouterSet, cloneHeadersForUpstream, createRouterRuntimeForTest, formatOpenAiError, isAllowedHostHeader, isSameOriginOrLocal, resetAllowedOriginsCacheForTest } from '../src/core/router-daemon.js'
 import { formatRouterDuration, normalizeRouterDashboardSnapshot, parseRouterDashboardSseFrame } from '../src/core/router-dashboard.js'
 import { buildProviderModelTokenKey, loadTokenUsageByProviderModel, formatTokenTotalCompact } from '../src/core/token-usage-reader.js'
 import { renderTable, getLastLayout } from '../src/tui/render-table.js'
@@ -567,6 +568,60 @@ describe('router dashboard helpers', () => {
     const malformed = parseRouterDashboardSseFrame('event: probe\ndata: nope\n\n')
     assert.equal(malformed.event, 'probe')
     assert.equal(malformed.data, 'nope')
+  })
+})
+
+describe('FCM_ALLOWED_ORIGINS wildcard (issue #198)', () => {
+  let savedOrigins
+
+  beforeEach(() => {
+    savedOrigins = process.env.FCM_ALLOWED_ORIGINS
+    resetAllowedOriginsCacheForTest()
+  })
+
+  afterEach(() => {
+    if (savedOrigins === undefined) delete process.env.FCM_ALLOWED_ORIGINS
+    else process.env.FCM_ALLOWED_ORIGINS = savedOrigins
+    resetAllowedOriginsCacheForTest()
+  })
+
+  it('blocks a cross-machine origin when no wildcard is configured', () => {
+    process.env.FCM_ALLOWED_ORIGINS = 'http://other-box.local:19280'
+    resetAllowedOriginsCacheForTest()
+    const req = {
+      headers: { origin: 'http://raspberrypi.local:19280', host: 'evil.example.com:9999' },
+    }
+    assert.equal(isSameOriginOrLocal(req), false)
+  })
+
+  it('allows an exactly listed origin without a wildcard', () => {
+    process.env.FCM_ALLOWED_ORIGINS = 'http://raspberrypi.local:19280'
+    resetAllowedOriginsCacheForTest()
+    const req = {
+      headers: { origin: 'http://raspberrypi.local:19280', host: 'evil.example.com:9999' },
+    }
+    assert.equal(isSameOriginOrLocal(req), true)
+  })
+
+  it('allows any origin when the list contains * (issue #198)', () => {
+    process.env.FCM_ALLOWED_ORIGINS = '*,http://raspberrypi.local:19280'
+    resetAllowedOriginsCacheForTest()
+    const req = {
+      headers: { origin: 'http://raspberrypi.local:19280', host: 'raspberrypi.local:19280' },
+    }
+    assert.equal(isSameOriginOrLocal(req), true)
+
+    const otherBox = {
+      headers: { origin: 'http://10.0.0.42:5555', host: 'evil.example.com:9999' },
+    }
+    assert.equal(isSameOriginOrLocal(otherBox), true)
+  })
+
+  it('keeps Host-header DNS-rebinding protection even with * configured', () => {
+    process.env.FCM_ALLOWED_ORIGINS = '*'
+    resetAllowedOriginsCacheForTest()
+    assert.equal(isAllowedHostHeader('evil.example.com', 19280, '0.0.0.0'), false)
+    assert.equal(isAllowedHostHeader('raspberrypi.local:19280', 19280, '0.0.0.0'), true)
   })
 })
 
@@ -6012,6 +6067,80 @@ describe('Shell Env', () => {
     assert.ok(ENV_FILE_MARKER.includes('free-coding-models'))
   })
 })
+})
+
+// ─── Config ${VAR} placeholders (issue #196) ──────────────────────────────────
+describe('config ${VAR} placeholders (issue #196)', () => {
+  const savedEnv = {}
+  const withEnv = (vars, fn) => {
+    for (const [k, v] of Object.entries(vars)) {
+      if (!(k in savedEnv)) savedEnv[k] = process.env[k]
+      if (v === undefined) delete process.env[k]
+      else process.env[k] = v
+    }
+    try {
+      fn()
+    } finally {
+      for (const [k, v] of Object.entries(savedEnv)) {
+        if (v === undefined) delete process.env[k]
+        else process.env[k] = v
+        delete savedEnv[k]
+      }
+    }
+  }
+
+  it('resolveEnvPlaceholderValue expands ${VAR} from the environment', () => {
+    withEnv({ FCM_TEST_KEY: 'secret-123' }, () => {
+      assert.equal(resolveEnvPlaceholderValue('${FCM_TEST_KEY}'), 'secret-123')
+      assert.equal(resolveEnvPlaceholderValue('prefix-${FCM_TEST_KEY}-suffix'), 'prefix-secret-123-suffix')
+    })
+  })
+
+  it('resolveEnvPlaceholderValue leaves unknown variables untouched', () => {
+    withEnv({ FCM_TEST_KEY: undefined }, () => {
+      assert.equal(resolveEnvPlaceholderValue('${FCM_TEST_KEY}'), '${FCM_TEST_KEY}')
+    })
+  })
+
+  it('resolveEnvPlaceholderValue never touches bare $VAR or plain keys', () => {
+    withEnv({ FCM_TEST_KEY: 'secret-123' }, () => {
+      assert.equal(resolveEnvPlaceholderValue('$FCM_TEST_KEY'), '$FCM_TEST_KEY')
+      assert.equal(resolveEnvPlaceholderValue('sk-real-key-1'), 'sk-real-key-1')
+      assert.equal(resolveEnvPlaceholderValue(''), '')
+      assert.equal(resolveEnvPlaceholderValue(null), null)
+    })
+  })
+
+  it('isPureEnvPlaceholder only matches single full-string references', () => {
+    assert.equal(isPureEnvPlaceholder('${FCM_TEST_KEY}'), true)
+    assert.equal(isPureEnvPlaceholder('  ${FCM_TEST_KEY}  '), true)
+    assert.equal(isPureEnvPlaceholder('prefix-${FCM_TEST_KEY}'), false)
+    assert.equal(isPureEnvPlaceholder('${A}${B}'), false)
+    assert.equal(isPureEnvPlaceholder('sk-real'), false)
+    assert.equal(isPureEnvPlaceholder(''), false)
+  })
+
+  it('getApiKey expands ${VAR} values from the config file', () => {
+    withEnv({ FCM_TEST_GROQ_KEY: 'gsk-from-env' }, () => {
+      const config = { apiKeys: { groq: '${FCM_TEST_GROQ_KEY}' } }
+      assert.equal(getApiKey(config, 'groq'), 'gsk-from-env')
+    })
+  })
+
+  it('getApiKey still prefers the real env var over a placeholder config value', () => {
+    withEnv({ GROQ_API_KEY: 'env-wins', FCM_TEST_GROQ_KEY: 'gsk-from-env' }, () => {
+      const config = { apiKeys: { groq: '${FCM_TEST_GROQ_KEY}' } }
+      assert.equal(getApiKey(config, 'groq'), 'env-wins')
+    })
+  })
+
+  it('buildEnvContent skips pure placeholder keys instead of exporting them', () => {
+    const config = { apiKeys: { nvidia: '${MY_PRIVATE_NVIDIA_KEY}', groq: 'gsk-abc123' } }
+    const content = buildEnvContent(config, 'bash')
+    assert.ok(content.includes("export GROQ_API_KEY='gsk-abc123'"))
+    assert.ok(!content.includes('MY_PRIVATE_NVIDIA_KEY'), 'placeholder must not be exported into the rc file')
+    assert.ok(!content.includes('NVIDIA_API_KEY'))
+  })
 })
 
 // 📖 fadedRow: multiplies every 24-bit RGB channel inside an ANSI-colored string by a
