@@ -348,8 +348,8 @@ export const PROVIDER_METADATA = {
     color: chalk.rgb(255, 138, 64),
     signupUrl: 'https://www.orcarouter.ai',
     signupHint: 'Register (GitHub OAuth, no credit card) → API keys',
-    rateLimits: 'Free Hacker tier · zero token markup · 3 API keys',
-    detailedLimits: 'Zero-markup AI gateway: token prices are passed through at provider rates.\nFree Hacker plan: 3 API keys, adaptive routing + automatic failover + guardrails included.\nOnly the explicit $-0 models are listed in this catalog; the orcarouter/fusion family is pay-as-you-go.',
+    rateLimits: 'Free · 10 req/min · 50 req/day · zero token markup',
+    detailedLimits: 'Zero-markup AI gateway: token prices are passed through at provider rates.\nFree tier: 10 req/min, 50 req/day, GitHub account required, hidden per-request prompt cap.\nOnly the explicit $-0 models are listed in this catalog (verified against /api/free-package/public, 2026-09-29). The orcarouter/fusion family bills the sum of its paid panel legs, it is not free.',
   },
   'vercel-gateway': {
     label: 'Vercel AI Gateway',
