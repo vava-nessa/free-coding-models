@@ -70,7 +70,7 @@ Point your coding tool at `http://localhost:19280/v1` with model `fcm` and key `
 | `FCM_PORT` | `19280` | Router/daemon port (`--daemon` mode); also the web port fallback |
 | `FCM_WEB_PORT` | `3333` | Port for catalog-only `web` mode |
 | `FCM_ROUTER_TOKEN` | unset | Optional shared-token auth: when set, every `/v1/*` route requires `Authorization: Bearer <token>` (or `x-api-key: <token>`). Leave unset for the default no-auth local behavior. |
-| `FCM_ALLOWED_ORIGINS` | unset | Comma-separated origin URLs allowed by the dashboard CORS check, e.g. `http://mybox:19280,http://10.0.0.5:19280`. Useful when the daemon runs on another host. |
+| `FCM_ALLOWED_ORIGINS` | unset | Comma-separated origin URLs allowed by the dashboard CORS check, e.g. `http://mybox:19280,http://10.0.0.5:19280`. The special entry `*` allows every origin (explicit opt-out of origin checking, handy for LAN/Docker hosts with changing names). Host-header protection against DNS rebinding always stays on. Useful when the daemon runs on another host. |
 | `FCM_DISCORD_FEATURE_WEBHOOK` | unset | Optional Discord webhook URL used by the in-app anonymous feature-request action. |
 | `FCM_DISCORD_BUG_WEBHOOK` | unset | Optional Discord webhook URL used by the in-app anonymous bug-report action. |
 | `FREE_CODING_MODELS_TELEMETRY` | `0` in Docker | Set `0` / `false` / `off` to disable anonymous telemetry. |

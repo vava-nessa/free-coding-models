@@ -57,6 +57,21 @@ Everything FCM persists lives in one JSON file. This page documents its shape so
 
 API keys are stored under `apiKeys.<providerId>` using the provider IDs from the catalog (`nvidia`, `groq`, `cerebras`, `googleai`, `github-models`, `mistral`, `cloudflare`, `openrouter`, `sambanova`, `ovhcloud`, `codestral`, `zai`, `scaleway`, `dashscope`, `opencode-zen`, `kilo`, `llm7`, `routeway`, `novita`, `ollama-cloud`). Toggle a provider off with `providers.<id>.enabled: false` without deleting its key.
 
+### Environment variable placeholders in API keys
+
+Any `apiKeys` value can reference an environment variable instead of holding the key itself. Write the variable name in `${VAR}` form and FCM resolves it from the environment at read time:
+
+```json
+{
+  "apiKeys": {
+    "nvidia": "${NVIDIA_API_KEY}",
+    "onomeo": "${ONOMEO_API_KEY}"
+  }
+}
+```
+
+The file on disk keeps the literal `${VAR}` text: the resolved secret is never written back, so the config file stays secret-free. This is handy in Docker, where the config file is mounted and keys come from `env_file`. An unset variable leaves the placeholder in place, so probes fail with an auth error instead of silently sending a broken header. Only the explicit `${NAME}` form is recognized; a key that merely contains a `$` is never mangled.
+
 ---
 
 ## Environment variables
