@@ -40,7 +40,7 @@ Two caveats worth knowing: free tiers get smaller or disappear over time (the au
 | [OpencodeZen](https://opencode.ai/auth) | 10 | S+ | Free · Zen key required | `OPENCODE_ZEN_API_KEY` |
 | [ZAI](https://z.ai) | 10 | S+ | Free · Flash models only | `ZAI_API_KEY` |
 | [Mistral LP](https://console.mistral.ai/api-keys) | 9 | S+ | Free Experiment plan | `MISTRAL_API_KEY` |
-| [onomeo](https://onomeo.com/dashboard) | 9 | S+ | Daily check-in credits · 12 RPM · 60 req/5h | `ONOMEO_API_KEY` |
+| [onomeo](https://onomeo.com/dashboard) | 9 | S+ | Free models, no credits · 12 RPM · 60 req/5h | `ONOMEO_API_KEY` |
 | [OrcaRouter](https://www.orcarouter.ai) | 7 | S+ | Free · 3 $-0 models · zero markup | `ORCAROUTER_API_KEY` |
 | [SambaNova](https://cloud.sambanova.ai/apis) | 7 | S+ | Small dev tier · light use | `SAMBANOVA_API_KEY` |
 | [LLM7](https://token.llm7.io) | 4 | S+ | Free · no key needed | `LLM7_API_KEY` |

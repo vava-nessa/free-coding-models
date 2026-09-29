@@ -716,15 +716,14 @@ export const ollamaCloud = [
 // 📖 onomeo source - https://onomeo.com/docs
 // 📖 OpenAI-compatible gateway: https://onomeo.com/v1/chat/completions (streaming + tool calls)
 // 📖 Public beta: not every feature is guaranteed to work; feedback is welcome at https://onomeo.com/feedback.
-// 📖 Free credits come from a daily check-in, no card: 50,000 on day 1, rising to 200,000/day from
-// 📖 day 7 of a streak (a missed day resets it). Every call spends credits and the cost per reply
-// 📖 varies by model (https://onomeo.com/models), so this is a small allowance.
-// 📖 Premium models are not listed; each account that has not paid can spend up to 50,000 credits/day on them.
-// 📖 Optional: $5 one-time buys 1,000,000 credits. Limits: 12 req/min per key, 60 req per 5 hours
-// 📖 per account, 120 per 5 hours per IP, and a site-wide pool of 450 per 5 hours for accounts
-// 📖 that have not bought credits.
-// 📖 Some upstreams may train on prompts; each model page (https://onomeo.com/models/<id>) says which.
-// 📖 Ids and ctx checked 2026-09-26 against the public https://onomeo.com/api/info
+// 📖 The models listed here are free models: they spend no credits and are limited by calls instead.
+// 📖 Limits: 12 req/min per key, 60 calls per 5 hours per account (a long request counts as several),
+// 📖 120 per 5 hours per IP, and a site-wide pool of 450 per 5 hours shared by all accounts.
+// 📖 Premium models are not listed; they spend credits from a daily check-in (no card: 20,000 on day 1,
+// 📖 rising to 50,000/day from day 7 of a streak), and each account that has not paid can spend up to
+// 📖 50,000 credits/day on them. Optional: $5/month buys 3,000,000 credits a month.
+// 📖 31 of the 47 models may train on prompts; each model page (https://onomeo.com/models/<id>) says which.
+// 📖 Ids and ctx checked 2026-09-28 against the public https://onomeo.com/api/info
 // 📖 (`models`, `modelFacts`); /v1/models needs a key.
 export const onomeo = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
@@ -937,7 +936,7 @@ export const sources = {
   onomeo: {
     name: 'onomeo',
     url: 'https://onomeo.com/v1/chat/completions',
-    quota: 'Daily check-in credits · 12 RPM · 60 req/5h',
+    quota: 'Free models, no credits · 12 RPM · 60 req/5h',
     quotaCode: 'limited',
     models: onomeo,
   },

@@ -364,8 +364,8 @@ export const PROVIDER_METADATA = {
     color: chalk.rgb(240, 120, 60),
     signupUrl: 'https://onomeo.com/dashboard',
     signupHint: 'Sign in (email, Google or GitHub, no card) → check in daily → Dashboard → API key',
-    rateLimits: 'Daily check-in credits (50,000-200,000/day) · 12 req/min per key · 60 req/5h per account',
-    detailedLimits: 'Public beta: not every feature is guaranteed to work; feedback is welcome at https://onomeo.com/feedback.\nCredits come from a daily check-in: 50,000 on day 1, rising to 200,000/day from day 7 of a streak. No card needed.\nEvery call spends credits and the cost per reply varies by model (see https://onomeo.com/models), so this is a small allowance. Each account that has not paid can spend up to 50,000 credits/day on premium models. Optional: $5 one-time buys 1,000,000 credits.\nLimits: 12 req/min per key, 60 req per 5 hours per account, 120 per 5 hours per IP, 450 per 5 hours site-wide for accounts that have not bought credits. Health probes count against them.\nSome upstreams may train on prompts; each model page on onomeo.com says which.',
+    rateLimits: 'Free models, no credits · 12 req/min per key · 60 req/5h per account',
+    detailedLimits: 'Public beta: not every feature is guaranteed to work; feedback is welcome at https://onomeo.com/feedback.\nThe listed models are free models: they spend no credits and are limited by calls. No card needed.\nLimits: 12 req/min per key, 60 calls per 5 hours per account (a long request counts as several), 120 per 5 hours per IP, 450 per 5 hours shared site-wide by all accounts. Health probes count against them.\nPremium models spend credits from a daily check-in (20,000 on day 1, rising to 50,000/day from day 7 of a streak); each account that has not paid can spend up to 50,000 credits/day on them. Optional: $5/month buys 3,000,000 credits a month.\n31 of the 47 models may train on prompts; each model page on onomeo.com says which.',
   },
   'ollama-cloud': {
     label: 'Ollama Cloud',
