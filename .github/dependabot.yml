@@ -16,12 +16,21 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    # 📖 Wait 7 days before proposing freshly published versions: brand-new releases
+    # 📖 can be yanked or malicious, a cooldown gives the ecosystem time to react.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     commit-message:
       prefix: deps
       include: scope
     labels:
       - dependencies
+    # 📖 chalk 6 requires Node >= 22 but the package supports Node >= 18 (engines field).
+    # 📖 Ignore its major until the minimum Node version is raised to 22.
+    ignore:
+      - dependency-name: "chalk"
+        update-types: ["version-update:semver-major"]
     groups:
       # 🟢 Batch all minor + patch updates together — usually safe
       patch-and-minor:
@@ -43,6 +52,9 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    # 📖 Same 7-day cooldown as npm: newly published action tags can be unstable.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 3
     commit-message:
       prefix: ci
