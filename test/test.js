@@ -1001,6 +1001,15 @@ describe('sources.js data integrity', () => {
     assert.equal(sources.onomeo.quotaCode, 'limited')
     assert.ok(Array.isArray(sources.onomeo.models) && sources.onomeo.models.length > 0)
   })
+  it('sources object has runcrate with correct structure', () => {
+    assert.ok(sources.runcrate, 'sources.runcrate should exist')
+    assert.equal(sources.runcrate.name, 'Runcrate')
+    assert.equal(sources.runcrate.url, 'https://api.runcrate.ai/v1/chat/completions')
+    // 📖 The free usage depletes and resets, so the badge is 'limited'.
+    assert.equal(sources.runcrate.quotaCode, 'limited')
+    assert.ok(Array.isArray(sources.runcrate.models) && sources.runcrate.models.length > 0)
+  })
+
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════

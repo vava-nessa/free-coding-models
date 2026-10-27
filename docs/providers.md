@@ -2,7 +2,7 @@
 
 # Provider Catalog
 
-**24 providers / 252 live models**, generated from [`sources.js`](../sources.js), the same catalog the TUI, the Web Dashboard and the Smart Model Router read. Counts update only when this script is re-run, so they always match the shipped catalog.
+**25 providers / 257 live models**, generated from [`sources.js`](../sources.js), the same catalog the TUI, the Web Dashboard and the Smart Model Router read. Counts update only when this script is re-run, so they always match the shipped catalog.
 
 Sign up on any one provider to grab a free API key: **one key is enough to start**. Add more at any time from inside the app (press `P` in the TUI, or the Web Dashboard Settings page). A few providers (`Kilo`, `LLM7`, OVHcloud sandbox) even answer without a key, with tighter shared limits.
 
@@ -43,6 +43,7 @@ Two caveats worth knowing: free tiers get smaller or disappear over time (the au
 | [Routeway](https://routeway.ai) | 9 | S+ | Free :free models only | `ROUTEWAY_API_KEY` |
 | [Mistral LP](https://console.mistral.ai/api-keys) | 8 | S+ | Free Experiment plan | `MISTRAL_API_KEY` |
 | [OrcaRouter](https://www.orcarouter.ai) | 6 | S+ | Free · 5 $0 models + router · 10 rpm · 50 req/day | `ORCAROUTER_API_KEY` |
+| [Runcrate](https://www.runcrate.ai/inference/free?utm_source=free-coding-models&utm_medium=directory&utm_campaign=gpu_pricing) | 5 | S+ | Open models are free with your GitHub account | `RUNCRATE_API_KEY` |
 | [SambaNova](https://cloud.sambanova.ai/apis) | 5 | S+ | Small dev tier · light use | `SAMBANOVA_API_KEY` |
 | [Vercel AI Gateway](https://vercel.com/ai-gateway) | 5 | S+ | Free · $5 credits/30 days + $0 models · no card | `VERCEL_AI_GATEWAY_API_KEY` |
 | [Groq](https://console.groq.com/keys) | 3 | S | Free · ~30-50 RPM per model | `GROQ_API_KEY` |

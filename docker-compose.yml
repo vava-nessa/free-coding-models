@@ -45,6 +45,7 @@ services:
       VERCEL_AI_GATEWAY_API_KEY: ${VERCEL_AI_GATEWAY_API_KEY:-}
       AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY:-}
       ONOMEO_API_KEY: ${ONOMEO_API_KEY:-}
+      RUNCRATE_API_KEY: ${RUNCRATE_API_KEY:-}
     volumes:
       - fcm-data:/home/fcm
 

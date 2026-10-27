@@ -197,6 +197,7 @@ const ENV_VARS = {
   orcarouter: 'ORCAROUTER_API_KEY',
   'vercel-gateway': ['VERCEL_AI_GATEWAY_API_KEY', 'AI_GATEWAY_API_KEY'],
   onomeo:     'ONOMEO_API_KEY',
+  runcrate:   'RUNCRATE_API_KEY',
 }
 
 // 📖 Smart Router defaults are intentionally conservative: balanced probing,

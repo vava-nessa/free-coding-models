@@ -69,6 +69,8 @@ export const PROVIDER_CAPABILITIES = {
   'vercel-gateway': { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'monthly' },
   // 📖 onomeo: daily check-in credits; balance is at GET /api/me but no fetcher is wired yet.
   onomeo: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'daily' },
+  // 📖 Runcrate: no usage fetcher is wired.
+  runcrate: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'unknown' },
 }
 
 /** Fallback for unrecognized providers */

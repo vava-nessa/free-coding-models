@@ -29,7 +29,7 @@
  *   📖 Secondary: https://swe-rebench.com (independent evals, scores are lower)
  *   📖 Leaderboard tracker: https://www.marc0.dev/en/leaderboard
  *
- *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, githubModels, mistral, codestral, scaleway, googleai, zai, qwen, cloudflare, ovhcloud, opencodeZen, kilo, llm7, routeway, novita, ollamaCloud, pollinations, siliconflow, requesty, orcarouter, vercelGateway, onomeo — model arrays per active provider
+ *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, githubModels, mistral, codestral, scaleway, googleai, zai, qwen, cloudflare, ovhcloud, opencodeZen, kilo, llm7, routeway, novita, ollamaCloud, pollinations, siliconflow, requesty, orcarouter, vercelGateway, onomeo, runcrate — model arrays per active provider
  *   @exports sources — map of active free/free-limited providers, each with { name, url, models }
 
  *   @exports MODELS — flat array of [modelId, label, tier, sweScore, ctx, providerKey]
@@ -851,6 +851,24 @@ export const onomeo = [
   // Removed (2026-10-10 audit): nvidia/nemotron-3.5-lightning-30b-a3b + poolside/laguna-s-2.1:free + cohere/north-mini-code:free — all three in the provider's removed list
 ]
 
+// 📖 Runcrate source - https://www.runcrate.ai/docs
+// 📖 OpenAI-compatible API: https://api.runcrate.ai/v1/chat/completions (streaming + tool calls)
+// 📖 Open models are free with your GitHub account (sign in with GitHub on runcrate.ai);
+// 📖 the API keys page shows the free usage left. The rest of the catalog is paid per token.
+// 📖 Ids and ctx checked 2026-10-25 against the public https://api.runcrate.ai/v1/models (no key needed)
+// 📖 and the free list on https://www.runcrate.ai/inference/free. Tier and SWE-bench values are
+// 📖 copied from the existing rows for the same models.
+export const runcrate = [
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  ['deepseek-ai/DeepSeek-V4.1-Flash', 'DeepSeek V4.1 Flash', 'S+', '-', '1M'],
+  ['zai-org/GLM-5.3', 'GLM 5.3', 'S+', '-', '1M'],
+  ['zai-org/GLM-5.3-Flash', 'GLM-5.3-Flash', 'S+', '-', '1M'],
+  // ── S tier — SWE-bench Verified 60–70% ──
+  ['openai/gpt-oss-120b', 'GPT OSS 120B', 'S', '62.4%', '131k'],
+  // ── A+ tier — SWE-bench Verified 50–60% ──
+  ['Qwen/Qwen3.8-Flash', 'Qwen3.8 Flash', 'A+', '-', '1M'],
+]
+
 // 📖 All sources combined - used by the main script
 // 📖 Each source has: name (display), url (API endpoint), models (array of model tuples)
 // 📖 Providers ordered by generosity of free tier (most generous first)
@@ -1052,6 +1070,13 @@ export const sources = {
     quota: 'Free models, no credits · 12 RPM · 30 req/5h',
     quotaCode: 'limited',
     models: onomeo,
+  },
+  runcrate: {
+    name: 'Runcrate',
+    url: 'https://api.runcrate.ai/v1/chat/completions',
+    quota: 'Open models are free with your GitHub account',
+    quotaCode: 'limited',
+    models: runcrate,
   },
 }
 

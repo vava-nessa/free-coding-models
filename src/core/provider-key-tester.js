@@ -71,6 +71,8 @@ export const PROVIDER_AUTH_ENDPOINTS = {
   orcarouter:   { url: 'https://api.orcarouter.ai/v1/models',   method: 'GET' },
   'vercel-gateway': { url: 'https://ai-gateway.vercel.sh/v1/models', method: 'GET' },
   onomeo:       { url: 'https://onomeo.com/v1/models',          method: 'GET' },
+  // 📖 Runcrate's /v1/models is public, so it cannot reject a bad key: check the key on the billing balance endpoint.
+  runcrate:     { url: 'https://www.runcrate.ai/api/v1/billing/balance', method: 'GET' },
   together:     { url: 'https://api.together.xyz/v1/models',        method: 'GET' },
   perplexity:   { url: 'https://api.perplexity.ai/v1/models',       method: 'GET' },
   chutes:       { url: 'https://chutes.ai/v1/models',               method: 'GET' },
