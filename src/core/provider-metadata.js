@@ -367,7 +367,8 @@ export const PROVIDER_METADATA = {
     signupHint: 'Sign in (email, Google or GitHub, no card) → check in daily → Dashboard → API key',
     rateLimits: 'Free models, no credits · 12 req/min per key · 60 req/5h per account',
     detailedLimits: 'Public beta: not every feature is guaranteed to work; feedback is welcome at https://onomeo.com/feedback.\nThe listed models are free models: they spend no credits and are limited by calls. No card needed.\nLimits: 12 req/min per key, 60 calls per 5 hours per account (a long request counts as several), 120 per 5 hours per IP, 450 per 5 hours shared site-wide by all accounts. Health probes count against them.\nPremium models spend credits from a daily check-in (20,000 on day 1, rising to 50,000/day from day 7 of a streak); each account that has not paid can spend up to 50,000 credits/day on them. Optional: $5/month buys 3,000,000 credits a month.\n31 of the 47 models may train on prompts; each model page on onomeo.com says which.',
-  },  runcrate: {
+  },
+  runcrate: {
     label: 'Runcrate',
     color: chalk.rgb(95, 132, 255),
     signupUrl: 'https://www.runcrate.ai/inference/free?utm_source=free-coding-models&utm_medium=directory&utm_campaign=gpu_pricing',
@@ -375,7 +376,6 @@ export const PROVIDER_METADATA = {
     rateLimits: 'Open models are free with your GitHub account',
     detailedLimits: 'Open models are free with your GitHub account: DeepSeek V4.1 Flash, GLM 5.3, GLM 5.3 Flash, gpt-oss 120B and Qwen3.8 Flash.\nOther models on the same key are paid per token from a prepaid balance.',
   },
-
   'ollama-cloud': {
     label: 'Ollama Cloud',
     color: chalk.rgb(230, 230, 230),
