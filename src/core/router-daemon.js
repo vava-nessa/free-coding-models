@@ -38,6 +38,8 @@ import { appendFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 
 import { homedir, tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { MODELS, sources } from '../../sources.js'
+import { applyCustomProviders } from './custom-providers.js'
+import { PROVIDER_METADATA } from './provider-metadata.js'
 import {
   CONFIG_PATH,
   DEFAULT_ROUTER_SETTINGS,
@@ -705,7 +707,10 @@ export function cloneHeadersForUpstream(reqHeaders, apiKey, providerKey) {
     headers[key] = value
   }
   headers['Content-Type'] = headers['Content-Type'] || 'application/json'
-  headers.Authorization = `Bearer ${apiKey}`
+  // 📖 Keyless providers (Kilo, LLM7, OVHcloud sandbox, local custom endpoints)
+  // 📖 send no Authorization header at all: "Bearer null" would be rejected or
+  // mislogged by strict gateways. Real keys keep the standard Bearer form.
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`
   if (providerKey === 'openrouter' || providerKey === 'orcarouter') {
     headers['HTTP-Referer'] = 'https://github.com/vava-nessa/free-coding-models'
     headers['X-Title'] = 'free-coding-models'
@@ -1279,6 +1284,10 @@ export class RouterRuntime {
   reloadConfigFromDisk() {
     try {
       const nextConfig = loadConfig()
+      // 📖 Custom providers (issue #197): re-merge so hand-edited definitions
+      // 📖 (added/removed/renamed models) reach the live catalog without a
+      // daemon restart. Idempotent: the previous wave is removed first.
+      applyCustomProviders(nextConfig)
       // 📖 v2 fix: do NOT run ensureRouterConfigForDaemon here. It rebuilds
       // the router section from DEFAULT_ROUTER_SETTINGS and silently
       // discards user failover tuning (requestTimeoutMs, streamStall, and
@@ -1295,10 +1304,20 @@ export class RouterRuntime {
   }
 
   getApiKeyForProvider(providerKey) {
-    const configured = this.config?.apiKeys?.[providerKey]
-    if (Array.isArray(configured)) return configured.find(Boolean) || null
-    if (typeof configured === 'string' && configured.trim()) return configured.trim()
-    return null
+    // 📖 Delegate to the shared resolver so the daemon honors the same key
+    // 📖 chain as the TUI: env var (built-in or custom envVar) > config apiKeys
+    // 📖 (with ${VAR} placeholders) > customProviders apiKey. The previous
+    // 📖 inline lookup only read config.apiKeys, silently ignoring env-var-only
+    // 📖 setups (Docker, issue #196) and custom provider keys (issue #197).
+    return getApiKey(this.config, providerKey)
+  }
+
+  // 📖 Keyless providers authenticate via their own CLI/login flow or need no
+  // 📖 auth at all (Kilo, LLM7, OVHcloud sandbox, local custom endpoints).
+  // 📖 They stay routeable without any configured key, mirroring the TUI.
+  isProviderKeyless(providerKey) {
+    const meta = PROVIDER_METADATA[providerKey]
+    return Boolean(meta?.cliOnly || meta?.zenOnly || meta?.noKeyNeeded)
   }
 
   getSet(setName = null) {
@@ -1622,7 +1641,7 @@ export class RouterRuntime {
         traceSkip(trace, candidate.key, 'auth_error')
         continue
       }
-      if (!this.getApiKeyForProvider(candidate.provider)) {
+      if (!this.getApiKeyForProvider(candidate.provider) && !this.isProviderKeyless(candidate.provider)) {
         traceSkip(trace, candidate.key, 'missing_key')
         continue
       }
@@ -1992,7 +2011,7 @@ export class RouterRuntime {
   async probeCandidate(candidate, { eco = false } = {}) {
     const key = modelKey(candidate.provider, candidate.model)
     const apiKey = this.getApiKeyForProvider(candidate.provider)
-    if (!apiKey) {
+    if (!apiKey && !this.isProviderKeyless(candidate.provider)) {
       this.markAuthError(key, 'missing API key')
       return
     }
@@ -4618,6 +4637,9 @@ function hasUsableActiveSet(config) {
 
 export async function runRouterDaemon() {
   const config = loadConfig()
+  // 📖 Custom providers (issue #197): merge user-defined endpoints into the
+  // 📖 live catalog before any probe/set-builder reads sources or MODELS.
+  applyCustomProviders(config)
   // 📖 v2: listen FIRST. v1 awaited a 24-candidate probe sweep before the
   // server socket opened, leaving first boots with a ~36s black hole. Build
   // a fast static set when none exists, serve immediately, and upgrade to

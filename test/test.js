@@ -43,8 +43,12 @@ import {
   formatResultsAsJSON,
   detectTerminalCapabilities,
   isProbeFailedRow, selectProbeFailedRows, PROBE_FAILED_STATUSES,
-  resolveEnvPlaceholderValue, isPureEnvPlaceholder
+  resolveEnvPlaceholderValue, isPureEnvPlaceholder,
+  normalizeCustomProvidersSection
 } from '../src/core/utils.js'
+import { applyCustomProviders, deriveAuthEndpointFromChatUrl, deriveCustomEnvVarName } from '../src/core/custom-providers.js'
+import * as providerMetadataModule from '../src/core/provider-metadata.js'
+import * as providerKeyTesterModule from '../src/core/provider-key-tester.js'
 import {
   _emptyProfileSettings,
   normalizeEndpointInstalls, getApiKey,
@@ -8559,5 +8563,280 @@ describe('cloudflare probe request integration (issue #181)', () => {
     assert.ok(!req.url.includes('{$CLOUDFLARE_ACCOUNT_ID}'), req.url)
     assert.ok(!req.url.includes('missing-account-id'), req.url)
     assert.ok(req.url.includes('/accounts/acc-42/'), req.url)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 📖 CUSTOM PROVIDERS (issue #197): user-defined OpenAI-compatible endpoints
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('custom providers normalization (issue #197)', () => {
+  it('normalizes a complete definition', () => {
+    const out = normalizeCustomProvidersSection({
+      'ollama-local': {
+        name: 'Ollama Local',
+        url: 'http://localhost:11434/v1/chat/completions',
+        apiKey: 'sk-local',
+        envVar: 'OLLAMA_API_KEY',
+        quota: 'Local endpoint',
+        quotaCode: 'free',
+        models: [['qwen3-coder:30b', 'Qwen3 Coder 30B', 'A', '-', '262k']],
+      },
+    })
+    assert.deepEqual(Object.keys(out), ['ollama-local'])
+    assert.equal(out['ollama-local'].name, 'Ollama Local')
+    assert.equal(out['ollama-local'].envVar, 'OLLAMA_API_KEY')
+    assert.equal(out['ollama-local'].quotaCode, 'free')
+    assert.deepEqual(out['ollama-local'].models, [['qwen3-coder:30b', 'Qwen3 Coder 30B', 'A', '-', '262k']])
+  })
+
+  it('pads short model tuples with defaults and validates tier', () => {
+    const out = normalizeCustomProvidersSection({
+      mini: { url: 'https://api.mini.test/v1/chat/completions', models: [['glm-4.7'], ['m2', 'Label Two', 'S+'], ['m3', 'L3', 'Z']] },
+    })
+    assert.deepEqual(out.mini.models, [
+      ['glm-4.7', 'glm-4.7', 'B', '-', '-'],
+      ['m2', 'Label Two', 'S+', '-', '-'],
+      ['m3', 'L3', 'B', '-', '-'], // invalid tier falls back to B
+    ])
+  })
+
+  it('drops invalid entries without failing the whole section', () => {
+    const out = normalizeCustomProvidersSection({
+      good: { url: 'https://good.test/v1/chat/completions', models: [['m']] },
+      'bad-url': { url: 'not-a-url', models: [['m']] },
+      'ftp-only': { url: 'ftp://x.test/v1/chat/completions', models: [['m']] },
+      'no-models': { url: 'https://empty.test/v1/chat/completions', models: [] },
+      'models-not-array': { url: 'https://x.test/v1/chat/completions', models: 'nope' },
+      'bad-key~!': { url: 'https://x.test/v1/chat/completions', models: [['m']] },
+      '1starts-digit': { url: 'https://x.test/v1/chat/completions', models: [['m']] },
+      notAnObject: 'nope',
+    })
+    assert.deepEqual(Object.keys(out), ['good'])
+  })
+
+  it('rejects collisions with builtin provider keys', () => {
+    const out = normalizeCustomProvidersSection({
+      groq: { url: 'https://evil.test/v1/chat/completions', models: [['m']] },
+      custom: { url: 'https://ok.test/v1/chat/completions', models: [['m']] },
+    }, ['groq', 'nvidia'])
+    assert.deepEqual(Object.keys(out), ['custom'])
+  })
+
+  it('deduplicates model ids inside one provider and ignores non-object sections', () => {
+    const out = normalizeCustomProvidersSection({
+      dup: { url: 'https://dup.test/v1/chat/completions', models: [['m1'], ['m1'], ['m2']] },
+    })
+    assert.equal(out.dup.models.length, 2)
+    assert.deepEqual(normalizeCustomProvidersSection(null), {})
+    assert.deepEqual(normalizeCustomProvidersSection([1, 2]), {})
+    assert.deepEqual(normalizeCustomProvidersSection('nope'), {})
+  })
+
+  it('env var names follow identifier shape', () => {
+    const out = normalizeCustomProvidersSection({
+      a: { url: 'https://a.test/v1/chat/completions', envVar: 'VALID_NAME_2', models: [['m']] },
+      b: { url: 'https://b.test/v1/chat/completions', envVar: '2INVALID', models: [['m']] },
+      c: { url: 'https://c.test/v1/chat/completions', envVar: 'HAS-DASH', models: [['m']] },
+    })
+    assert.equal(out.a.envVar, 'VALID_NAME_2')
+    assert.equal(out.b.envVar, null)
+    assert.equal(out.c.envVar, null)
+  })
+})
+
+describe('custom providers catalog merge (issue #197)', () => {
+  const BASE_PROVIDERS = Object.keys(sources).length
+  const BASE_MODELS = MODELS.length
+
+  const mkConfig = (customProviders) => ({ apiKeys: {}, providers: {}, customProviders })
+
+  afterEach(() => {
+    // 📖 Always restore the shipped catalog so later suites see a clean state.
+    applyCustomProviders({})
+  })
+
+  it('merges valid custom providers into sources and MODELS', () => {
+    const { applied } = applyCustomProviders(mkConfig({
+      'ollama-local': { url: 'http://localhost:11434/v1/chat/completions', models: [['qwen3:14b']] },
+      lmstudio: { url: 'http://localhost:1234/v1/chat/completions', models: [['glm-4.7', 'GLM 4.7', 'A']] },
+    }))
+    assert.equal(applied, 2)
+    assert.equal(Object.keys(sources).length, BASE_PROVIDERS + 2)
+    assert.equal(MODELS.length, BASE_MODELS + 2)
+    assert.ok(sources['ollama-local'].custom, 'custom flag should tag the source entry')
+    const customRows = MODELS.filter(m => m[5] === 'lmstudio')
+    assert.deepEqual(customRows, [['glm-4.7', 'GLM 4.7', 'A', '-', '-', 'lmstudio', null]])
+  })
+
+  it('never shadows builtin providers', () => {
+    applyCustomProviders(mkConfig({
+      groq: { url: 'https://evil.test/v1/chat/completions', models: [['evil-model']] },
+    }))
+    assert.ok(!sources.groq.url.includes('evil.test'), 'builtin groq must win')
+    assert.ok(!MODELS.some(m => m[0] === 'evil-model'), 'shadowing model must not enter MODELS')
+  })
+
+  it('is idempotent and removes stale waves on re-apply', () => {
+    applyCustomProviders(mkConfig({
+      a: { url: 'https://a.test/v1/chat/completions', models: [['m1']] },
+      b: { url: 'https://b.test/v1/chat/completions', models: [['m2']] },
+    }))
+    applyCustomProviders(mkConfig({
+      a: { url: 'https://a.test/v1/chat/completions', models: [['m1']] },
+      b: { url: 'https://b.test/v1/chat/completions', models: [['m2']] },
+    }))
+    assert.equal(MODELS.length, BASE_MODELS + 2, 're-apply must not duplicate models')
+    applyCustomProviders(mkConfig({
+      c: { url: 'https://c.test/v1/chat/completions', models: [['m3']] },
+    }))
+    assert.ok(!sources.a && !sources.b, 'previous wave should be removed')
+    assert.ok(sources.c, 'new wave should be applied')
+    assert.equal(MODELS.length, BASE_MODELS + 1)
+  })
+
+  it('cleanup with an empty config restores the shipped catalog exactly', () => {
+    applyCustomProviders(mkConfig({
+      a: { url: 'https://a.test/v1/chat/completions', models: [['m1'], ['m2']] },
+    }))
+    applyCustomProviders({})
+    assert.equal(Object.keys(sources).length, BASE_PROVIDERS)
+    assert.equal(MODELS.length, BASE_MODELS)
+  })
+
+  it('extends provider metadata, env var names and key-test endpoints', () => {
+    applyCustomProviders(mkConfig({
+      'llama-cpp': {
+        url: 'https://llama.internal:8080/v1/chat/completions',
+        envVar: 'LLAMA_CPP_KEY',
+        models: [['m']],
+      },
+      keyless: { url: 'https://keyless.test/v1/chat/completions', models: [['m']] },
+    }))
+    const { PROVIDER_METADATA, ENV_VAR_NAMES } = providerMetadataModule
+    assert.equal(PROVIDER_METADATA['llama-cpp'].label, 'llama-cpp')
+    assert.equal(PROVIDER_METADATA['llama-cpp'].noKeyNeeded, undefined, 'providers with a key declared are not noKeyNeeded')
+    assert.equal(PROVIDER_METADATA.keyless.noKeyNeeded, true, 'keyless endpoints stay visible under configured-only filter')
+    // 📖 User-declared envVar is used as-is; keyless providers get a derived
+    // 📖 FCM_CUSTOM_* name so tool config writers never skip them.
+    assert.equal(ENV_VAR_NAMES['llama-cpp'], 'LLAMA_CPP_KEY')
+    assert.equal(ENV_VAR_NAMES.keyless, 'FCM_CUSTOM_KEYLESS')
+    assert.equal(providerKeyTesterModule.PROVIDER_AUTH_ENDPOINTS['llama-cpp'].url, 'https://llama.internal:8080/v1/models')
+    assert.equal(providerKeyTesterModule.PROVIDER_AUTH_ENDPOINTS.keyless.url, 'https://keyless.test/v1/models')
+  })
+
+  it('deriveCustomEnvVarName builds deterministic FCM_CUSTOM_* names', () => {
+    assert.equal(deriveCustomEnvVarName('ollama-local'), 'FCM_CUSTOM_OLLAMA_LOCAL')
+    assert.equal(deriveCustomEnvVarName('lm.studio2'), 'FCM_CUSTOM_LM_STUDIO2')
+    assert.equal(deriveCustomEnvVarName('x'), 'FCM_CUSTOM_X')
+  })
+
+  it('deriveAuthEndpointFromChatUrl only handles chat-completions urls', () => {
+    assert.equal(deriveAuthEndpointFromChatUrl('http://h:1/v1/chat/completions'), 'http://h:1/v1/models')
+    assert.equal(deriveAuthEndpointFromChatUrl('http://h:1/v1/chat/completions/'), 'http://h:1/v1/models')
+    assert.equal(deriveAuthEndpointFromChatUrl('http://h:1/some/other/path'), null)
+    assert.equal(deriveAuthEndpointFromChatUrl('nope'), null)
+  })
+})
+
+describe('custom providers key resolution (issue #197)', () => {
+  const mkConfig = () => ({
+    apiKeys: {},
+    customProviders: {
+      ollama: {
+        url: 'http://localhost:11434/v1/chat/completions',
+        envVar: 'TEST_OLLAMA_KEY',
+        apiKey: 'bootstrap-key',
+        models: [['m']],
+      },
+    },
+  })
+  const savedEnv = {}
+  const ENV_KEYS = ['TEST_OLLAMA_KEY']
+
+  beforeEach(() => {
+    for (const k of ENV_KEYS) savedEnv[k] = process.env[k]
+  })
+  afterEach(() => {
+    for (const k of ENV_KEYS) {
+      if (savedEnv[k] === undefined) delete process.env[k]
+      else process.env[k] = savedEnv[k]
+    }
+  })
+
+  it('declared envVar wins over everything', () => {
+    process.env.TEST_OLLAMA_KEY = 'env-secret'
+    const config = mkConfig()
+    config.apiKeys.ollama = 'ui-key'
+    assert.equal(getApiKey(config, 'ollama'), 'env-secret')
+  })
+
+  it('Settings UI key (apiKeys) beats the bootstrap apiKey field', () => {
+    delete process.env.TEST_OLLAMA_KEY
+    const config = mkConfig()
+    config.apiKeys.ollama = 'ui-key'
+    assert.equal(getApiKey(config, 'ollama'), 'ui-key')
+  })
+
+  it('falls back to the declared apiKey field', () => {
+    delete process.env.TEST_OLLAMA_KEY
+    assert.equal(getApiKey(mkConfig(), 'ollama'), 'bootstrap-key')
+  })
+
+  it('keyless custom providers resolve to null', () => {
+    const config = { apiKeys: {}, customProviders: { local: { url: 'http://x/v1/chat/completions', models: [['m']] } } }
+    assert.equal(getApiKey(config, 'local'), null)
+  })
+
+  it('${VAR} placeholders inside the declared apiKey are resolved at read time', () => {
+    process.env.TEST_OLLAMA_KEY = undefined
+    const config = {
+      apiKeys: {},
+      customProviders: { ollama: { url: 'http://x/v1/chat/completions', apiKey: '${TEST_OLLAMA_KEY2}', envVar: null, models: [['m']] } },
+    }
+    process.env.TEST_OLLAMA_KEY2 = 'resolved-secret'
+    try {
+      assert.equal(getApiKey(config, 'ollama'), 'resolved-secret')
+    } finally {
+      delete process.env.TEST_OLLAMA_KEY2
+    }
+  })
+})
+
+describe('custom providers config persistence (issue #197)', () => {
+  it('normalizeConfigShape keeps the section and drops invalid entries', () => {
+    // 📖 normalizeConfigShape runs inside buildPersistedConfig, so a custom
+    // provider should survive a save round-trip merge and invalid ones drop.
+    const disk = {
+      apiKeys: {},
+      customProviders: {
+        keep: { url: 'https://keep.test/v1/chat/completions', models: [['m']] },
+        drop: { url: 'bad', models: [['m']] },
+      },
+    }
+    const merged = buildPersistedConfig({ apiKeys: {} }, disk)
+    assert.deepEqual(Object.keys(merged.customProviders), ['keep'])
+    assert.equal(merged.customProviders.keep.url, 'https://keep.test/v1/chat/completions')
+  })
+
+  it('incoming custom providers win per key, disk keys are preserved', () => {
+    const disk = {
+      apiKeys: {},
+      customProviders: {
+        old: { url: 'https://old.test/v1/chat/completions', models: [['m']] },
+        shared: { url: 'https://disk.test/v1/chat/completions', models: [['m']] },
+      },
+    }
+    const incoming = {
+      apiKeys: {},
+      customProviders: {
+        shared: { url: 'https://incoming.test/v1/chat/completions', models: [['m2']] },
+        fresh: { url: 'https://fresh.test/v1/chat/completions', models: [['m3']] },
+      },
+    }
+    const merged = buildPersistedConfig(incoming, disk)
+    assert.deepEqual(Object.keys(merged.customProviders).sort(), ['fresh', 'old', 'shared'])
+    assert.equal(merged.customProviders.shared.url, 'https://incoming.test/v1/chat/completions')
+    assert.equal(merged.customProviders.fresh.models[0][0], 'm3')
   })
 })

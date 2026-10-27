@@ -32,6 +32,7 @@ if (_configDirIdx !== -1 && process.argv[_configDirIdx + 1] && !process.argv[_co
 import chalk from 'chalk';
 import { parseArgs, TIER_LETTER_MAP } from '../src/core/utils.js';
 import { loadConfig, saveConfig } from '../src/core/config.js';
+import { applyCustomProviders } from '../src/core/custom-providers.js';
 import { setLocale } from '../src/core/i18n/index.js';
 import { ensureTelemetryConfig } from '../src/core/telemetry.js';
 import { ensureFavoritesConfig } from '../src/core/favorites.js';
@@ -118,6 +119,11 @@ async function main() {
   const config = loadConfig();
   ensureTelemetryConfig(config);
   ensureFavoritesConfig(config);
+
+  // 📖 Custom providers (issue #197): merge user-defined OpenAI-compatible
+  // 📖 endpoints into the live catalog before any surface reads it (TUI, JSON
+  // one-shots, tool sync, daemon bootstrap). Idempotent per process.
+  applyCustomProviders(config);
 
   const isDevMode = isPackageDevMode();
   const shouldEnforceUpdate = !cliArgs.daemonStopMode && !cliArgs.daemonStatusMode && !cliArgs.routerV2StopMode && !cliArgs.routerV2StatusMode;

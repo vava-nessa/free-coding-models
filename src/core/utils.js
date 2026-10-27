@@ -1190,3 +1190,99 @@ export function resolveEnvPlaceholderValue(value) {
 export function isPureEnvPlaceholder(value) {
   return typeof value === 'string' && /^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/.test(value.trim())
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Custom providers (issue #197): user-defined OpenAI-compatible endpoints
+// ══════════════════════════════════════════════════════════════════════════════
+
+// 📖 Valid model tiers, mirrors TIER_ORDER in this file. A custom model's tier
+// 📖 defaults to 'B' when the user does not set one: honest middle ground for a
+// 📖 model whose coding quality FCM cannot verify.
+export const CUSTOM_PROVIDER_TIERS = ['S+', 'S', 'A+', 'A', 'A-', 'B+', 'B', 'C']
+
+// 📖 Provider key shape: short, url-safe, cannot start with a digit or dot/dash.
+// 📖 Env var shape: classic identifier (letters, digits, underscore, no digit start).
+const CUSTOM_PROVIDER_KEY_RE = /^[A-Za-z][A-Za-z0-9._-]{0,39}$/
+const CUSTOM_ENV_VAR_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/
+
+// 📖 Validate + normalize one model tuple for a custom provider.
+// 📖 Accepts 1 to 5 elements [id], [id,label], [id,label,tier], [id,label,tier,swe], [id,label,tier,swe,ctx]
+// 📖 and pads the rest with sane defaults so a one-element ["qwen3:14b"] entry works.
+function normalizeCustomProviderModel(entry, providerKey) {
+  if (!Array.isArray(entry) || entry.length === 0) return null
+  const modelId = typeof entry[0] === 'string' ? entry[0].trim() : ''
+  if (!modelId) return null
+  const label = (typeof entry[1] === 'string' && entry[1].trim()) || modelId
+  const rawTier = typeof entry[2] === 'string' ? entry[2].trim() : ''
+  const tier = CUSTOM_PROVIDER_TIERS.includes(rawTier) ? rawTier : 'B'
+  const sweScore = (typeof entry[3] === 'string' && entry[3].trim()) || '-'
+  const ctx = (typeof entry[4] === 'string' && entry[4].trim()) || '-'
+  return [modelId, label, tier, sweScore, ctx]
+}
+
+/**
+ * 📖 normalizeCustomProvidersSection: validate the user-authored `customProviders`
+ * config section (issue #197) without trusting arbitrary JSON from disk.
+ *
+ * Each entry becomes a provider definition the whole app can consume:
+ *   {
+ *     "ollama-local": {
+ *       "name": "Ollama Local",                     // display name (default: key)
+ *       "url": "http://localhost:11434/v1/chat/completions",
+ *       "apiKey": "sk-x or ${VAR}",                 // optional bootstrap key
+ *       "envVar": "OLLAMA_API_KEY",                 // optional env override
+ *       "quota": "Local endpoint",                  // optional display text
+ *       "quotaCode": "free",                        // free | limited | metered
+ *       "models": [["qwen3-coder:30b", "Qwen3 Coder", "A", "-", "262k"]]
+ *     }
+ *   }
+ *
+ * Entries are dropped (not fatal: one bad provider must not break the whole
+ * config) when the key collides with a built-in provider, the url is not
+ * http(s), or the models array is empty after normalization.
+ *
+ * @param {unknown} customProviders - raw JSON value from the config file
+ * @param {string[]} [builtinProviderKeys] - keys of the shipped catalog; collisions are ignored
+ * @returns {Record<string, {name:string,url:string,apiKey:string|null,envVar:string|null,quota:string,quotaCode:string,models:Array}>}
+ */
+export function normalizeCustomProvidersSection(customProviders, builtinProviderKeys = []) {
+  if (!customProviders || typeof customProviders !== 'object' || Array.isArray(customProviders)) return {}
+  const builtins = new Set(builtinProviderKeys)
+  const normalized = {}
+  for (const [rawKey, rawDef] of Object.entries(customProviders)) {
+    const key = typeof rawKey === 'string' ? rawKey.trim() : ''
+    if (!CUSTOM_PROVIDER_KEY_RE.test(key)) continue
+    if (builtins.has(key)) continue
+    if (!rawDef || typeof rawDef !== 'object' || Array.isArray(rawDef)) continue
+
+    const rawUrl = typeof rawDef.url === 'string' ? rawDef.url.trim() : ''
+    let url
+    try {
+      const parsed = new URL(rawUrl)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue
+      url = parsed.toString()
+    } catch {
+      continue
+    }
+
+    const name = (typeof rawDef.name === 'string' && rawDef.name.trim().slice(0, 40)) || key
+    const apiKey = typeof rawDef.apiKey === 'string' && rawDef.apiKey.trim() ? rawDef.apiKey.trim() : null
+    const envVar = typeof rawDef.envVar === 'string' && CUSTOM_ENV_VAR_RE.test(rawDef.envVar.trim()) ? rawDef.envVar.trim() : null
+    const quota = (typeof rawDef.quota === 'string' && rawDef.quota.trim().slice(0, 80)) || 'Custom endpoint'
+    const quotaCode = ['free', 'limited', 'metered'].includes(rawDef.quotaCode) ? rawDef.quotaCode : 'free'
+
+    if (!Array.isArray(rawDef.models) || rawDef.models.length === 0) continue
+    const models = []
+    const seen = new Set()
+    for (const entry of rawDef.models) {
+      const model = normalizeCustomProviderModel(entry, key)
+      if (!model || seen.has(model[0])) continue
+      seen.add(model[0])
+      models.push(model)
+    }
+    if (models.length === 0) continue
+
+    normalized[key] = { name, url, apiKey, envVar, quota, quotaCode, models }
+  }
+  return normalized
+}

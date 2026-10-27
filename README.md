@@ -106,6 +106,37 @@ free-coding-models --fiable              # print the single most reliable model 
 
 > ⚠️ Health probes consume provider quota: FCM auto-pauses a provider on `429`, backs off exponentially per failing model, and shows a footer chip while a provider rests. Leave a key empty and anonymous liveness probes still work for most providers.
 
+### 🧩 Your own providers (Ollama, LM Studio, vLLM, private gateways)
+
+Any OpenAI-compatible endpoint can be added to `~/.free-coding-models.json` under `customProviders` (issue #197). Custom models are pinged, scored, filtered, routable through the Smart Router, installable into your coding tools, and visible on the Web Dashboard, exactly like built-in providers:
+
+```json
+{
+  "customProviders": {
+    "ollama-local": {
+      "name": "Ollama Local",
+      "url": "http://localhost:11434/v1/chat/completions",
+      "quota": "Local, unlimited",
+      "quotaCode": "free",
+      "models": [
+        ["qwen3-coder:30b", "Qwen3 Coder 30B", "A", "-", "262k"],
+        ["llama4:70b"]
+      ]
+    },
+    "vllm-gpu": {
+      "url": "https://gpu.internal:8000/v1/chat/completions",
+      "envVar": "VLLM_API_KEY",
+      "models": [["deepseek-v4.1", "DeepSeek V4.1", "S", "-", "128k"]]
+    }
+  }
+}
+```
+
+- `url` (required): any `http(s)` OpenAI-compatible `/chat/completions` endpoint.
+- `models` (required): tuples `[id, label?, tier?, sweScore?, ctx?]` - only the id is mandatory, the rest gets sensible defaults (tier defaults to `B`).
+- `apiKey` / `envVar` (optional): key inline (supports `${VAR}` placeholders) or read from an env var. Omit both for keyless local servers like Ollama or LM Studio - they stay visible and routable without a key.
+- Provider keys must not collide with built-in providers; colliding entries are ignored. Removing a definition from the file removes the provider at the next restart.
+
 ---
 
 ## 🎛️ The Terminal UI (TUI)

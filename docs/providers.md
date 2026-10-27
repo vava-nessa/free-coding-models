@@ -56,6 +56,8 @@ Two caveats worth knowing: free tiers get smaller or disappear over time (the au
 
 Every model is tiered by its **SWE-bench Verified** score, the industry-standard benchmark for real coding tasks.
 
+> 🧩 **Your own providers do not count toward these numbers.** Endpoints you add yourself via the `customProviders` section of the config file (Ollama, LM Studio, vLLM, private gateways - issue #197) live outside this generated catalog: they appear in the TUI, the Web Dashboard and the Smart Router at runtime, with the tier and context window you declare. See the README section "Your own providers".
+
 | Tier | SWE-bench | Best for |
 |------|-----------|----------|
 | **S+** | 70%+ | Elite frontier coders, complex refactors |

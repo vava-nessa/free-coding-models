@@ -62,6 +62,17 @@
  *     "endpointInstalls": [
  *       { "providerKey": "nvidia", "toolMode": "opencode", "scope": "all", "modelIds": [], "lastSyncedAt": "2026-03-09T10:00:00.000Z" }
  *     ],
+ *     "customProviders": {
+ *       "ollama-local": {
+ *         "name": "Ollama Local",
+ *         "url": "http://localhost:11434/v1/chat/completions",
+ *         "apiKey": "optional, plain or ${VAR}",
+ *         "envVar": "OLLAMA_API_KEY",
+ *         "quota": "Local endpoint",
+ *         "quotaCode": "free",
+ *         "models": [["qwen3-coder:30b", "Qwen3 Coder 30B", "A", "-", "262k"]]
+ *       }
+ *     },
  *     "router": {
  *       "enabled": true,
  *       "activeSet": "fast-coding",
@@ -112,7 +123,7 @@ import { homedir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { syncShellEnv } from './shell-env.js'
 import { DEFAULT_LOCALE, normalizeLocale } from './i18n/index.js'
-import { resolveEnvPlaceholderValue } from './utils.js'
+import { resolveEnvPlaceholderValue, normalizeCustomProvidersSection } from './utils.js'
 
 // 📖 Expand leading ~/ or bare ~ to homedir so --config-dir ~/.config/... works.
 // 📖 resolve() alone does NOT expand tilde, it would treat ~ as a literal folder.
@@ -598,6 +609,10 @@ function normalizeConfigShape(config) {
     // 📖 hiddenModels: Set of "provider/modelId" keys auto-hidden by the 404 probe (Ctrl+Shift+P).
     // 📖 Only populated when settings.autoHideBrokenModels is true (default).
     hiddenModels: normalizeStringSet(safeConfig.hiddenModels),
+    // 📖 customProviders (issue #197): user-defined OpenAI-compatible endpoints
+    // 📖 (Ollama, LM Studio, vLLM, private gateways). Normalized here for
+    // 📖 persistence; the live catalog merge happens in custom-providers.js.
+    customProviders: normalizeCustomProvidersSection(safeConfig.customProviders),
   }
   const normalizedRouter = normalizeRouterConfig(safeConfig.router)
   if (normalizedRouter) normalized.router = normalizedRouter
@@ -699,6 +714,10 @@ export function buildPersistedConfig(incomingConfig, diskConfig = _emptyConfig()
     endpointInstalls: options.replaceEndpointInstalls === true
       ? cloneConfigValue(normalizedIncoming.endpointInstalls)
       : mergeEndpointInstalls(normalizedDisk.endpointInstalls, normalizedIncoming.endpointInstalls),
+    // 📖 customProviders: incoming wins per key, disk keys absent from incoming
+    // 📖 are kept (same policy as `providers`), so partial saves from any
+    // 📖 surface never wipe the user's hand-authored provider definitions.
+    customProviders: { ...normalizedDisk.customProviders, ...normalizedIncoming.customProviders },
     // 📖 Profile system removed - always null
   }
   if (isPlainObject(incomingConfig.router) && isPlainObject(normalizedDisk.router)) {
@@ -1145,12 +1164,14 @@ export function validateConfigFile(options = {}) {
  * 📖 getApiKey: Get the effective API key for a provider.
  *
  * 📖 Priority order (first non-empty wins):
- *   1. Environment variable (e.g. NVIDIA_API_KEY) — for CI/headless
+ *   1. Environment variable — the provider's built-in env var (e.g. NVIDIA_API_KEY),
+ *      or the user-declared `envVar` of a custom provider (issue #197)
  *   2. Config file value — from ~/.free-coding-models.json
- *   3. null — no key configured
+ *   3. For custom providers: the `apiKey` field declared in customProviders
+ *   4. null — no key configured
  *
- * @param {{ apiKeys: Record<string,string> }} config
- * @param {string} providerKey — e.g. 'nvidia', 'groq', 'cerebras'
+ * @param {{ apiKeys: Record<string,string>, customProviders?: object }} config
+ * @param {string} providerKey — e.g. 'nvidia', 'groq', or a custom provider key
  * @returns {string|null}
  */
 export function getApiKey(config, providerKey) {
@@ -1160,19 +1181,29 @@ export function getApiKey(config, providerKey) {
   for (const candidate of envCandidates) {
     if (candidate && process.env[candidate]) return process.env[candidate]
   }
+  // 📖 Custom providers (issue #197): honor the env var the user declared for
+  // 📖 this endpoint, e.g. "envVar": "OLLAMA_API_KEY".
+  const customEnvVar = config?.customProviders?.[providerKey]?.envVar
+  if (customEnvVar && process.env[customEnvVar]) return process.env[customEnvVar]
 
   // 📖 Config file value. addApiKey() stores a provider's extra keys as an array,
-  // 📖 but every consumer (ping Authorization header, tool env vars, daemon) needs
-  // 📖 a single string: an array would stringify to "key1,key2" and get a
-  // 📖 guaranteed 401. Return the first non-empty entry instead.
+  // but every consumer (ping Authorization header, tool env vars, daemon) needs
+  // a single string: an array would stringify to "key1,key2" and get a
+  // guaranteed 401. Return the first non-empty entry instead.
   // 📖 ${VAR} references (issue #196) are expanded here so the file on disk
-  // 📖 can stay secret-free while every consumer gets the real value.
+  // can stay secret-free while every consumer gets the real value.
   const key = config?.apiKeys?.[providerKey]
   if (Array.isArray(key)) {
     const firstUsable = key.find(k => typeof k === 'string' && k.length > 0)
-    return firstUsable !== undefined ? resolveEnvPlaceholderValue(firstUsable) : null
+    if (firstUsable !== undefined) return resolveEnvPlaceholderValue(firstUsable)
+  } else if (key) {
+    return resolveEnvPlaceholderValue(key)
   }
-  if (key) return resolveEnvPlaceholderValue(key)
+
+  // 📖 Custom providers: bootstrap key declared in the customProviders entry.
+  // 📖 Last in the chain so a key typed in the Settings UI (apiKeys) wins.
+  const declaredKey = config?.customProviders?.[providerKey]?.apiKey
+  if (declaredKey) return resolveEnvPlaceholderValue(declaredKey)
 
   return null
 }
@@ -1381,5 +1412,6 @@ function _emptyConfig() {
     endpointInstalls: [],
     settings: _emptyProfileSettings(),
     hiddenModels: new Set(),
+    customProviders: {},
   }
 }
