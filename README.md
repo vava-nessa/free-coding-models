@@ -87,18 +87,18 @@ free-coding-models --fiable              # print the single most reliable model 
 
 ## 🟢 Providers
 
-**25 active providers / 257 live models**, sorted by live model count. Top 8:
+**24 active providers / 258 live models**, sorted by live model count. Top 8:
 
 | Provider | Models | Best tier | Env var |
 |----------|--------|-----------|---------|
-| [Pollinations AI](https://enter.pollinations.ai) | 25 | S+ | `POLLINATIONS_API_KEY` |
-| [Alibaba DashScope](https://modelstudio.console.alibabacloud.com) | 22 | S+ | `DASHSCOPE_API_KEY` |
-| [Ollama Cloud](https://ollama.com/settings/keys) | 19 | S+ | `OLLAMA_API_KEY` |
+| [Pollinations AI](https://enter.pollinations.ai) | 30 | S+ | `POLLINATIONS_API_KEY` |
+| [Alibaba DashScope](https://modelstudio.console.alibabacloud.com) | 25 | S+ | `DASHSCOPE_API_KEY` |
+| [Ollama Cloud](https://ollama.com/settings/keys) | 23 | S+ | `OLLAMA_API_KEY` |
+| [NVIDIA NIM](https://build.nvidia.com) | 17 | S+ | `NVIDIA_API_KEY` |
 | [Kilo](https://kilo.ai) | 16 | S+ | `KILO_API_KEY` |
-| [OpenRouter](https://openrouter.ai/keys) | 16 | S+ | `OPENROUTER_API_KEY` |
-| [onomeo](https://onomeo.com/dashboard) | 15 | S+ | `ONOMEO_API_KEY` |
-| [NVIDIA NIM](https://build.nvidia.com) | 14 | S+ | `NVIDIA_API_KEY` |
+| [OpenRouter](https://openrouter.ai/keys) | 14 | S+ | `OPENROUTER_API_KEY` |
 | [OVHcloud AI](https://endpoints.ai.cloud.ovh.net) | 14 | S+ | `OVH_AI_ENDPOINTS_ACCESS_TOKEN` |
+| [Scaleway](https://console.scaleway.com) | 12 | S+ | `SCALEWAY_API_KEY` |
 
 > 🧾 **What "free" means here:** free is a property of the *(provider, model)* pair, never of the provider as a whole. A row is listed only when that exact model id costs $0 to call through that provider (permanent free tier, `:free` variant, or free plan), verified live at audit time. The same open-weights model can be free on one host and paid on another - paid siblings are deliberately excluded. Full breakdown and badge legend: [`docs/providers.md`](./docs/providers.md).
 

@@ -56,7 +56,9 @@ import {
 
 const TEST_MODELS = Object.freeze({
   groq: 'openai/gpt-oss-120b',
-  nvidia: 'z-ai/glm-5.3',
+  // 📖 Updated (2026-11-03 audit): 'z-ai/glm-5.3' hit EOL 2026-10-28 (HTTP 410);
+  // 'z-ai/glm-5.3-flash' is the current stable NVIDIA slot.
+  nvidia: 'z-ai/glm-5.3-flash',
 })
 
 // ─── Harness (mirrors the v1 router test harness) ───────────────────────────

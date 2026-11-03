@@ -157,8 +157,9 @@ const ROUTER_TEST_MODELS = Object.freeze({
   groqFast: 'openai/gpt-oss-120b',
   groqBackup: 'openai/gpt-oss-120b',
   // 📖 Updated (2026-10-17 audit): was 'moonshotai/kimi-k3', removed from NVIDIA
-  // (deprecated 2026-10-14). 'z-ai/glm-5.3' is the current stable NVIDIA slot.
-  nvidiaFast: 'z-ai/glm-5.3',
+  // (deprecated 2026-10-14). Updated again (2026-11-03 audit): 'z-ai/glm-5.3' hit
+  // EOL 2026-10-28 (HTTP 410); 'z-ai/glm-5.3-flash' is the current stable NVIDIA slot.
+  nvidiaFast: 'z-ai/glm-5.3-flash',
 })
 
 function listenOnRandomPort(server) {
@@ -990,20 +991,21 @@ describe('sources.js data integrity', () => {
     assert.ok(sources['vercel-gateway'].models.length >= 3, 'vercel-gateway should list its $0 models')
     for (const m of sources['vercel-gateway'].models) {
       // 📖 stealth/* ids are the gateway's free canary models (no -free suffix upstream)
+      // 📖 inclusionai/ling-* ids are date-stamped $0/$0 snapshots (ling-3.1-flash-1019, added 2026-11-03 audit)
       assert.ok(
-        m[0].endsWith('-free') || m[0].startsWith('stealth/'),
+        m[0].endsWith('-free') || m[0].startsWith('stealth/') || m[0].startsWith('inclusionai/ling-'),
         `vercel-gateway model ${m[0]} should be an explicit $0 model`
       )
     }
   })
 
-  it('sources object has onomeo with correct structure', () => {
-    assert.ok(sources.onomeo, 'sources.onomeo should exist')
-    assert.equal(sources.onomeo.name, 'onomeo')
-    assert.equal(sources.onomeo.url, 'https://onomeo.com/v1/chat/completions')
-    // 📖 Credits come from a daily check-in and every call spends them, so the badge is 'limited'.
-    assert.equal(sources.onomeo.quotaCode, 'limited')
-    assert.ok(Array.isArray(sources.onomeo.models) && sources.onomeo.models.length > 0)
+  it('onomeo is retired from the sources object (2026-11-03 audit)', () => {
+    // 📖 onomeo removed its ENTIRE free-model lineup on 2026-11-03 (catalog now 100% paid),
+    // 📖 mirroring the github-models / zai retirement pattern: export stays as an empty array,
+    // 📖 the sources map entry is commented out, ONOMEO_API_KEY support stays in src/core.
+    assert.equal(sources.onomeo, undefined, 'sources.onomeo should NOT be exposed in the catalog')
+    const onomeoRows = MODELS.filter((m) => m[5] === 'onomeo')
+    assert.equal(onomeoRows.length, 0, 'MODELS should contain no onomeo entries')
   })
   it('sources object has runcrate with correct structure', () => {
     assert.ok(sources.runcrate, 'sources.runcrate should exist')
@@ -1175,9 +1177,9 @@ describe('provider key test model discovery', () => {
         'moonshotai/kimi-k3',
         'openai/gpt-oss-120b',
         'z-ai/glm-5.3-flash',
-        'z-ai/glm-5.3',
         'nvidia/nemotron-3.5-super-vl-120b-a12b',
         'stepfun-ai/step-5-preview',
+        'nvidia/nemotron-3-ultra-550b-a55b',
       ]
     )
   })
@@ -3371,13 +3373,16 @@ describe('router daemon integration hardening', () => {
       body: { id: 'chatcmpl-mistral', choices: [{ message: { role: 'assistant', content: 'ok' } }] },
     }), async (mistralProvider) => {
       await withSourceUrls({ mistral: mistralProvider.url }, async () => {
-        // 📖 'mistral-medium-3-5' is a real catalog model — the router only
+        // 📖 'mistral-large-4' is a real catalog model — the router only
         // 📖 routes to models it can find in sources.js (anything else is
         // 📖 marked stale by definition and never picked).
         // 📖 Updated (2026-09-16): was 'mistral-large-3-25-12', dropped from the
         // 📖 catalog because no `large` model exists in Mistral's live /v1/models.
+        // 📖 Updated (2026-11-03 audit): was 'mistral-medium-3-5', deprecated
+        // upstream 2026-10-31 and removed from the catalog; mistral-large-4 is
+        // the verified-free replacement flagship.
         const config = buildRouterTestConfig([
-          { provider: 'mistral', model: 'mistral-medium-3-5', priority: 1 },
+          { provider: 'mistral', model: 'mistral-large-4', priority: 1 },
         ], { maxRetries: 1 })
         config.apiKeys.mistral = 'mistral-test-key'
         await withRouterTestServer(config, async ({ baseUrl }) => {
@@ -5254,7 +5259,7 @@ describe('endpoint installer', () => {
       const expectedApiKey = getApiKey(config, 'nvidia')
       const result = installProviderEndpoints(config, 'nvidia', 'opencode-desktop', {
         scope: 'selected',
-        modelIds: ['z-ai/glm-5.3'],
+        modelIds: ['z-ai/glm-5.3-flash'],
         paths,
       })
 
@@ -5263,7 +5268,7 @@ describe('endpoint installer', () => {
       assert.equal(result.modelCount, 1)
       assert.equal(written.provider['fcm-nvidia'].options.apiKey, expectedApiKey)
       assert.deepEqual(written.provider['fcm-nvidia'].models, {
-        'z-ai/glm-5.3': { name: 'GLM 5.3' },
+        'z-ai/glm-5.3-flash': { name: 'GLM-5.3-Flash' },
       })
       assert.deepEqual(config.endpointInstalls.map((entry) => ({
         providerKey: entry.providerKey,
@@ -5275,7 +5280,7 @@ describe('endpoint installer', () => {
           providerKey: 'nvidia',
           toolMode: 'opencode',
           scope: 'selected',
-          modelIds: ['z-ai/glm-5.3'],
+          modelIds: ['z-ai/glm-5.3-flash'],
         },
       ])
     } finally {
