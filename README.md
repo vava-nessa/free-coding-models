@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Find the fastest free coding model in seconds.</strong><br>
-  Live latency, stability and verdicts for 257 models from 25 free AI providers, then install the one you pick straight into your favorite coding tool.<br><br>
+  Live latency, stability and verdicts for 221 models from 21 providers, then install the one you pick straight into your favorite coding tool.<br><br>
   <strong>Works with:</strong> OpenCode CLI / Desktop / WebUI, OpenClaw, Crush, Goose, Aider, Kilo CLI, Qwen Code, OpenHands, Amp, Hermes, Continue, Cline, Xcode, Pi, ZCode, ForgeCode, Copilot, jcode, Caveman Code and more.
 </p>
 
@@ -24,7 +24,7 @@ free-coding-models
 ```
 
 <p align="center">
-  <sub>Then create a free account on one of the <a href="#-providers">25 providers</a> to grab an API key.</sub>
+  <sub>Then create a free account on one of the <a href="#-providers">21 providers</a> to grab an API key.</sub>
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@ free-coding-models
 
 ## 💡 Why this tool?
 
-There is a large catalog of free and free-limited coding models (**25 providers / 257 live models**, generated from [`sources.js`](./sources.js)). Which one is fastest *right now*? Which one is actually stable, versus just lucky on the last ping?
+There is a large catalog of free and free-limited coding models (**21 providers / 221 live models**, generated from [`sources.js`](./sources.js)). Which one is fastest *right now*? Which one is actually stable, versus just lucky on the last ping?
 
 `free-coding-models` (FCM) answers that by pinging every model in parallel, showing live latency, and computing a **live Stability Score (0-100)** combining p95 latency, jitter, spike rate and uptime. Average latency alone is misleading: a model that randomly spikes to 6 seconds is not reliable.
 
@@ -87,18 +87,31 @@ free-coding-models --fiable              # print the single most reliable model 
 
 ## 🟢 Providers
 
-**24 active providers / 258 live models**, sorted by live model count. Top 8:
+**21 active providers / 221 live models**.
 
-| Provider | Models | Best tier | Env var |
-|----------|--------|-----------|---------|
-| [Pollinations AI](https://enter.pollinations.ai) | 30 | S+ | `POLLINATIONS_API_KEY` |
-| [Alibaba DashScope](https://modelstudio.console.alibabacloud.com) | 25 | S+ | `DASHSCOPE_API_KEY` |
-| [Ollama Cloud](https://ollama.com/settings/keys) | 23 | S+ | `OLLAMA_API_KEY` |
-| [NVIDIA NIM](https://build.nvidia.com) | 17 | S+ | `NVIDIA_API_KEY` |
-| [Kilo](https://kilo.ai) | 16 | S+ | `KILO_API_KEY` |
-| [OpenRouter](https://openrouter.ai/keys) | 14 | S+ | `OPENROUTER_API_KEY` |
-| [OVHcloud AI](https://endpoints.ai.cloud.ovh.net) | 14 | S+ | `OVH_AI_ENDPOINTS_ACCESS_TOKEN` |
-| [Scaleway](https://console.scaleway.com) | 12 | S+ | `SCALEWAY_API_KEY` |
+| Provider | Live models | Best tier | Free tier | Env var |
+|----------|-------------|-----------|-----------|---------|
+| [Pollinations AI](https://enter.pollinations.ai) | 33 | S+ | Free start · one-time Quest credit · key required | `POLLINATIONS_API_KEY` |
+| [Ollama Cloud](https://ollama.com/settings/keys) | 20 | S+ | Limited · monthly starter-model allowance · eligibility unverified | `OLLAMA_API_KEY` |
+| [NVIDIA NIM](https://build.nvidia.com) | 17 | S+ | Free · 1000 req/month | `NVIDIA_API_KEY` |
+| [OVHcloud AI](https://endpoints.ai.cloud.ovh.net) | 17 | S+ | Free anonymous sandbox · 2 RPM · keyed access is paid | `OVH_AI_ENDPOINTS_ACCESS_TOKEN` |
+| [Alibaba DashScope](https://modelstudio.console.alibabacloud.com) | 15 | S+ | 1M tokens/model · 90 days (Singapore) | `DASHSCOPE_API_KEY` |
+| [Kilo](https://kilo.ai) | 14 | S+ | Free · no key needed | `KILO_API_KEY` |
+| [OpenRouter](https://openrouter.ai/keys) | 12 | S+ | 50 free req/day · 1000 with $10 credit | `OPENROUTER_API_KEY` |
+| [Scaleway](https://console.scaleway.com/iam/api-keys) | 12 | S+ | 1M free tokens | `SCALEWAY_API_KEY` |
+| [Cloudflare AI](https://dash.cloudflare.com) | 11 | S | Free · 10k neurons/day | `CLOUDFLARE_API_TOKEN` |
+| [OpencodeZen](https://opencode.ai/auth) | 11 | S+ | Free in OpenCode only · account-bound, no key unlock | `OPENCODE_ZEN_API_KEY` |
+| [Google AI](https://aistudio.google.com/apikey) | 8 | S+ | Free · Gemini quotas vary by model | `GOOGLE_API_KEY` |
+| [Requesty](https://app.requesty.ai/api-keys) | 8 | S+ | Free · 200 req/day · no card | `REQUESTY_API_KEY` |
+| [Routeway](https://routeway.ai) | 8 | S+ | Free :free models only | `ROUTEWAY_API_KEY` |
+| [SiliconFlow](https://cloud.siliconflow.cn/account/ak) | 7 | S+ | Free · 7 models @ $0 · 1000 RPM · real-name verification | `SILICONFLOW_API_KEY` |
+| [OrcaRouter](https://www.orcarouter.ai) | 6 | S+ | Free · 5 $0 models + router · 10 rpm · 50 req/day | `ORCAROUTER_API_KEY` |
+| [Runcrate](https://www.runcrate.ai/inference/free?utm_source=free-coding-models&utm_medium=directory&utm_campaign=gpu_pricing) | 6 | S+ | Free · GitHub account 30+ days · weekly allowance | `RUNCRATE_API_KEY` |
+| [LLM7](https://token.llm7.io) | 4 | A | Free · turbo tier only · no key needed | `LLM7_API_KEY` |
+| [Vercel AI Gateway](https://vercel.com/ai-gateway) | 4 | S+ | Free · $5 credits/30 days + $0 models · card required | `VERCEL_AI_GATEWAY_API_KEY` |
+| [Groq](https://console.groq.com/keys) | 3 | S | Free · 30 RPM per model | `GROQ_API_KEY` |
+| [SambaNova](https://cloud.sambanova.ai/apis) | 3 | S | Small dev tier · light use | `SAMBANOVA_API_KEY` |
+| [Cerebras](https://cloud.cerebras.ai) | 2 | S | Free trial · $5 credits / 30 days · card required | `CEREBRAS_API_KEY` |
 
 > 🧾 **What "free" means here:** free is a property of the *(provider, model)* pair, never of the provider as a whole. A row is listed only when that exact model id costs $0 to call through that provider (permanent free tier, `:free` variant, or free plan), verified live at audit time. The same open-weights model can be free on one host and paid on another - paid siblings are deliberately excluded. Full breakdown and badge legend: [`docs/providers.md`](./docs/providers.md).
 

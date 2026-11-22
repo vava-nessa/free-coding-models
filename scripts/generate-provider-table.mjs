@@ -100,11 +100,11 @@ The $0 access comes in three shapes, surfaced as the quota badge on every provid
 
 | Badge | Meaning | Examples |
 |-------|---------|----------|
-| **Free** | Recurring free access: rate-limited or daily-capped, but it does not run out and never asks for a card | NVIDIA 1000 req/month, Groq RPM caps, Mistral Experiment plan, Kilo keyless, Requesty 200 req/day, Ollama Cloud free plan |
-| **Limited** | Free allowance that depletes or needs unlocking: one-off credits, expiring token grants, or capped free requests | Scaleway 1M tokens, Qwen 1M tokens/model, Vercel $5 credits/30 days, OpenRouter 50 req/day (1000 after a $10 credit), Cloudflare 10k neurons/day |
+| **Free** | Recurring free access: rate-limited or daily-capped, but it keeps coming back and never asks for a card | NVIDIA 1000 req/month, Groq 30 RPM per model, Kilo keyless, Requesty 200 req/day |
+| **Limited** | Free allowance that depletes or needs unlocking: one-off credits, expiring token grants, identity checks, or capped free requests | Scaleway 1M tokens, Qwen 1M tokens/model, Vercel $5/month credit (payment method required), OpenRouter 50 req/day (1000 after a $10 credit), Cloudflare 10k neurons/day, Pollinations one-time quest credit |
 | **Metered** | Pay-per-token passthrough gateway where only explicitly $0-priced models are listed; no provider currently carries this badge | (none today) |
 
-Two caveats worth knowing: free tiers get smaller or disappear over time (the audit log in [\`sources.js\`](../sources.js) tracks every removal), and rate limits are per account, so "free" means free of charge, not unlimited.
+Two caveats worth knowing: free tiers get smaller or disappear over time (the audit log in [\`sources.js\`](../sources.js) tracks every removal), and rate limits are per account, so "free" means free of charge, not unlimited. A provider can also leave the catalog while its row stays visible in an older release; retired entries in \`src/core/provider-metadata.js\` are marked as paid with no verified free route.
 
 ## All providers (sorted by live model count)
 
@@ -112,7 +112,7 @@ ${tableLines.join('\n')}
 
 ## Tier scale
 
-Every model is tiered by its **SWE-bench Verified** score, the industry-standard benchmark for real coding tasks.
+Tiers follow the **SWE-bench Verified** score, the industry-standard benchmark for real coding tasks, when the provider or the model card publishes one. The score band below is what a measured model gets.
 
 | Tier | SWE-bench | Best for |
 |------|-----------|----------|
@@ -125,17 +125,19 @@ Every model is tiered by its **SWE-bench Verified** score, the industry-standard
 | **B** | 20-30% | Below average, edge setups |
 | **C** | <20% | Lightweight / completion only |
 
+Not every model has a published Verified score: new releases often ship before the benchmark report does. Those rows keep a **provisional tier**, an estimate from the catalog maintainers rather than a measured result, and it can move once an official score lands. Read a provisional tier as "where this model probably sits", never as a benchmark figure. The catalog deliberately does not invent a percentage for an unscored model, so a tier is always a band, not a score.
+
 ## Provider notes
 
 - **Cloudflare AI**: Cloudflare's OpenAI-compatible endpoint is **account-scoped** (\`/client/v4/accounts/{account_id}/ai/v1/chat/completions\`), so the raw catalog URL cannot work on its own (it 404s for every model, issue #181). free-coding-models resolves the account id automatically on every request path: 1) the \`CLOUDFLARE_ACCOUNT_ID\` env var, 2) the id stored in the config (\`settings.cloudflareAccountId\`), or 3) zero-setup auto-discovery: a one-time \`GET /client/v4/accounts\` call with your Cloudflare API key whose first account id is cached and persisted. With just an API key, everything works out of the box.
-- **Pollinations Pollen**: Pollinations meters usage in **Pollen** (roughly 1 Pollen = 1 USD). You receive free Pollen every day via quests (star the \`pollinations/pollinations\` repo, help on an issue) depending on your seed/flower/nectar tier. If your balance shows \`0.0000\` on enter.pollinations.ai, every cache MISS returns \`402 PAYMENT_REQUIRED\` and the ping shows \`402\`. A Cloudflare cache HIT can still pass with 0 Pollen but is not reliable. Check your balance under enter.pollinations.ai -> API Keys, complete a quest, and wait for the daily grant at midnight UTC. The integration stays experimental; the Pollen system can change.
-- **SiliconFlow & Requesty**: verified 2026-08-24 against live \`/v1/models\` endpoints and official docs, recurring free tiers confirmed.
-- **OpenCode Zen**: free models exclusive to the OpenCode ecosystem (OpenAI-compatible endpoint, so other tools work too). Sign up at [opencode.ai/auth](https://opencode.ai/auth), enter the Zen key via \`P\`, and Zen models appear in the main table. Since 2026-09-07 the Zen gateway requires an \`x-opencode-session\` header on every request (without it, calls fail with HTTP 400 \`MissingSessionID\`); free-coding-models sends a stable per-process session uuid automatically on every probe, benchmark and router call, so no extra setup is needed.
+- **Pollinations Pollen**: Pollinations meters usage in **Pollen** (roughly 1 Pollen = 1 USD). A new account gets a **one-time credit from quests** (star the \`pollinations/pollinations\` repo, help on an issue), about $1.50 to $2.50, and there is **no recurring daily grant** and no card needed. An API key is required. If your balance shows \`0.0000\` on enter.pollinations.ai, every cache MISS returns \`402 PAYMENT_REQUIRED\` and the ping shows \`402\`. A Cloudflare cache HIT can still pass with 0 Pollen but is not reliable. Check your balance under enter.pollinations.ai -> API keys. The quest credit has no documented expiry and account restrictions are possible. The integration stays experimental; the Pollen system can change.
+- **SiliconFlow & Requesty**: verified 2026-08-24 against live \`/v1/models\` endpoints and official docs, recurring free tiers confirmed. SiliconFlow's endpoint is the mainland China host and now demands mandatory real name verification (a regional ID or the offline option), so a phone SMS code alone is not enough.
+- **OpenCode Zen**: free models are bound to an OpenCode account and are meant to be used from the OpenCode client. Sign up at [opencode.ai/auth](https://opencode.ai/auth), enter the Zen key via \`P\`, and Zen models appear in the main table. The key authenticates the gateway, but it does not make the free models free elsewhere: calls from other tools get HTTP 429 \`FreeUsageLimitError\`. Since 2026-09-07 the Zen gateway also requires an \`x-opencode-session\` header on every request (without it, calls fail with HTTP 400 \`MissingSessionID\`); free-coding-models sends a stable per-process session uuid automatically on every probe, benchmark and router call, so no extra setup is needed.
 - **NVIDIA NIM** is the biggest no-credit-card provider by free quota (~40 RPM). **Cerebras** has the lowest latency in the catalog. **Groq** is the fastest sign-up.
 
 ## Providers removed from the catalog (and why)
 
-\`iFlow\` shut down on April 17, 2026. \`Together AI\`, \`Perplexity API\`, \`DeepInfra\`, \`Replicate\`, \`Fireworks\`, \`Hyperbolic\`, \`Hugging Face\`, \`SiliconFlow\` (later re-added), \`Chutes AI\` were removed because they are paid, trial-credit only, too tiny to be useful, unclear as a stable free API, or tool-specific rather than a generally usable free provider. \`Rovo\` and \`Gemini CLI\` were removed as tool integrations (CLI-only, not generally usable free providers). Providers kept outside the core catalog live in [resources.md](./resources.md).
+\`iFlow\` shut down on April 17, 2026. \`Together AI\`, \`Perplexity API\`, \`DeepInfra\`, \`Replicate\`, \`Fireworks\`, \`Hyperbolic\`, \`Hugging Face\`, \`SiliconFlow\` (later re-added), \`Chutes AI\` were removed because they are paid, trial-credit only, too tiny to be useful, unclear as a stable free API, or tool-specific rather than a generally usable free provider. \`Mistral\`, \`Codestral\` and \`Novita\` were retired on 2026-11-22: Mistral dropped its free Experiment plan and now needs activated billing, and none of the Novita zero-price routes exists in the live catalog any more. \`Rovo\` and \`Gemini CLI\` were removed as tool integrations (CLI-only, not generally usable free providers). Providers kept outside the core catalog live in [resources.md](./resources.md).
 `
 
 writeFileSync(OUT, md, 'utf8')

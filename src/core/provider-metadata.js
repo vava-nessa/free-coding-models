@@ -95,6 +95,9 @@ export const OPENCODE_MODEL_MAP = {
 // 📖 `signupUrl` / `signupHint` guide users through first-time key generation.
 // 📖 `rateLimits` gives a quick reminder of the free-tier quota without opening a browser.
 // 📖 `paidProviderNote` marks providers that require credits/billing despite exposing free/trial/free-tagged models.
+// 📖 Providers retired from the catalog (mistral, codestral, novita) keep their entry on purpose:
+// 📖 saved configs and ENV_VAR_NAMES still resolve, and the note tells the user there is no verified
+// 📖 free route left instead of silently showing a free claim that is no longer true.
 export const PROVIDER_METADATA = {
   // 📖 fcm_router is the local Smart Router Daemon — it's not a remote provider
   // 📖 with an API key or signup URL, but several UI surfaces look it up here
@@ -120,7 +123,10 @@ export const PROVIDER_METADATA = {
     color: chalk.rgb(255, 204, 188),
     signupUrl: 'https://console.groq.com/keys',
     signupHint: 'API Keys → Create API Key',
-    rateLimits: 'Free tier: 30‑50 RPM per model (varies by model)',
+    // 📖 The audit of console.groq.com/docs/rate-limits found one flat value across the
+    // 📖 free models, so the old "30-50 RPM varies by model" wording overstated the
+    // 📖 quota of the models this catalog actually lists.
+    rateLimits: 'Free tier: 30 RPM per model',
   },
   cerebras: {
     label: 'Cerebras',
@@ -151,12 +157,17 @@ export const PROVIDER_METADATA = {
     signupHint: 'Use a GitHub token with Models access (GITHUB_TOKEN works in GitHub contexts)',
     rateLimits: 'Quota depends on GitHub/Copilot tier; no separate provider billing',
   },
+  // 📖 Retired from the catalog on 2026-11-22: Mistral dropped the free Experiment
+  // 📖 plan and its API now needs an activated billing account, so no Mistral model
+  // 📖 has a verified free route any more. The entry stays so older configs and the
+  // 📖 MISTRAL_API_KEY mapping keep resolving instead of showing a raw key.
   mistral: {
     label: 'Mistral LP',
     color: chalk.rgb(255, 196, 120),
     signupUrl: 'https://console.mistral.ai/api-keys',
     signupHint: 'La Plateforme → API keys (MISTRAL_API_KEY)',
-    rateLimits: 'Experiment plan: free evaluation tier with limited RPS/TPM/monthly tokens',
+    rateLimits: 'No verified free API route: the Experiment plan is gone and API access needs activated billing',
+    paidProviderNote: 'paid, no verified free route, retired from catalog',
   },
   huggingface: {
     label: 'Hugging Face Inference',
@@ -189,13 +200,17 @@ export const PROVIDER_METADATA = {
     signupHint: 'Create account → Generate API key',
     rateLimits: 'Free tier: $1 credits – 10 req/min without payment method (full limits with payment)',
   },
+  // 📖 Retired from the catalog on 2026-11-22 together with mistral. Codestral now
+  // 📖 bills through the paid Mistral API, so the old "30 req/min, 2000/day free"
+  // 📖 claim no longer holds. The MISTRAL_API_KEY / CODESTRAL_API_KEY env names stay
+  // 📖 for backwards compatibility.
   codestral: {
     label: 'Mistral Codestral',
     color: chalk.rgb(248, 187, 208),
     signupUrl: 'https://console.mistral.ai/api-keys',
     signupHint: 'La Plateforme → API keys (MISTRAL_API_KEY; CODESTRAL_API_KEY also works)',
-    rateLimits: 'Codestral free access: 30 req/min, 2000/day',
-    paidProviderNote: 'paid - free Experiment plan',
+    rateLimits: 'No verified free route: Codestral is billed through the paid Mistral API',
+    paidProviderNote: 'paid, no verified free route, retired from catalog',
   },
   hyperbolic: {
     label: 'Hyperbolic',
@@ -272,8 +287,12 @@ export const PROVIDER_METADATA = {
     label: 'OpencodeZen',
     color: chalk.rgb(139, 92, 246), // violet — distinctive from other providers
     signupUrl: 'https://opencode.ai/auth',
-    signupHint: 'Login at opencode.ai/auth to get your Zen API key',
-    rateLimits: 'Free tier models — requires Zen API key',
+    // 📖 Audit 2026-11-22: free access is bound to an OpenCode account used from the
+    // 📖 OpenCode client. The API key authenticates the gateway but does not make the
+    // 📖 free models free for other tools, which get HTTP 429 FreeUsageLimitError.
+    signupHint: 'Sign in at opencode.ai/auth with your OpenCode account (free models stay inside the OpenCode client)',
+    rateLimits: 'Free models need an OpenCode account inside the OpenCode client; an API key alone does not unlock free usage',
+    detailedLimits: 'The free Zen models are account bound and are meant to be used from inside the OpenCode client.\nCalls made from other tools get HTTP 429 FreeUsageLimitError in the unauthenticated public probes, including requests with an x-opencode-session header.\nThe API key authenticates the gateway; it does not turn the free models into a free public endpoint. Paid Go models are separate and excluded from this catalog.',
     zenOnly: true,
   },
   chutes: {
@@ -287,8 +306,12 @@ export const PROVIDER_METADATA = {
     label: 'OVHcloud AI 🆕',
     color: chalk.rgb(100, 149, 205),
     signupUrl: 'https://endpoints.ai.cloud.ovh.net',
-    signupHint: 'Manager → Public Cloud → AI Endpoints → API keys (optional: sandbox works without key)',
-    rateLimits: 'Free sandbox: 2 req/min per IP per model (no key). With API key: 400 RPM',
+    // 📖 Audit 2026-11-22: the anonymous sandbox is the only free path. A keyed call
+    // 📖 is billed and the 400 RPM figure belongs to that paid tier, so the hint must
+    // 📖 not read like "get a key for more free requests".
+    signupHint: 'Manager → Public Cloud → AI Endpoints → API keys (the sandbox works without a key; keyed access is paid)',
+    rateLimits: 'Free sandbox: 2 req/min per IP per model, no key. Keyed access: 400 RPM, billed, payment method required',
+    detailedLimits: 'The free path is the anonymous sandbox: 2 requests per minute per IP per model, no API key and no card.\nWith an API key the limit rises to 400 RPM, but that tier is billed and needs a payment method, so it is not free access.\nLeave the API key empty to use the anonymous sandbox; configured keys use billed access.',
   },
   kilo: {
     label: 'Kilo',
@@ -314,28 +337,36 @@ export const PROVIDER_METADATA = {
     rateLimits: 'Free :free models with an API key; paid models excluded here',
     paidProviderNote: 'paid — has :free models',
   },
+  // 📖 Retired from the catalog on 2026-11-22: none of the five Novita routes used
+  // 📖 here exists in the live catalog any more, so no free route is verified. The
+  // 📖 entry stays so saved keys and NOVITA_API_KEY keep resolving.
   novita: {
     label: 'Novita AI',
     color: chalk.rgb(255, 185, 120),
     signupUrl: 'https://novita.ai/settings/key-management',
     signupHint: 'Settings → Key Management → Create API key',
-    rateLimits: 'Only zero-price live chat models are listed; other Novita models are paid/trial-credit',
-    paidProviderNote: 'paid — 3 free models',
+    rateLimits: 'No verified free route: the zero-price chat models are gone from the live catalog',
+    paidProviderNote: 'paid, no verified free route, retired from catalog',
   },
   pollinations: {
     label: 'Pollinations AI ⚠️ experimental',
     color: chalk.rgb(255, 105, 180),
     signupUrl: 'https://enter.pollinations.ai',
-    signupHint: 'enter.pollinations.ai → API Keys (free Pollen daily; star github.com/pollinations/pollinations to earn Pollen; 0 Pollen = 402; no purchase needed)',
-    rateLimits: 'Free via Pollen (daily grants; ~0.0001-0.003 Pollen/req; 0 Pollen = 402; experimental, system may change)',
-    detailedLimits: 'Pollen ≈ $1. Daily free Pollen via tier (seed/flower/nectar) + quests (star repo, help issue). No purchase required. Cost per request 0.0001-0.003 Pollen. If balance is 0.0000, every MISS returns 402 PAYMENT_REQUIRED and the TUI shows 402; HIT (Cloudflare cache) may still return 200 but is not reliable. Check balance at enter.pollinations.ai → API Keys. Grants reset daily at midnight UTC. Integration is experimental and not yet confirmed as stable.',
+    // 📖 Quest credits are finite; paid_only routes cannot use them.
+    signupHint: 'enter.pollinations.ai → quests → API keys (one-time Quest credit, no card)',
+    rateLimits: 'One-time Quest credits, no recurring daily grant; model costs vary',
+    detailedLimits: 'Earn Quest credits in the dashboard and create an API key. No card is needed.\nQuest rewards are one-time, not a recurring daily allowance. Costs vary by model.\nModels marked paid_only require purchased balance and cannot spend Quest credits. Credit expiry is not documented; account restrictions can apply.',
   },
   siliconflow: {
     label: 'SiliconFlow',
     color: chalk.rgb(178, 235, 242),
     signupUrl: 'https://cloud.siliconflow.cn/account/ak',
-    signupHint: 'API Keys → Create (phone SMS verification required)',
-    rateLimits: 'Free · 3 models @ $0 · 1000 RPM · 1M tokens/day per model',
+    // 📖 Audit 2026-11-22: onboarding changed on 2026-05-15. A phone number plus SMS
+    // 📖 code is no longer enough; real name verification is mandatory before any key
+    // 📖 returns a free call, so the hint must say so instead of "SMS only".
+    signupHint: 'API keys → Create. Real name verification is mandatory: a regional ID or the offline option, not just a phone SMS code.',
+    rateLimits: 'Free · listed models @ $0 · 1000 RPM · real name verification required',
+    detailedLimits: 'Real name verification is required since 2026-05-15: a phone SMS code alone is not enough. Accepted proofs are a regional identity document or the offline verification route described in the SiliconFlow docs.\nNo card is requested. The free models in this catalog are rendered as free on siliconflow.cn/pricing and cap at 1000 RPM with a 40k to 80k TPM budget.\nThe endpoint is the mainland China host, so the account, the key and the identity check are all CN scoped.',
   },
   requesty: {
     label: 'Requesty',
@@ -356,9 +387,12 @@ export const PROVIDER_METADATA = {
     label: 'Vercel AI Gateway',
     color: chalk.rgb(140, 170, 255),
     signupUrl: 'https://vercel.com/ai-gateway',
-    signupHint: 'AI Gateway → API Keys ($5 credits/30 days, no card)',
-    rateLimits: 'Free tier · $5 credits/30 days + $0 models',
-    detailedLimits: 'Official Vercel gateway at list prices, zero markup.\nEvery account gets $5 of credits every 30 days, no card required.\nThe monthly credit covers a subset of the catalog; the explicit $0 models stay free.\nCaution: purchasing credits once permanently moves the account to the paid tier and the monthly free credit stops.',
+    // 📖 Audit 2026-11-22: the $5 monthly credit now requires a valid payment method
+    // 📖 on the Vercel account, and the $0 routes are limited-time promos. The old
+    // 📖 "no card" claim was simply false.
+    signupHint: 'AI Gateway → API keys. The $5 monthly credit requires a valid payment method on the account.',
+    rateLimits: 'Free tier: $5/month credit (payment method required) plus limited-time $0 promo models',
+    detailedLimits: 'Official Vercel gateway at list prices, zero markup.\nThe $5 monthly credit requires a valid payment method on the Vercel account and only covers a subset of the catalog.\nThe $0 priced models are limited-time promotions, not a permanent free tier, and what happens once the credit reaches zero is not documented.\nBuying credits once moves the account to the paid tier and the monthly credit stops.\nDo not treat this gateway as permanent no-card free access.',
   },
   onomeo: {
     label: 'onomeo',
@@ -372,16 +406,23 @@ export const PROVIDER_METADATA = {
     label: 'Runcrate',
     color: chalk.rgb(95, 132, 255),
     signupUrl: 'https://www.runcrate.ai/inference/free?utm_source=free-coding-models&utm_medium=directory&utm_campaign=gpu_pricing',
-    signupHint: 'Sign in with GitHub → API Keys → Create key',
-    rateLimits: 'Open models are free with your GitHub account',
-    detailedLimits: 'Open models are free with your GitHub account: DeepSeek V4.1 Flash, GLM 5.3, GLM 5.3 Flash, gpt-oss 120B and Qwen3.8 Flash.\nOther models on the same key are paid per token from a prepaid balance.',
+    // 📖 Audit 2026-11-22: free access has two gates the old hint hid, a GitHub account
+    // 📖 at least 30 days old and a weekly workspace allowance that resets on Monday.
+    // 📖 Runcrate does not publish the allowance amount.
+    signupHint: 'Sign in with GitHub (account at least 30 days old, no card) → API Keys → Create key',
+    rateLimits: 'Free tier: weekly workspace allowance that resets on Monday, amount not published',
+    detailedLimits: 'The six free model IDs are DeepSeek V4.1 Flash, DeepSeek V4.1 Flash 1017, GLM 5.3, GLM-5.3-Flash, GPT OSS 120B and Qwen3.8 Flash, on a GitHub account at least 30 days old with no card.\nSigning in with Google instead asks for a non prepaid card.\nThe free allowance is a weekly workspace budget that resets on Monday; Runcrate does not publish how large it is, so check the remaining budget in your account.\nOnce a credit balance exists, requests above the free allowance are billed as paid overage on the same key, per token. Free here is not unlimited.',
   },
   'ollama-cloud': {
     label: 'Ollama Cloud',
     color: chalk.rgb(230, 230, 230),
     signupUrl: 'https://ollama.com/settings/keys',
-    signupHint: 'Settings → Keys → Create API key',
-    rateLimits: 'Free plan includes cloud access with session + weekly limits',
+    // 📖 Audit 2026-11-22: Ollama moved to token billing on 2026-08-31. The old
+    // 📖 "session and weekly caps" wording described a legacy plan, and the free
+    // 📖 allowance is now a small monthly starter budget on an unpublished model set.
+    signupHint: 'Settings → Keys → Create API key (an Ollama account is required)',
+    rateLimits: 'Free plan: small monthly starter allowance, included models and amount not published',
+    detailedLimits: 'Ollama Cloud switched to token billing on 2026-08-31. The session and weekly caps describe a legacy plan and no longer apply.\nWhat remains free is a small monthly starter allowance on a starter model set; Ollama does not publish which models are included or how large the allowance is.\nDo not read this catalog as "all models are free": only the starter allowance is free of charge, everything else bills per token.\nAn Ollama account and an API key are both required.',
   },
 }
 

@@ -991,9 +991,9 @@ describe('sources.js data integrity', () => {
     assert.ok(sources['vercel-gateway'].models.length >= 3, 'vercel-gateway should list its $0 models')
     for (const m of sources['vercel-gateway'].models) {
       // 📖 stealth/* ids are the gateway's free canary models (no -free suffix upstream)
-      // 📖 inclusionai/ling-* ids are date-stamped $0/$0 snapshots (ling-3.1-flash-1019, added 2026-11-03 audit)
+      // 📖 Flint is an audited zero-price promotion without a free suffix.
       assert.ok(
-        m[0].endsWith('-free') || m[0].startsWith('stealth/') || m[0].startsWith('inclusionai/ling-'),
+        m[0].endsWith('-free') || m[0].startsWith('stealth/') || m[0] === 'recursive/flint-v1.0',
         `vercel-gateway model ${m[0]} should be an explicit $0 model`
       )
     }
@@ -3372,15 +3372,13 @@ describe('router daemon integration hardening', () => {
     await withMockProvider(() => ({
       body: { id: 'chatcmpl-mistral', choices: [{ message: { role: 'assistant', content: 'ok' } }] },
     }), async (mistralProvider) => {
+      // 📖 Keep normalizer coverage using a local fixture after Mistral leaves the free catalog.
+      const previous = sources.mistral
+      sources.mistral = { url: mistralProvider.url, models: [['mistral-large-4', 'Mistral fixture', 'S', '-', '1M']] }
+      const fixture = ['mistral-large-4', 'Mistral fixture', 'S', '-', '1M', 'mistral', null]
+      MODELS.push(fixture)
+      try {
       await withSourceUrls({ mistral: mistralProvider.url }, async () => {
-        // 📖 'mistral-large-4' is a real catalog model — the router only
-        // 📖 routes to models it can find in sources.js (anything else is
-        // 📖 marked stale by definition and never picked).
-        // 📖 Updated (2026-09-16): was 'mistral-large-3-25-12', dropped from the
-        // 📖 catalog because no `large` model exists in Mistral's live /v1/models.
-        // 📖 Updated (2026-11-03 audit): was 'mistral-medium-3-5', deprecated
-        // upstream 2026-10-31 and removed from the catalog; mistral-large-4 is
-        // the verified-free replacement flagship.
         const config = buildRouterTestConfig([
           { provider: 'mistral', model: 'mistral-large-4', priority: 1 },
         ], { maxRetries: 1 })
@@ -3396,6 +3394,11 @@ describe('router daemon integration hardening', () => {
           assert.equal(sentBody.temperature, 1, 'Mistral temperature must be clamped to 1')
         })
       })
+      } finally {
+        MODELS.splice(MODELS.indexOf(fixture), 1)
+        if (previous) sources.mistral = previous
+        else delete sources.mistral
+      }
     })
   })
 

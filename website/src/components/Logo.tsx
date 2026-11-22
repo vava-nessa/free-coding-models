@@ -24,7 +24,7 @@ export function Wordmark({ className = '' }: { className?: string }) {
         free-coding-models
       </span>
       <span className="rounded bg-accent/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-accent-fg border border-accent/30 shadow-sm">
-        v0.5.69
+        v0.6.2
       </span>
     </div>
   )

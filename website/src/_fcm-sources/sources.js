@@ -30,6 +30,9 @@
  *   📖 Leaderboard tracker: https://www.marc0.dev/en/leaderboard
  *
  *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, githubModels, mistral, codestral, scaleway, googleai, zai, qwen, cloudflare, ovhcloud, opencodeZen, kilo, llm7, routeway, novita, ollamaCloud, pollinations, siliconflow, requesty, orcarouter, vercelGateway, onomeo, runcrate — model arrays per active provider
+ *   📖 Retired providers (mistral, codestral, novita) stay exported as empty arrays so
+ *      provider-metadata/config imports keep working, but they are absent from the
+ *      `sources` map since the 2026-11-22 audit.
  *   @exports sources — map of active free/free-limited providers, each with { name, url, models }
 
  *   @exports MODELS — flat array of [modelId, label, tier, sweScore, ctx, providerKey]
@@ -58,10 +61,10 @@ export const nvidiaNim = [
   // Removed (2026-08-30): stepfun-ai/step-3.7-flash (Step 3.7 Flash) — 410 Gone per NVIDIA NIM TUI ping (no replacement listed; superseded by step-3.7-flash via Routeway `step-3.7-flash:free`)
   ['nvidia/nemotron-3-ultra-550b-a55b', 'Nemotron 3 Ultra', 'S+', '71.9%', '1M'],
   ['poolside/laguna-xs-2.1', 'Laguna XS 2.1', 'S+', '70.9%', '262k'], // Added (2026-08-13)
-  ['moonshotai/kimi-k2.6', 'Kimi K2.6', 'S+', '80.2%', '256k'], // Added (2026-11-03 audit) — hosted again on NIM (live /v1/models + catalog.ngc.nvidia.com), SWE-bench Verified 80.2% per Moonshot: new top score, beats Nemotron 3 Ultra's 71.9%; reverses the 2026-10-10 removal (the 2026-07-07 endpoint shutdown is over)
-  ['minimaxai/minimax-m3.1-flash', 'MiniMax M3.1 Flash', 'S+', '73.7%', '262k'], // Added (2026-11-03 audit) — new Oct 2026 hosted model, live on /v1/models + build.nvidia.com; DeepSWE v1.1 73.7%, no published SWE-bench Verified
+  ['moonshotai/kimi-k3.1-pro', 'Kimi K3.1 Pro', 'S+', '-', '1M'], // Replaced (2026-11-22 audit): moonshotai/kimi-k2.6 -> moonshotai/kimi-k3.1-pro (Kimi K3.1 Pro) - K2.6 delisted from the live catalog; K3.1 Pro is the current hosted Moonshot entry (1M ctx), no published SWE-bench Verified yet
+  ['minimaxai/minimax-m3.1-flash', 'MiniMax M3.1 Flash', 'S+', '-', '262k'], // Added (2026-11-03 audit) — new Oct 2026 hosted model, live on /v1/models + build.nvidia.com; DeepSWE v1.1 73.7%, no published SWE-bench Verified
   ['mistralai/mistral-large-4-1t-a52b', 'Mistral Large 4', 'S+', '-', '262k'], // Added (2026-11-03 audit) — new hosted 1T MoE flagship, live on /v1/models + build.nvidia.com
-  ['meta/muse-glimmer-30b', 'Muse Glimmer 30B', 'B+', '-', '131k'], // Added (2026-09-02) — new in NIM catalog; ctx '128k' → '131k' (2026-09-29 audit, official contextLength 131072)
+  ['meta/muse-glimmer-30b', 'Muse Glimmer 30B', 'S+', '76.0%', '131k'], // Added (2026-09-02); Fixed (2026-11-22 audit): sweScore '-' -> '76.0%' and tier B+ -> S+ (Meta official model card, high reasoning); ctx 131k unchanged
   // Removed (2026-09-21): deepseek-ai/deepseek-v4-pro-0813 (DeepSeek V4 Pro) — 410 Gone on live probe: end of life 2026-09-14T08:00:00Z; absent from /v1/models
   // ── S tier — SWE-bench Verified 60–70% ──
   // Removed (2026-09-05): openai/gpt-oss-120b (GPT OSS 120B) - NVIDIA deprecation notice on model page: API deprecated on 09/02/2026 and no longer supported
@@ -87,7 +90,7 @@ export const nvidiaNim = [
   ['deepseek-ai/deepseek-v4.1-flash', 'DeepSeek V4.1 Flash', 'S+', '-', '1M'], // Added (2026-09-29 audit) — live on NIM, 552B/8B-active MoE, ctx 1M per NVIDIA docs; DeepSWE v1.1 74.2 + Terminal-Bench 2.1 90.6, no published SWE-bench Verified (score '-' pending)
   // Removed (2026-10-10 audit): nvidia/nemotron-nano-3-30b-a3b (Nemotron Nano 3 30B) — catalog page 404 under every id variant, absent from the hosted list; replaced in the 30B A3B class by nemotron-3.5-lightning. 2026-09-29 re-add reversed (same ghost-entry pattern as issue #181)
   // Removed (2026-10-10 audit): mistralai/codestral-22b-instruct-v0.1 (Codestral 22B) — catalog page 404, old v0.1 retired from NIM, no newer Codestral hosted; use Codestral `codestral-2508` via Mistral LP
-  ['openai/gpt-oss-20b', 'GPT OSS 20B', 'A+', '50.3%', '131k'], // Fixed (2026-09-29 audit): ctx '128k' → '131k' (official contextLength 131072)
+  ['openai/gpt-oss-20b', 'GPT OSS 20B', 'S', '60.7%', '131k'], // Fixed (2026-11-22 audit): sweScore '50.3%' -> '60.7%' (official high-reasoning card) and tier A+ -> S; ctx 131k confirmed
   ['google/gemma-4-31b-it', 'Gemma 4 31B', 'A+', '52.0%', '262k'], // Fixed (2026-09-21): ctx '256k' → '262k' (official contextLength 262144)
   // Removed (2026-08-30): mistralai/mistral-large-2-instruct (Mistral Large 2) — 404 NOT FOUND per NVIDIA NIM TUI ping (model not in NIM catalog; use Mistral LP `mistral-large-2512`)
   // Removed (2026-07-27): qwen/qwen2.5-coder-32b-instruct (Qwen2.5 Coder 32B) — EOL 2026-05-12 (HTTP 410 Gone)
@@ -124,7 +127,7 @@ export const groq = [
   // Removed (2026-09-21): minimaxai/minimax-m2.7 (MiniMax M2.7) — enterprise-only on Groq (Contact Sales pricing, no developer-plan rate limits; live API returns model_not_found on a developer-tier key); the 2026-09-15 add was erroneous. Still free on SambaNova/Routeway
   // Removed (2026-09-21): groq/compound + groq/compound-mini — on Groq's official deprecation page with shutdown date 2026-09-21
   ['openai/gpt-oss-120b',                  'GPT OSS 120B',       'S',  '62.4%', '131k'],
-  ['openai/gpt-oss-20b', 'GPT OSS 20B', 'A+', '60.7%', '131k'],
+  ['openai/gpt-oss-20b', 'GPT OSS 20B', 'S', '60.7%', '131k'], // Fixed (2026-11-22 audit): tier A+ -> S (60.7% sits in the S band); all 3 free ids reconfirmed
   // Removed (2026-09-15): qwen/qwen3.6-27b (Qwen3.6 27B) — rotated out of Groq catalog, superseded by qwen/qwen3.8-27b; replacement: qwen/qwen3.8-27b
   ['qwen/qwen3.8-27b', 'Qwen3.8 27B', 'A+', '-', '131k'], // Confirmed (2026-09-28 audit) — now preview-only on Groq
 ]
@@ -147,16 +150,16 @@ export const cerebras = [
 // 📖 Keep this catalog conservative: only models surfaced in current SambaNova docs.
 export const sambanova = [
   // ── S+ tier ──
-  // Removed (2026-10-10 audit): MiniMax-M2.7 + MiniMax-M3 — the official Free Tier rate-limit table now covers only 5 models (DeepSeek-V3.1/V3.2, gpt-oss-120b, gemma-4-31B-it, Llama 3.3 70B); both MiniMax require the Developer Tier with a linked payment method. Reverses the 2026-09-02/09-28 free reads
+  // Audit (2026-11-22): gpt-oss-120b and gemma-4-31B-it have documented free access; MiniMax-M3.1-Flash is retained pending eligibility confirmation (DeepSeek-V3.1/V3.2 and Llama 3.3 70B retired, see below). No GLM addition: free eligibility is unproven
   // ── S tier ──
-  ['DeepSeek-V3.1',                        'DeepSeek V3.1',      'S',  '66.0%', '131k'], // Fixed (2026-07-27): ctx '128k' → '131k' (API exact 131072)
-  ['DeepSeek-V3.2',                        'DeepSeek V3.2',      'S+', '70.0%', '32k'],
+  // Removed (2026-11-22 audit): DeepSeek-V3.1 - retired 2026-11-03 per the official deprecations page and absent from the public /v1/models
+  // Removed (2026-11-22 audit): DeepSeek-V3.2 - retired 2026-11-03 per the official deprecations page and absent from the public /v1/models
   ['gpt-oss-120b',                         'GPT OSS 120B',       'S',  '62.4%', '131k'], // Fixed (2026-07-27): ctx '128k' → '131k'
   ['MiniMax-M3.1-Flash',                   'MiniMax M3.1 Flash', 'S',  '-',     '1M'], // Added (2026-11-03 audit) — new Preview model (released 2026-10-19) in the docs catalog, fills the MiniMax slot left by M2.7's 2026-10-01 deprecation; text+image, 1M ctx
   // ── A tier ──
   ['gemma-4-31B-it',                       'Gemma 4 31B',        'A+',  '52.0%', '131k'], // Fixed (2026-07-27): ctx '128k' → '131k'
   // ── A- tier ──
-  ['Meta-Llama-3.3-70B-Instruct',          'Llama 3.3 70B',      'B', '22.0%', '131k'], // Fixed (2026-07-27): ctx '128k' → '131k'
+  // Removed (2026-11-22 audit): Meta-Llama-3.3-70B-Instruct - retired 2026-11-17 per the official deprecations page and absent from the public /v1/models
   // ── B+ tier ──
 ]
 
@@ -175,13 +178,13 @@ export const openrouter = [
   ['nvidia/nemotron-3-ultra-550b-a55b:free', 'Nemotron 3 Ultra', 'S+', '71.9%', '1M'],
   // Removed (2026-11-03 audit): poolside/laguna-xs-2.1:free (Poolside Laguna XS 2.1) — fully delisted from OpenRouter (zero poolside/laguna entries remain in the live catalog, free or paid); replacement: recursive/flint-v1.0:free (added below)
   // Removed (2026-11-03 audit): poolside/laguna-s-2.1:free (Poolside Laguna S 2.1) — fully delisted from OpenRouter (zero poolside/laguna entries remain in the live catalog, free or paid); replacement: recursive/flint-v1.0:free (added below)
-  ['xingchen-agi/xing4.0-29b-a4b:free', 'Xing4.0 29B A4B', 'S+', '75.0%', '262k'], // Added (2026-10-17 audit) — new :free entry (TeleAI Xing4.0 agentic coder, SWE-bench Verified 75.0% per the published model card)
+  // Removed (2026-11-22 audit): xingchen-agi/xing4.0-29b-a4b:free (Xing4.0 29B A4B) - absent from the live catalog and its free endpoint is empty
   ['recursive/flint-v1.0:free', 'Recursive Flint', 'S+', '74.2%', '262k'], // Added (2026-11-03 audit) — new :free coding model (40B MoE, 2.5B active, purpose-built for coding agents), SWE-bench Verified 74.2% per the published card; fills the delisted Poolside Laguna slots
   // Removed (2026-09-15): minimax/minimax-m2.7:free (MiniMax M2.7) — no longer free on OpenRouter
   // Removed (2026-09-15): minimax/minimax-m3:free (MiniMax M3) — no longer free on OpenRouter
   // Removed (2026-09-28 audit): z-ai/glm-5.2:free (GLM-5.2) — gone from the live :free catalog (now paid-only)
   // ── S tier — SWE-bench Verified 60–70% ──
-  ['cohere/north-mini-code:free', 'North Mini Code', 'S', '-', '256k'],
+  // Removed (2026-11-22 audit): cohere/north-mini-code:free (North Mini Code) - absent from the live catalog and its free endpoint is empty
   // Removed (2026-11-03 audit): nvidia/nemotron-3-super-120b-a12b:free (Nemotron 3 Super) — :free variant delisted; the paid variant remains ($0.30/M prompt, ctx now 1M); replacement: nvidia/nemotron-3.5-super-vl:free
   // Removed (2026-10-17 audit): inclusionai/ling-3.1-flash (Ling 3.1 Flash) — no longer $0/$0: now bills $0.075/M in + $0.225/M out with no :free variant; reverses the 2026-10-10 add
   // Removed (2026-10-10 audit): qwen/qwen3.8-27b:free (Qwen3.8 27B) — deleted from the live :free catalog (Kilo mirror dropped it the same day); no free Qwen replacement
@@ -190,12 +193,16 @@ export const openrouter = [
   ['nvidia/nemotron-3.5-super-vl:free', 'Nemotron 3.5 Super VL', 'S+', '71.1%', '1M'], // Added (2026-10-17 audit) — new :free entry, 1M ctx per the live API; SWE score follows the same model on NVIDIA NIM (71.07% rounded per family reads), S+ on the documented scale
   ['google/gemma-4-31b-it:free', 'Gemma 4 31B', 'A+', '52.0%', '262k'],
   ['google/gemma-4-26b-a4b-it:free', 'Gemma 4 26B MoE', 'A', '38.0%', '262k'],
+  ['baidu/ernie-5.5-flash-preview:free', 'Baidu ERNIE 5.5 Flash Preview', 'A', '-', '1M'], // Added (2026-11-22 audit) - new :free route, $0/$0 on the public endpoint, no published SWE-bench Verified (tier provisional)
+  ['liquid/lfm-3-1.7b:free', 'LiquidAI LFM3-1.7B', 'A', '43.4%', '262k'], // Added (2026-11-22 audit) - new :free route, SWE-bench Verified 43.4% per the LiquidAI model card
+  ['particle-ai/particle-1:free', 'Particle 1', 'A-', '-', '1M'], // Added (2026-11-22 audit) - new :free route, $0/$0 on the public endpoint, no published SWE-bench Verified (tier provisional)
   // Removed (2026-09-28 audit): nex-agi/nex-n2.5-pro:free — nex-agi dropped from the live :free catalog entirely
   // ── B+ tier — SWE-bench Verified 30–35% ──
-  ['liquid/lfm-2.5-2.6b:free', 'LiquidAI LFM2.5-2.6B', 'C', '-', '64k'],
+  // Removed (2026-11-22 audit): liquid/lfm-2.5-2.6b:free (LFM2.5-2.6B) - absent from the live catalog, replaced by liquid/lfm-3-1.7b:free
   ['nvidia/nemotron-3.5-lightning:free', 'NVIDIA Nemotron 3.5 Lightning', 'B+', '-', '1M'],
+  ['inclusionai/ling-3.2-flash:free', 'Ling 3.2 Flash', 'B+', '-', '1M'], // Added (2026-11-22 audit) - new :free route, $0/$0 on the public endpoint, no published SWE-bench Verified (tier provisional)
   // Removed (2026-09-29 audit): inclusionai/ling-3.0-flash-fin:free — :free variant gone from the live catalog, base id now bills $0.06/M prompt; replacement: inclusionai/ling-3.0-flash-sante:free
-  ['thinkingmachines/inkling:free', 'Inkling', 'B+', '-', '1M'], // Added (2026-09-02)
+  // Removed (2026-11-22 audit): thinkingmachines/inkling:free (Inkling) - absent from the live catalog and its free endpoint is empty
   // Removed (2026-10-10 audit): inclusionai/ling-3.0-flash-sante:free — :free variant removed, base id now bills per-token; replacement: inclusionai/ling-3.1-flash ($0/$0)
   // Removed (2026-10-10 audit): stealth/space-bunny-alpha — stealth preview rotated out of the live list, no stealth model currently live (next stealth slot: glyph-cluster on Kilo/Vercel)
   // Removed (2026-10-17 audit): apodex/apodex-1.1-mini:free — delisted from OpenRouter entirely (no free or paid listing in the live API); the model moved to Novita as a zero-price partner launch
@@ -203,8 +210,8 @@ export const openrouter = [
   // Removed (2026-09-28 audit): nex-agi/nex-n2.5-mini:free — nex-agi dropped from the live :free catalog entirely
   // Removed (2026-09-28 audit): inclusionai/ling-3.0-flash-vl:free — :free variant removed from the live catalog (base model now billed)
   // ── B tier — SWE-bench Verified 20–30% ──
-  ['thinkingmachines/inkling-small:free', 'Inkling Small', 'B', '-', '1M'], // Added (2026-09-02)
-  ['dots-studio/dots-3-note-preview:free', 'Dots 3 Note Preview', 'B', '-', '512k'], // Added (2026-09-02)
+  // Removed (2026-11-22 audit): thinkingmachines/inkling-small:free (Inkling Small) - absent from the live catalog and its free endpoint is empty
+  // Removed (2026-11-22 audit): dots-studio/dots-3-note-preview:free (Dots 3 Note Preview) - absent from the live catalog and its free endpoint is empty
   // ── C tier — lightweight/edge models ──
   // Removed (2026-10-10 audit): nvidia/nemotron-3.5-content-safety:free — moderation classifier, not coding-capable (catalog hygiene; same cleanup on Kilo/Requesty)
 ]
@@ -221,49 +228,25 @@ export const githubModels = [
 ]
 
 // 📖 Mistral La Plateforme source - https://console.mistral.ai
-// 📖 Experiment plan is free for evaluation/prototyping and exposes general + coding models.
-// 📖 Keep Codestral as a separate provider key for backward compatibility with existing configs.
-// 📖 Fixed (2026-09-16): every id below re-verified against the live
-// 📖 GET https://api.mistral.ai/v1/models on a real Experiment-plan key.
-// 📖 The 2026-09-15 audit had rewritten the working ids into a date-stamped
-// 📖 form that Mistral does not accept, so ALL nine entries returned
-// 📖 400 invalid_model and the whole provider was dead. Context windows now
-// 📖 come from each model's `max_context_length` instead of a blanket 256k.
+// 📖 ⚠️ RETIRED 2026-11-22 - Mistral's Free mode no longer includes API access: the official
+// 📖 https://docs.mistral.ai/admin/billing-usage/usage-limits page excludes the API from Free mode
+// 📖 and requires an activated billing account (pay-as-you-go). No free Mistral API tier is left.
+// 📖 Kept as an empty array so downstream provider-metadata/config code that imports
+// 📖 `mistral` and references the 'mistral' key (MISTRAL_API_KEY) doesn't crash; the entry is
+// 📖 also commented out of the `sources` map below so it won't appear in the catalog.
 export const mistral = [
-  // ── S+ tier — SWE-bench Verified ≥70% ──
-  // Removed (2026-11-03 audit): mistral-medium-3-5 (Mistral Medium 3.5) — officially deprecated upstream 2026-10-31 (retirement 2027-04-30); Mistral's designated replacement is Mistral Large 4; still served but the repo removes models once the deprecation date passes; replacement: mistral-large-4 (added below)
-  // ── S tier — SWE-bench Verified 60–70% ──
-  ['mistral-large-4', 'Mistral Large 4', 'S', '-', '1M'], // Added (2026-11-03 audit) — new flagship (v26.10, 1T MoE, 1M ctx), live 200 OK on a free Experiment key; no published SWE-bench Verified (DeepSWE v1.1 61.7%, Coding Agent Index 49.8%), tier S by repo DeepSWE convention
-  // Removed (2026-09-29 audit): mistral-large-2512 (Mistral Large 3) — live probe with a free-tier key: absent from /v1/models and chat/completions returns 403 tier_not_allowed ("not available in your subscription tier"); paid-only, reverses the 2026-09-22 re-add
-  // Removed (2026-08-13): devstral-2512 (Devstral 2) — Mistral deprecation, full retirement 2026-07-31
-  // Removed (2026-09-16): mistral-large-3-25-12 (Mistral Large 3) — no `large` model exists in the live catalog at all
-  // Removed (2026-09-16): zai-glm-5-2 (Z.ai GLM 5.2) — absent from /v1/models; a direct call returns 403 tier_not_allowed (paid tier only), so it never belonged in a free catalog
-  // 2026-09-29 audit re-check: zai-glm-5-2 + zai-glm-5-3 are still absent from the live /v1/models (46 models) — docs pages exist but the API does not serve them on free tier, kept excluded
-  // ── A+ tier ──
-  // Removed (2026-09-22): magistral-medium-latest (Magistral Medium) — officially deprecated upstream 2026-05-22, "Use Mistral Medium 3.5"; replacement: mistral-medium-3-5
-  // ── A tier — SWE-bench Verified 40–50% ──
-  ['mistral-small-2603', 'Mistral Small 4', 'A', '48.0%', '256k'], // Fixed (2026-09-16): mistral-small-4-0-26-03 → mistral-small-2603 (live /v1/models, ctx 262144)
-  // ── B+ tier — SWE-bench Verified 30–35% ──
-  ['ministral-14b-2512', 'Ministral 3 14B', 'B+', '-', '256k'], // Fixed (2026-09-16): ministral-3-14b-25-12 → ministral-14b-2512 (live /v1/models, ctx 262144)
-  // ── B tier — SWE-bench Verified 20–30% ──
-  ['ministral-8b-2512', 'Ministral 3 8B', 'B', '-', '256k'], // Fixed (2026-09-16): ministral-3-8b-25-12 → ministral-8b-2512 (live /v1/models, ctx 262144)
-  // Removed (2026-10-17 audit): labs-leanstral-1-5-1 (Leanstral 1.5.1) — Labs Leanstral line deprecated 2026-09-29 and retired 2026-09-30 per the docs.mistral.ai deprecation table; free-tier probe now returns 403 tier_not_allowed (the signature the repo documented for paid-only models)
-  ['ministral-3b-2512', 'Ministral 3 3B', 'B', '-', '128k'], // Fixed (2026-10-17 audit): ctx '131k' → '128k' (official max_context_length 128000 per docs.mistral.ai); id fixed 2026-09-16
-  // Removed (2026-09-16): mistral-small-creative-25-12 (Mistral Small Creative) — absent from the live catalog
-  // ── Coding models (codestral-2508 aliases, live-verified 2026-09-22 via api.mistral.ai/v1/models) ──
-  ['mistral-code-latest', 'Mistral Code', 'A', '-', '256k'], // Added (2026-09-22): aliases codestral-2508 / codestral-latest; ctx 256000
-  ['mistral-code-fim-latest', 'Mistral Code FIM', 'A', '-', '256k'], // Added (2026-09-22): FIM alias of codestral-2508; ctx 256000
-  // Removed (2026-11-03 audit): mistral-vibe-cli-latest (Mistral Vibe CLI) — live /v1/models shows it is an alias of the deprecated mistral-medium line (serves Medium 3.5 v26.04, deprecated 2026-10-31); Mistral may repoint the alias later, re-check at next audit
+  // Removed (2026-11-22 audit): all 7 entries - mistral-large-4, mistral-small-2603,
+  // ministral-14b-2512, ministral-8b-2512, ministral-3b-2512, mistral-code-latest,
+  // mistral-code-fim-latest. Retired provider-wide by the official usage-limits policy.
 ]
 
 // 📖 Mistral Codestral source - https://codestral.mistral.ai
-// 📖 Free coding model — 30 req/min, 2000/day (phone number required for key)
-// 📖 API keys now use the Mistral platform key format; CODESTRAL_API_KEY remains supported as an alias.
+// 📖 ⚠️ RETIRED 2026-11-22 - same platform-wide policy change as Mistral La Plateforme: the
+// 📖 admin usage-limits page excludes the API from Free mode, the legacy codestral.mistral.ai
+// 📖 endpoint is gone and api.mistral.ai requires billing. Kept as an empty array for the same
+// 📖 backward-compatibility reason as `mistral` above.
 export const codestral = [
-  // ── A tier — SWE-bench Verified 40–50% ──
-  ['codestral-2508', 'Codestral', 'A', '40.0%', '256k'], // Fixed (2026-09-21): deleted the false 2026-07-27 "ctx to 128k" comment; 256k is the correct value per the official model card
-  // Removed (2026-08-23): codestral-2501 (Codestral 2501), codestral-2405 (Codestral 2405) — retired from Mistral API; only codestral-2508 / codestral-latest remain
-  // Removed (2026-08-13): codestral-2 (Codestral 2) — fabricated ID, never existed in Mistral catalog (Mistral uses date-stamped versioning)
+  // Removed (2026-11-22 audit): codestral-2508 (Codestral) - no free API tier left.
 ]
 
 // 📖 Scaleway source - https://console.scaleway.com
@@ -273,7 +256,7 @@ export const scaleway = [
   // Removed (2026-11-03 audit): glm-5.2 (GLM 5.2) — deprecated by Scaleway 2026-10-16, EOL 2026-11-16; requests already route to glm-5.3 (already in the catalog); replacement: glm-5.3
   ['glm-5.3', 'GLM 5.3', 'S+', '-', '256k'], // Added (2026-10-17 audit) — free Serverless on the official supported-models page; score pending a published SWE-bench Verified figure
   ['deepseek-v4-flash-0731', 'DeepSeek V4 Flash', 'S+', '-', '256k'], // Added (2026-08-13)
-  ['deepseek-v4.1-flash', 'DeepSeek V4.1 Flash', 'S+', '-', '256k'], // Added (2026-10-17 audit) — free Serverless on the official supported-models page (upstream retired V4-Flash-0731 on 2026-09-10 but Scaleway still serves both)
+  ['deepseek-v4.1-flash-1017', 'DeepSeek V4.1 Flash', 'S+', '-', '256k'], // Fixed (2026-11-22 audit): id 'deepseek-v4.1-flash' -> 'deepseek-v4.1-flash-1017' per the official supported-models and pricing pages
   // Removed (2026-09-05): devstral-2-123b-instruct-2512 (Devstral 2 123B) - Deprecated 2026-07-01, End of Life 2026-08-01; after EOL the model is no longer accessible on Generative APIs Serverless
   // ── S tier — SWE-bench Verified 60–70% ──
   ['qwen3.5-397b-a17b', 'Qwen3.5 400B VLM', 'S+', '76.2%', '250k'],
@@ -310,13 +293,13 @@ export const googleai = [
   ['gemini-3.5-flash-lite',                     'Gemini 3.5 Flash Lite',        'S', '75.0%',      '1M'], // Added (2026-07-27); Fixed (2026-11-03 audit): sweScore '-' → '75.0%' (SWE-bench Verified per the Vals.ai leaderboard)
   ['gemini-3.1-flash-lite',                     'Gemini 3.1 Flash Lite',        'S', '62.8%', '1M', null, '2027-05-07'], // ⚠️ DEPRECATED — shutdown 2027-05-07 (Google deprecation schedule, 2026-09-29 audit); 2026-11-03 audit: date moved into the 7th tuple element so the catalog auto-filters it
   ['gemini-2.5-flash',                          'Gemini 2.5 Flash',             'A+', '54.0%', '1M', null, '2026-12-01'], // ⚠️ DEPRECATED — Google deprecation 2026-11-02, requests auto-route to gemini-3.5-flash-lite from 2026-12-01; closed to new users since 2026-09-18
-  ['gemini-2.5-flash-lite',                     'Gemini 2.5 Flash Lite',        'A',  '42.6%', '1M', null, '2026-12-01'], // ⚠️ DEPRECATED — closed to new users since 2026-09-18; family sunset aligned to 2026-12-01 (replacement direction: gemini-3.5-flash-lite)
+  ['gemini-2.5-flash-lite',                     'Gemini 2.5 Flash Lite',        'A',  '42.6%', '1M'], // Fixed (2026-11-22 audit): dropped the unfounded 2026-12-01 shutdown date, the official deprecations page lists no shutdown date for 2.5 Flash Lite; still closed to new users since 2026-09-18
   ['gemini-3-flash-preview',                    'Gemini 3 Flash Preview',       'S+',  '75.0%', '1M'], // Restored (2026-09-05) — free tier confirmed per official pricing page; Fixed (2026-11-03 audit): sweScore '78.0%' → '75.0%' (Vals.ai leaderboard)
   ['gemini-2.5-pro',                            'Gemini 2.5 Pro',               'S', '63.8%', '1M', null, '2026-12-01'], // ⚠️ DEPRECATED — Google deprecation 2026-11-02, requests auto-route to gemini-3.8-flash from 2026-12-01; closed to new users since 2026-09-18
   // Removed (2026-09-02): gemini-3.1-pro-preview (Gemini 3.1 Pro Preview) — free tier "Not available" per official pricing page (rechecked 2026-09-05)
   // Removed (2026-09-21): gemini-3.1-pro-preview re-removed — the 2026-09-15 re-add resurrected a paid-only model (free tier "Not available" on the official pricing page since ~April 2026); best free alternative: gemini-3.5-flash
   // Removed (2026-09-05): gemini-2.0-flash — not listed on the official pricing page (PR #178 addition reverted)
-  // ⚠️ Gemini 2.5 family retires no earlier than 2026-10-16 per Google deprecation policy
+  // Audit (2026-11-22): the official deprecations page carries no shutdown date for 2.5 Flash Lite, so only 2.5 Flash and 2.5 Pro keep their announced 2026-12-01 date
   // Audit (2026-09-28): all 10 entries confirmed live at 1M ctx; gemini-2.5 API access now restricted to past users per the docs. gemini-3.1-pro-preview stays excluded (paid-only, confirmed again on 2026-09-28)
   // Removed (2026-09-21): gemma-4-31b-it + gemma-4-26b-a4b-it (Gemma 4 entries) — Gemma pages are gone from ai.google.dev (404 on /gemini-api/docs/models/gemma), Gemma is no longer served via the Gemini API free tier; the free Gemma route is now NVIDIA NIM
 ]
@@ -354,17 +337,18 @@ export const qwen = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
   ['qwen3.7-max', 'Qwen3.7 Max', 'S+', '80.4%', '1M'],
   // Removed (2026-09-15): qwen3-max (Qwen3 Max) — unstable alias, legacy shutdown stream; replacement: qwen3.7-max
-  ['qwen3.6-plus', 'Qwen3.6 Plus', 'S+', '78.8%', '1M'],
+  // Removed (2026-11-22 audit): qwen3.6-plus - Singapore free trial quota removed for this id in the 2026-10-29 batch notice
   // Removed (2026-09-15): qwen3-235b-a22b (Qwen3 235B) — legacy base, Oct 10 2026 shutdown; replacement: qwen3.5-397b-a17b
   ['qwen3.7-plus', 'Qwen3.7 Plus', 'S+', '-', '1M'],
   // Removed (2026-10-10 audit): qwen3.6-max-preview (Qwen3.6 Max Preview) — retired 2026-10-10 per Alibaba decommissioning notice 1950 (the ⚠️ date below hit); replacement: qwen3.7-max
   ['qwen3.8-max', 'Qwen3.8 Max', 'S+', '-', '1M'],
+  ['qwen4-max', 'Qwen4 Max', 'S+', '-', '1M'], // Added (2026-11-22 audit) - released 2026-11-16, Singapore 1M-token free quota confirmed; no published SWE-bench Verified yet
   ['qwen3.8-2.4t-a95b', 'Qwen3.8 2.4T A95B', 'S+', '-', '1M'],
-  ['qwen3.8-max-0902', 'Qwen3.8 Max 0902', 'S+', '-', '1M'], // Added (2026-09-15) — verified via live audit
+  // Removed (2026-11-22 audit): qwen3.8-max-0902 - snapshot max quota removed 2026-11-15, id no longer on the free billing page
   ['glm-5.3', 'GLM-5.3', 'S+', '-', '1M'], // Added (2026-11-03 audit) — third-party model now hosted on DashScope intl Model Studio
   // ── S tier — SWE-bench Verified 60–70% ──
-  ['qwen3.5-plus', 'Qwen3.5 Plus', 'S+', '80.0%', '1M'],
-  ['kimi-k2.7-code', 'Kimi K2.7 Code', 'S', '-', '256k'], // Added (2026-11-03 audit) — third-party Kimi code model now hosted on DashScope intl Model Studio; score follows the kimi-k2.7-code entry on ollama-cloud (60.4%)
+  // Removed (2026-11-22 audit): qwen3.5-plus - free trial quota removed in the 2026-10-29 batch notice
+  // Removed (2026-11-22 audit): kimi-k2.7-code - free trial quota removed in the 2026-10-29 batch notice
   // Removed (2026-10-10 audit): qwen3-coder-plus (Qwen3 Coder Plus) — retired 2026-10-10 per Alibaba decommissioning notice 1950 (the ⚠️ date below hit); replacement: qwen3.7-plus
   // Removed (2026-10-10 audit): qwen3-coder-next (Qwen3 Coder Next) — retired 2026-10-10 per Alibaba decommissioning notice 1949 (the ⚠️ date below hit); replacement: qwen3.7-plus
   // Removed (2026-09-15): qwen3-coder-480b-a35b-instruct (Qwen3 Coder 480B) — legacy, superseded by qwen3-coder-next; replacement: qwen3-coder-next
@@ -374,26 +358,26 @@ export const qwen = [
   ['qwen3.7-flash', 'Qwen3.7 Flash', 'A+', '-', '1M'], // Added (2026-07-27)
   ['qwen3.6-flash', 'Qwen3.6 Flash', 'A+', '60.0%', '1M'],
   ['qwen3.5-flash', 'Qwen3.5 Flash', 'S', '64.4%', '1M'],
-  ['qwen3-coder-flash', 'Qwen3 Coder Flash', 'A+', '55.0%', '1M'],
+  // Removed (2026-11-22 audit): qwen3-coder-flash - free trial quota removed in the 2026-10-29 batch notice
   ['deepseek-v4.1-flash', 'DeepSeek V4.1 Flash', 'A+', '-', '1M'], // Added (2026-11-03 audit) — third-party DeepSeek now hosted on DashScope intl Model Studio; tier follows the same model on pollinations
   // Removed (2026-10-10 audit): qwen3-vl-flash (Qwen3 VL Flash) — retired 2026-10-10 per Alibaba decommissioning notice 1950 (the ⚠️ date below hit); only qwen3-vl-plus survives in the VL tier; replacement: qwen3.6-flash
   ['qwen3-vl-plus', 'Qwen3 VL Plus', 'A+', '-', '256k'], // Added (2026-09-21) — on the official free billing page (1M-token free quota)
   // Removed (2026-10-10 audit): qwen3-coder-30b-a3b-instruct (Qwen3 Coder 30B A3B) — EOL 2026-10-10 per Alibaba decommissioning notice 1949 (the ⚠️ date below hit; same EOL hit Scaleway 2026-10-01); replacement: qwen3.7-plus
   // Removed (2026-09-15): qwen3-32b (Qwen3 32B) — legacy, Oct 10 2026 shutdown (aliyun notice 118434); replacement: qwen3.8-27b
-  ['qwen3.5-397b-a17b', 'Qwen3.5 397B A17B', 'S+', '76.2%', '256k'],
-  ['qwen3.5-122b-a10b', 'Qwen3.5 122B A10B', 'S+', '72.0%', '256k'],
-  ['qwen3.5-35b-a3b', 'Qwen3.5 35B A3B', 'S', '69.2%', '256k'],
+  // Removed (2026-11-22 audit): qwen3.5-397b-a17b - free trial quota removed in the 2026-10-29 batch notice
+  // Removed (2026-11-22 audit): qwen3.5-122b-a10b - free trial quota removed in the 2026-10-29 batch notice
+  // Removed (2026-11-22 audit): qwen3.5-35b-a3b - free trial quota removed in the 2026-10-29 batch notice
   // Removed (2026-09-15): qwen3-next-80b-a3b-thinking (Qwen3 Next 80B Thinking) — retired in 2026 legacy cleanup; replacement: qwen3.8-flash
   // Removed (2026-09-15): qwen3-next-80b-a3b-instruct (Qwen3 Next 80B Instruct) — retired in 2026 legacy cleanup; replacement: qwen3.8-flash
   ['qwen3.8-flash', 'Qwen3.8 Flash', 'A+', '-', '1M'],
   // Removed (2026-10-10 audit): qwen3.8-flash-next (Qwen3.8 Flash Next) — phantom entry: 404 detail page, absent from the Model List product index, never appears in release lifecycle or retirement notices; replacement: qwen3.8-flash
   // ── A tier — SWE-bench Verified 40–50% ──
-  ['qwen3.5-27b', 'Qwen3.5 27B', 'S+', '72.4%', '256k'],
+  // Removed (2026-11-22 audit): qwen3.5-27b - free trial quota removed in the 2026-10-29 batch notice
   // Removed (2026-09-15): qwen3-30b-a3b (Qwen3 30B A3B) — legacy, Oct 10 2026 shutdown; replacement: qwen3.5-35b-a3b
   ['qwen3.5-omni-plus', 'Qwen3.5 Omni Plus', 'B+', '-', '256k'], // Fixed (2026-10-10 audit): ctx '32k' → '256k' (official model page; the "omni-family 32k" precedent was wrong)
   ['qwen3.8-omni-flash', 'Qwen3.8 Omni Flash', 'B+', '-', '1M'], // Fixed (2026-10-10 audit): ctx '32k' → '1M' (official model page)
-  ['qwen3.6-27b', 'Qwen3.6 27B', 'B+', '-', '256k'], // Added (2026-09-15) — verified via live audit
-  ['qwen3.6-35b-a3b', 'Qwen3.6 35B A3B', 'B+', '-', '256k'], // Added (2026-09-15) — verified via live audit
+  // Removed (2026-11-22 audit): qwen3.6-27b - free trial quota removed in the 2026-10-29 batch notice
+  // Removed (2026-11-22 audit): qwen3.6-35b-a3b - free trial quota removed in the 2026-10-29 batch notice
 ]
 
 // 📖 Cloudflare Workers AI source - https://developers.cloudflare.com/workers-ai
@@ -408,18 +392,18 @@ export const cloudflare = [
   // Removed (2026-09-21): @cf/zai-org/glm-5.3-flash + @cf/zai-org/glm-5.3 — both now carry the "Paid access required: not available through standard Workers Free billing" badge on the official docs pages; the 2026-09-15 re-add was erroneous
   // ── S tier — SWE-bench Verified 60–70% ──
   ['@cf/zai-org/glm-4.7-flash', 'GLM-4.7-Flash', 'A+', '59.2%', '131k'],
-  ['@cf/openai/gpt-oss-120b', 'GPT OSS 120B', 'S', '62.0%', '128k'], // Fixed (2026-09-28 audit): sweScore '62.4%' → '62.0%',
+  ['@cf/openai/gpt-oss-120b', 'GPT OSS 120B', 'S', '62.4%', '128k'], // Fixed (2026-11-22 audit): sweScore '62.0%' -> '62.4%' (OpenAI official high-reasoning card), reverting the 2026-09-28 read
   // Removed (2026-09-21): @cf/zai-org/glm-5.2, @cf/deepseek-ai/deepseek-v4-pro-0813, @cf/deepseek-ai/deepseek-v4-flash-0731, @cf/moonshotai/kimi-k2.7-code, @cf/moonshotai/kimi-k2.6 re-removed — all five carry the "Paid access required: not available through standard Workers Free billing" badge on their official docs pages; the 2026-09-15 re-adds regressed the 2026-09-05 paid-only policy
   // ── A+ tier — SWE-bench Verified 50–60% ──
-  ['@cf/nvidia/nemotron-3-120b-a12b', 'Nemotron 3 Super', 'S', '60.5%', '256k'],
+  // Removed (2026-11-22 audit): @cf/nvidia/nemotron-3-120b-a12b (Nemotron 3 Super) - retired 2026-11-20 per the official planned-model-deprecations changelog; the model page carries the Deprecated badge
   // ── A tier — SWE-bench Verified 40–50% ──
   // Removed (2026-09-28 audit): @cf/meta/llama-4-scout-17b-16e-instruct (Llama 4 Scout) — no longer in the Workers AI catalog
-  ['@cf/qwen/qwen3-30b-a3b-fp8', 'Qwen3 30B MoE', 'B', '25.2%', '32k'],
+  // Removed (2026-11-22 audit): @cf/qwen/qwen3-30b-a3b-fp8 (Qwen3 30B MoE) - retired 2026-11-20 per the official planned-model-deprecations changelog; Deprecated badge on the model page
   ['@cf/qwen/qwen2.5-coder-32b-instruct', 'Qwen2.5 Coder 32B', 'A', '45.7%', '32k'], // Fixed (2026-09-28 audit): sweScore '47.0%' → '45.7%',
-  ['@cf/openai/gpt-oss-20b', 'GPT OSS 20B', 'A+', '50.3%', '128k'],
+  ['@cf/openai/gpt-oss-20b', 'GPT OSS 20B', 'S', '60.7%', '128k'], // Fixed (2026-11-22 audit): sweScore '50.3%' -> '60.7%' (official high-reasoning card) and tier A+ -> S, aligned with the other GPT OSS 20B rows
   // Removed (2026-09-28 audit): @cf/qwen/qwq-32b (QwQ 32B) — deprecated, superseded by qwen3/qwen3.8 reasoning models
   // Removed (2026-09-28 audit): @cf/deepseek-ai/deepseek-r1-distill-qwen-32b (DeepSeek R1 Distill Qwen 32B) — removed from the catalog, replaced by DeepSeek V4 models
-  // 2026-09-29 audit re-check: qwq-32b + deepseek-r1-distill-qwen-32b are still listed free on Cloudflare but stay excluded per the supersession decision above; the 7 paid-only exclusions re-confirmed against the pricing page
+  // Audit (2026-11-22): qwq-32b + deepseek-r1-distill-qwen-32b were themselves retired 2026-11-20 per the planned-deprecations changelog, so the 2026-09-29 "still listed free" note is obsolete
   // Audit (2026-09-28): the catalog also lists @cf/zai-org/glm-5.3-flash, @cf/moonshotai/kimi-k2.7-code, @cf/deepseek-ai/deepseek-v4-flash-0731, @cf/deepseek-ai/deepseek-v4-pro-0813 but these keep the paid-only policy exclusion (previously removed for Workers-Paid-only billing)
   // ── A- tier — SWE-bench Verified 35–40% ──
   ['@cf/meta/llama-3.3-70b-instruct-fp8-fast', 'Llama 3.3 70B', 'B', '22.0%', '24k'],
@@ -432,51 +416,57 @@ export const cloudflare = [
   // ── C tier — lightweight/edge models ──
   ['@cf/meta/llama-4-scout-17b-16e-instruct', 'Llama 4 Scout MoE', 'C', '-', '131k'], // Re-added (2026-11-03 audit) — back in the Workers AI catalog per the official docs page (reverses the 2026-09-28 removal); weak coding model, kept for breadth. Note (2026-11-03 audit): every new 2026 flagship (GLM-5.x, Kimi K2.6/K2.7, DeepSeek V4) is Workers-Paid-only since 2026-07-28, so nothing stronger was eligible
   // ── B tier — SWE-bench Verified 20–30% ──
-  // Removed (2026-09-15): @cf/meta/llama-3.1-8b-instruct-fast (Llama 3.1 8B Instruct (Fast)) — delisted; llama-3.1-8b-instruct-fp8 (32k ctx) remains; replacement: @cf/meta/llama-3.1-8b-instruct-fp8
+  // Removed (2026-09-15): @cf/meta/llama-3.1-8b-instruct-fast (Llama 3.1 8B Instruct (Fast)) - delisted; Audit (2026-11-22): no llama-3.1 8B variant remains in the free catalog (retired 2026-11-20), so the old "fp8 remains" note is dropped
   // Removed (2026-08-30): @cf/google/gemma-3-12b-it (Gemma 3 12B IT) — Deprecated 2026-05-30 per Cloudflare Workers AI docs (developers.cloudflare.com/workers-ai/models/gemma-3-12b-it)
   // Removed (2026-08-30): @cf/moonshotai/kimi-k2.5 (Kimi K2.5) — Deprecated 2026-05-30 per Cloudflare changelog; replaced by @cf/moonshotai/kimi-k2.6 (developers.cloudflare.com/changelog/post/2026-05-08-planned-model-deprecations)
 ]
 
 // 📖 OVHcloud AI Endpoints - https://endpoints.ai.cloud.ovh.net
 // 📖 OpenAI-compatible API with European data sovereignty (GDPR)
-// 📖 Free sandbox: 2 req/min per IP per model (no API key needed), 400 RPM with API key
+// 📖 Free anonymous sandbox: 2 req/min per IP per model (no API key needed); keyed access needs a
+// 📖 payment method and is billed (400 RPM), so only the anonymous path is a free tier
 // 📖 Env var: OVH_AI_ENDPOINTS_ACCESS_TOKEN
 export const ovhcloud = [
   ['Qwen3.5-397B-A17B',                         'Qwen3.5 397B MoE',    'S+',  '76.4%',     '262k'], // Fixed (2026-09-29 audit): sweScore '76.2%' → '76.4%' per OVH's own benchmark block
-  ['Qwen3.6-27B',                               'Qwen3.6 27B',         'S+',  '77.2%',     '262k'],
+  ['Qwen3.6-27B',                               'Qwen3.6 27B',         'S+',  '77.2%',     '262k', null, '2027-02-10'], // ⚠️ DEPRECATED - OVHcloud end of service 2027-02-10 per the official catalog; auto-filtered by the 7th tuple element
+  ['qwen3.6-35b-a3b', 'Qwen3.6 35B MoE', 'S+', '73.4%', '256k'], // Added (2026-11-22 audit) - anonymous chat 200 on the free sandbox, SWE-bench Verified 73.4% per the model card
+  ['laguna-xs-2.1', 'Laguna XS 2.1', 'S+', '70.9%', '128k'], // Added (2026-11-22 audit) - anonymous chat 200 on the free sandbox, SWE-bench Verified 70.9% per the Poolside model card
   // Removed (2026-07-27): Qwen3-Coder-30B-A3B-Instruct (Qwen3 Coder 30B MoE) — no longer in catalog
   // Removed (2026-09-21): Qwen3-Coder-30B-A3B-Instruct (Qwen3 Coder 30B A3B) — absent from the official AI Endpoints catalog page (20 models, no coder model); the 2026-09-21 morning re-add was erroneous
   // Removed (2026-10-10 audit): Qwen3-Coder-30B-A3B-Instruct (Qwen3 Coder 30B A3B) — the 2026-09-29 "live router API" re-add is dead: chat endpoint returns model_not_found and the id is gone from /v1/models; replacement: Qwen3.8-27B
   ['gpt-oss-120b',                              'GPT OSS 120B',         'S',  '62.4%', '131k'],
-  ['gpt-oss-20b',                               'GPT OSS 20B',          'A+',  '50.3%', '131k'],
-  ['Meta-Llama-3_3-70B-Instruct',               'Llama 3.3 70B',        'B', '22.0%', '131k'],
+  ['DeepSeek-V4.1-Flash-1017', 'DeepSeek V4.1 Flash 1017', 'S', '-', '1M'], // Added (2026-11-22 audit) - anonymous chat 200 on the free sandbox, 1M ctx, no published SWE-bench Verified (tier provisional)
+  ['gpt-oss-20b',                               'GPT OSS 20B',          'S',  '60.7%', '131k'], // Fixed (2026-11-22 audit): sweScore '50.3%' -> '60.7%' (official high-reasoning card) and tier A+ -> S
+  ['Meta-Llama-3_3-70B-Instruct',               'Llama 3.3 70B',        'B', '22.0%', '131k', null, '2027-02-10'], // ⚠️ DEPRECATED - OVHcloud end of service 2027-02-10 per the official catalog
   // Removed (2026-07-27): Qwen3-32B (Qwen3 32B) — no longer in catalog
   // Removed (2026-08-13): Mistral-Small-3.2-24B-Instruct-2506 (Mistral Small 3.2) — no longer in OVHcloud public catalog (endpoint still reachable but not listed)
   // Removed (2026-07-27): Mistral-7B-Instruct-v0.3 (Mistral 7B Instruct) — no longer in catalog
   // Removed (2026-08-13): Mistral-Nemo-Instruct-2407 (Mistral Nemo) — no longer in OVHcloud public catalog
   // Removed (2026-09-21): Mistral-Small-3.2-24B-Instruct-2506 + Mistral-Nemo-Instruct-2407 + Mistral-7B-Instruct-v0.3 re-removed — none of the three Mistral models appear on the official AI Endpoints catalog page; the 2026-09-21 morning re-adds were erroneous
-  ['Mistral-Small-3.2-24B-Instruct-2506',       'Mistral Small 3.2 24B','B+', '20.0%', '131k', null, '2026-11-04'], // ⚠️ DEPRECATED — OVHcloud decommission 2026-11-04 (announced 2026-08-04, API 404s after that date); 7th tuple element auto-filters it from the catalog. Re-added (2026-09-29 audit) — served by the live router API (marketing page hides it); score 20.0% reused from the same model id on Scaleway
+  ['Mistral-Small-3.2-24B-Instruct-2506',       'Mistral Small 3.2 24B','B+', '20.0%', '131k'], // Fixed (2026-11-22 audit): dropped the stale 2026-11-04 shutdown (live chat still answers 200 and the official catalog shows no EOL), so the row is no longer auto-filtered
   ['Qwen3.5-9B',                                'Qwen3.5 9B',           'B+', '30.0%', '262k'],
-  ['Qwen2.5-VL-72B-Instruct', 'Qwen2.5-VL 72B', 'S', '-', '32k'], // Added (2026-08-13)
-  // ── Embeddings ──
-  ['Qwen3-Embedding-8B',                        'Qwen3 Embedding 8B',   'B',  '-',     '32k'], // Fixed (2026-07-27): ctx '-' → '32k'
-  ['bge-m3',                                    'BGE M3',               'B',  '-',     '8k'], // Fixed (2026-09-21): ctx '-' → '8k' (embedding model, 8192 tokens)
-  ['bge-multilingual-gemma2',                   'BGE Multilingual Gemma2','B','-',     '8k', null, '2027-01-21'], // Fixed (2026-09-21): ctx '-' → '8k' (embedding model, 8192 tokens); Fixed (2026-11-03 audit): end-of-service 2027-01-21 announced, auto-filters via the 7th tuple element
+  ['Qwen2.5-VL-72B-Instruct', 'Qwen2.5-VL 72B', 'S', '-', '32k', null, '2027-02-10'], // ⚠️ DEPRECATED - OVHcloud end of service 2027-02-10 per the official catalog
+  // Removed (2026-11-22 audit): Qwen3-Embedding-8B - embedding-only model with no documented chat route; out of scope for a coding chat catalog
+  // Removed (2026-11-22 audit): bge-m3 - embedding-only model, chat returns 404; out of scope for a coding chat catalog
+  // Removed (2026-11-22 audit): bge-multilingual-gemma2 - embedding-only model, out of scope for a coding chat catalog
   // Fix (2026-05-26): Qwen3.5-9B ctx 128k→262k, Mistral-Small ctx 131k→128k, Mistral-Nemo ctx 128k→118k, Mistral-7B ctx 32k→127k
   ['Qwen3Guard-Gen-8B', 'Qwen3Guard Gen 8B (moderation, beta)', 'C', '-', '32k'],
   ['Qwen3Guard-Gen-0.6B', 'Qwen3Guard Gen 0.6B (moderation, beta)', 'C', '-', '32k'],
   ['Qwen3.8-27B', 'Qwen3.8 27B', 'A+', '-', '262k'], // Added (2026-09-15) — verified via live audit
+  ['gemma-4-26b-a4b', 'Gemma 4 26B MoE', 'A-', '-', '256k'], // Added (2026-11-22 audit) - anonymous chat 200 on the free sandbox, no published SWE-bench Verified (tier provisional)
+  ['nemotron3-nano-30b', 'Nemotron 3 Nano 30B', 'A-', '38.8%', '256k'], // Added (2026-11-22 audit) - anonymous chat 200 on the free sandbox, SWE-bench Verified 38.8% per the NVIDIA model card
+  ['qwen3-vl-30b-a3b', 'Qwen3 VL 30B A3B', 'B+', '-', '32k'], // Added (2026-11-22 audit) - anonymous chat 200 on the free sandbox, no published SWE-bench Verified (tier provisional)
 ]
 
 
 
 // 📖 OpenCode Zen free models — hosted AI gateway accessed through OpenCode CLI/Desktop
-// 📖 Endpoint: https://opencode.ai/zen/v1/... — requires OpenCode Zen API key
+// 📖 Endpoint: https://opencode.ai/zen/v1/... - free access only works inside the OpenCode client
 // 📖 These models are FREE on the Zen platform and only run on OpenCode CLI or OpenCode Desktop
-// 📖 Login: https://opencode.ai/auth — get your Zen API key
+// 📖 Login: https://opencode.ai/auth - free usage is account-bound, an API key does not unlock it outside OpenCode
 // 📖 Config: set provider to opencode/<model-id> in OpenCode config
 export const opencodeZen = [
-  ['big-pickle',                       'Big Pickle',              'S+', '72.0%', '200k'],
+  ['big-pickle',                       'Big Pickle',              'S+', '-', '200k'], // Fixed (2026-11-22 audit): sweScore '72.0%' -> '-' (unsourced stealth score); tier kept provisional
   // Removed (2026-09-29 audit): deepseek-v4-flash-free (DeepSeek V4 Flash Free) — live chat probe returns 400 "Upstream request failed: Model is unavailable" and it is gone from the docs free table; the 2026-09-21 re-add said "re-verify at next audit", verified dead
   // Removed (2026-10-10 audit): mimo-v2.5-free (MiMo-V2.5 Free) — live chat probe returns 401 ModelError "not supported" and it is absent from the /v1/models list (docs table from Oct 8 is stale on this one); replacement: mimo-v2.6-flash-free
   ['mimo-v2.6-flash-free', 'MiMo-V2.6 Flash Free', 'S+', '-', '200k'], // Added (2026-09-22) — new free promo model on the live Zen /v1/models list
@@ -487,7 +477,7 @@ export const opencodeZen = [
   ['nemotron-3.5-lightning-free', 'Nemotron 3.5 Lightning Free', 'S+', '-', '262k'], // Added (2026-08-13)
   // Removed (2026-09-05): laguna-s-2.1-free (Laguna S 2.1 Free) - deprecated: marked status=deprecated in the models.dev registry (2026-09-05) and absent from both the Zen /v1/models endpoint and the docs free-models list; the limited-time promo ended
   // Removed (2026-10-17 audit): muse-spark-1.3-contributor-free (Muse Spark 1.3 Contributor Free) — gateway returns an explicit ModelDeprecated error; the contributor promo ended and only the paid muse-spark-1.3 ($1.25/$4.25 per 1M) remains
-  ['jev-1.13-free', 'Jev 1.13 Free', 'B+', '-', '200k'], // Added (2026-09-21) — new free model on the live Zen /v1/models list (74 models checked)
+  // Removed (2026-11-22 audit): jev-1.13-free - live but decision-only (System One typed judgments, not chat/completions), so it is not usable as a coding model here
   // Removed (2026-11-03 audit): space-bunny-free (Space Bunny Free) — absent from the live /v1/models catalog, probe returns upstream-unavailable; the free stealth rotation ended
   // Removed (2026-11-03 audit): longcat-2.5-preview-free (LongCat 2.5 Preview Free) — absent from the live /v1/models catalog, probe returns upstream-unavailable; preview rotation ended
   // Added (2026-10-17 audit) — new free promo wave on the live Zen list (verified via FreeTierError chat probes + models.dev; note /v1/models omits some still-live free ids):
@@ -495,12 +485,17 @@ export const opencodeZen = [
   // Removed (2026-11-03 audit): exo-free (Exo Free) — absent from the live /v1/models catalog, probe returns upstream-unavailable
   ['nemotron-3.5-super-vl-free', 'Nemotron 3.5 Super VL Free', 'S+', '71.1%', '1M'], // Added (2026-10-17 audit) — 1M ctx on Zen; SWE score follows the same model on NVIDIA NIM, S+ on the documented scale
   ['deepseek-v4.1-flash-free', 'DeepSeek V4.1 Flash Free', 'S+', '-', '200k'], // Added (2026-10-17 audit) — capped at 200k on Zen
-  ['glm-5.3-flash-free', 'GLM 5.3 Flash Free', 'A+', '-', '200k'], // Added (2026-10-17 audit) — capped at 200k on Zen; tier follows the GLM-5.3-Flash reads on other gateways
+  // Removed (2026-11-22 audit): glm-5.3-flash-free - retired 2026-11-18 per the official deprecated-models table
   // Added (2026-11-03 audit) — 2 new free models on the live Zen list (4 tracked ids died the same day):
   ['flint-40b-free', 'Flint 40B Free', 'S+', '74.2%', '262k'], // Added (2026-11-03 audit) — open-weight Recursive Flint (40B MoE, 2.5B active), vendor-reported SWE-bench Verified 74.2%; same model as recursive/flint-v1.0:free on OpenRouter
-  ['pulse-alpha-free', 'Pulse Alpha Free', 'S', '-', '1M'], // Added (2026-11-03 audit) — new stealth model (released 2026-11-02), 1M ctx; geo-restricted (blocked in the EU and several countries)
+  // Added (2026-11-22 audit) - 4 new free ids on the live Zen list, tiers provisional (no published SWE-bench Verified):
+  ['tidepool-alpha-free', 'Tidepool Alpha Free', 'S', '-', '1M'], // Added (2026-11-22 audit) - 1M ctx
+  ['iceman-free', 'Iceman Free', 'S', '-', '262k'], // Added (2026-11-22 audit) - 262k ctx
+  ['longcat-2.5-free', 'LongCat 2.5 Free', 'A+', '-', '1M'], // Added (2026-11-22 audit) - 1M ctx
+  ['hy4-flash-free', 'Hy4 Flash Free', 'A+', '-', '1M'], // Added (2026-11-22 audit) - 1M ctx
+  // Removed (2026-11-22 audit): pulse-alpha-free - retired 2026-11-06 per the official deprecated-models table
   // 2026-09-29 audit: the free-tier gate hardened since issue #181 — 403 FreeTierError even WITH the x-opencode-session header, only space-bunny-free answers plain requests; if TUI probes fail, use a real Zen key
-  // 2026-11-03 audit: jev-1.13-free is still live even though hidden from the public listing (kept)
+  // Audit (2026-11-22): free access needs the OpenCode client (external probes get 429 FreeUsageLimitError even with the session header), the account is bound and an API key does not unlock it outside OpenCode; jev-1.13-free removed as decision-only
 ]
 
 // 📖 Kilo source - https://api.kilo.ai/api/gateway
@@ -509,27 +504,31 @@ export const opencodeZen = [
 export const kilo = [
   ['kilo-auto/free',                         'Kilo Auto Free',      'A+', '-',     '256k'],
   // Removed (2026-09-05): kilo-auto/small (Kilo Auto Small) - no longer free: gateway now lists it with isFree=false and paid pricing ($0.05/M prompt, $0.40/M completion); it routes to paid small models
-  ['thinkingmachines/inkling-small:free', 'Thinking Machines Inkling Small (free)', 'S+', '80.2%', '1M'], // tier fixed: 80.2% >= 70% is S+ on the documented scale
+  // Removed (2026-11-22 audit): thinkingmachines/inkling-small:free - 404 model_not_found on the live gateway
   ['reflection/beam-free', 'Reflection Beam 1.0 (free)', 'S+', '80.9%', '1M'], // Added (2026-10-17 audit) — new free flagship on the live gateway (501B MoE, released ~2026-10-05), SWE-bench Verified 80.9% per reflection.ai
   // Removed (2026-10-17 audit): stepfun/step-5-preview-free (StepFun Step 5 Preview (free)) — free endpoint delisted from the gateway, stepfun/step-5-preview now lists isFree:false with per-token pricing; reverses the 2026-10-10 add (Step 5 stays free on NVIDIA NIM)
   // Removed (2026-10-10 audit): stepfun/step-3.7-flash:free — :free variant gone from the gateway (390 models checked), only paid step-3.7-flash remains; replacement: stepfun/step-5-preview-free
   // Removed (2026-11-03 audit): poolside/laguna-s-2.1:free (Poolside Laguna S 2.1 (free)) — removed entirely from the gateway catalog (0 poolside/laguna entries in the live models list; the KiloBench leaderboard entry remains but the gateway no longer serves it). Mirrors the OpenRouter delisting
   ['nvidia/nemotron-3-ultra-550b-a55b:free', 'NVIDIA Nemotron 3 Ultra (free)', 'A+', '-', '1M'],
-  ['thinkingmachines/inkling:free', 'Thinking Machines Inkling (free)', 'S+', '-', '1M'], // Re-added (2026-11-03 audit) — the flagship sibling of inkling-small is back as a $0 gateway entry (reverses the 2026-09-15 removal)
-  ['recursive/flint-v1.0:free', 'Recursive Flint (free)', 'A-', '-', '262k'], // Added (2026-11-03 audit) — new free coding model on the gateway (added 2026-10-21); tiered A- on this gateway (S+ 74.2% via OpenRouter)
+  // Removed (2026-11-22 audit): thinkingmachines/inkling:free - 404 model_not_found on the live gateway
+  ['recursive/flint-v1.0:free', 'Recursive Flint (free)', 'S+', '74.2%', '262k'], // Fixed (2026-11-22 audit): tier A- -> S+ and sweScore '-' -> '74.2%' (Recursive model card)
   ['google/gemma-4-31b-it:free', 'Google Gemma 4 31B (free)', 'B+', '-', '262k'], // Added (2026-11-03 audit) — new free Gemma 4 31B slot on the gateway
+  ['baidu/ernie-5.5-flash-preview:free', 'Baidu ERNIE 5.5 Flash Preview (free)', 'A', '-', '1M'], // Added (2026-11-22 audit) - new $0 gateway entry, tier provisional (no published SWE-bench Verified), same read as OpenRouter
+  ['liquid/lfm-3-1.7b:free', 'LiquidAI LFM3-1.7B (free)', 'A', '43.4%', '262k'], // Added (2026-11-22 audit) - new $0 gateway entry, SWE-bench Verified 43.4% per the LiquidAI model card
+  ['particle-ai/particle-1:free', 'Particle 1 (free)', 'A-', '-', '1M'], // Added (2026-11-22 audit) - new $0 gateway entry, tier provisional, same read as OpenRouter
+  ['inclusionai/ling-3.2-flash:free', 'Ling 3.2 Flash (free)', 'B+', '-', '1M'], // Added (2026-11-22 audit) - new $0 gateway entry, tier provisional, same read as OpenRouter
   ['nvidia/nemotron-3.5-super-vl:free', 'NVIDIA Nemotron 3.5 Super VL (free)', 'S+', '71.1%', '1M'], // Added (2026-10-17 audit) — new $0 entry on the live gateway, 1M ctx; SWE score follows the same model on NVIDIA NIM, S+ on the documented scale
-  ['xingchen-agi/xing4.0-29b-a4b:free', 'XingChen Xing4.0 29B (free)', 'S+', '75.0%', '262k'], // Added (2026-10-17 audit) — new $0 entry on the live gateway; SWE-bench Verified 75.0% per the TeleAI model card (same model is the $0 pick on SiliconFlow/OpenRouter)
+  // Removed (2026-11-22 audit): xingchen-agi/xing4.0-29b-a4b:free - 404 model_not_found on the live gateway
   // Removed (2026-09-15): minimax/minimax-m2.7:free (MiniMax M2.7 (free)) — no longer free on Kilo gateway
-  ['cohere/north-mini-code:free', 'Cohere North Mini Code (free)', 'A-', '-', '256k'],
+  // Removed (2026-11-22 audit): cohere/north-mini-code:free - 404 model_not_found on the live gateway
   // Removed (2026-11-03 audit): nvidia/nemotron-3-super-120b-a12b:free (NVIDIA Nemotron 3 Super (free)) — :free variant retired, only the paid variant remains ($0.08/$0.45 per M, 1M ctx); replacement: nvidia/nemotron-3-ultra-550b-a55b:free
   // Removed (2026-11-03 audit): poolside/laguna-xs-2.1:free (Poolside Laguna XS 2.1 (free)) — removed entirely from the gateway catalog (0 poolside/laguna entries; leaderboard keeps a KiloBench 26.7% entry but the gateway no longer serves it)
   ['nvidia/nemotron-3.5-lightning:free', 'NVIDIA Nemotron 3.5 Lightning (free)', 'B+', '-', '1M'],
-  ['dots-studio/dots-3-note-preview:free', 'Dots Studio Dots3-Note Preview (free)', 'B+', '-', '512k'],
+  // Removed (2026-11-22 audit): dots-studio/dots-3-note-preview:free - 404 model_not_found on the live gateway
   ['openrouter/free', 'OpenRouter Free Models Router', 'B', '-', '200k'], // Fixed (2026-10-17 audit): ctx '-' → '200k' (live gateway metadata exposes context_length again; reverses the 2026-10-10 read)
   // Removed (2026-09-15): minimax/minimax-m3:free (MiniMax M3 (free)) — free variant removed from gateway
   // Removed (2026-09-15): thinkingmachines/inkling:free (Inkling (free)) — free variant no longer exposed
-  ['liquid/lfm-2.5-2.6b:free', 'LFM2.5-2.6B (free)', 'C', '-', '64k'], // Added (2026-09-15) — verified via live audit
+  // Removed (2026-11-22 audit): liquid/lfm-2.5-2.6b:free - 404 model_not_found on the live gateway, replaced by liquid/lfm-3-1.7b:free
   // Removed (2026-09-28 audit): z-ai/glm-5.2:free (GLM 5.2 (free)) — no longer free on Kilo: now billed $1.40/$4.40 per M
   // Removed (2026-09-29 audit): inclusionai/ling-3.0-flash-fin:free (Ling 3.0 Flash Fin (free)) — :free variant gone from the catalog (395 models checked), id survives only as paid ($0.075/M prompt); replacement: ling-3.0-flash-sante:free
   // Removed (2026-10-10 audit): inclusionai/ling-3.0-flash-sante:free — :free variant gone from the gateway (only paid remains), and it is a health/medicine-specialized model anyway
@@ -548,21 +547,22 @@ export const kilo = [
 // 📖 Pro-tagged models from /v1/models are intentionally excluded.
 export const llm7 = [
   // 📖 LLM7 live /v1/models: only `turbo` tier is free (noKeyNeeded). All `pro` models are usage-based paid.
-  // 📖 Verified live 2026-10-10 (audit): free tier = DeepSeek-V4-Flash-0731, GLM-5.3-Flash, kimi-k2.6, kimi-k2.7-code,
-  // 📖 gpt-oss:20b, nemotron-3-nano:30b, mistral-Nemo-Instruct-2407, codestral-latest (all turbo, usage_based_only=false).
+  // 📖 Verified live 2026-11-22 (audit): free tier = mistral-Nemo-Instruct-2407 (128k), gpt-oss:20b (128k),
+  // 📖 codestral-latest (32k) and the new gemma-3-27b (262k) - all turbo, usage_based_only=false. Only the turbo tier is free.
   // Removed (2026-09-05): glm-5.3, glm-5.3-flash, gemini-3.5-flash-low, gpt-5.4, gpt-5.4-mini, gpt-5.5, gpt-5.6-sol, grok-4.5, grok-4.6 — tier=pro usage_based_only (paid) or nonexistent on /v1/models (PR #178 additions reverted)
   // ── S+ tier — SWE-bench Verified ≥70% ──
   // Removed (2026-10-10 audit): minimax-m2.7 (MiniMax M2.7) — gone from the live /v1/models; successor minimax-m3 is usage_based_only=true (paid), so no free MiniMax remains
-  ['GLM-5.3-Flash', 'GLM 5.3 Flash', 'S+', '-', '400k'], // Re-added (2026-10-10 audit) — back in live /v1/models as turbo tier, usage_based_only=false (98.8% availability, reasoning + tools); reverses the 2026-09-29 removal which was based on the same weekly rotation, ctx 400000 per live metadata
-  ['DeepSeek-V4-Flash-0731', 'DeepSeek V4 Flash 0731', 'S+', '79.0%', '400k'], // Added (2026-09-29 audit) — new free no-key coding flagship (turbo tier), reasoning + tools, verified answering keyless; score 79.0% is the V4 Flash family SWE-bench Verified (0731-specific score not published)
+  // Removed (2026-11-22 audit): GLM-5.3-Flash - status=retired (2026-11-14) in the official catalog history, anonymous probe returns 400
+  // Removed (2026-11-22 audit): DeepSeek-V4-Flash-0731 - status=retired (2026-11-18) in the official catalog history; only the paid lowercase replacement remains
   // ── A+ tier — SWE-bench Verified 50–60% ──
   // Removed (2026-09-05): gemini-3.1-flash-lite (Gemini 3.1 Flash Lite) — now tier=pro usage_based_only (paid) per live /v1/models
   // Removed (2026-11-03 audit): kimi-k2.7-code (Kimi K2.7 Code) — flipped to paid-only: API now reports tier=pro usage_based_only=true ($0.48/$2.00 per 1M); free nil-token probe returns 401
   // Removed (2026-11-03 audit): kimi-k2.6 (Kimi K2.6) — flipped to paid-only: API now reports tier=pro usage_based_only=true ($0.20/$0.90 per 1M); free nil-token probe returns 401. Still free on NVIDIA NIM / Pollinations / Ollama Cloud
   ['mistral-Nemo-Instruct-2407', 'Mistral Nemo 12B Instruct', 'A-', '-', '128k'], // Added (2026-08-13)
   ['gpt-oss:20b', 'GPT-OSS 20B', 'B+', '-', '128k'], // Added (2026-10-10 audit) — open-weights 20B reasoning, turbo tier usage_based_only=false
-  ['minimax-m2.7', 'MiniMax M2.7', 'S+', '78.0%', '180k'], // Re-added (2026-10-17 audit) — back on the live /v1/models as turbo tier (free), 180k ctx; tier + score follow the same model on routeway/ollama-cloud. Reverses the 2026-10-10 removal
-  ['nemotron-3-nano:30b', 'Nemotron 3 Nano 30B', 'B+', '-', '1M'], // Added (2026-10-10 audit) — turbo tier, 1M ctx, 100% availability; score follows the same model on ollama-cloud (38.8%)
+  ['gemma-3-27b', 'Gemma 3 27B', 'B', '-', '262k'], // Added (2026-11-22 audit) - turbo tier, anonymous probe returns 200; no published SWE-bench Verified (tier provisional)
+  // Removed (2026-11-22 audit): minimax-m2.7 - status=retired (2026-11-18) in the official catalog history
+  // Removed (2026-11-22 audit): nemotron-3-nano:30b - status=retired (2026-11-09) in the official catalog history
   // ── A tier — SWE-bench Verified 40–50% ──
   ['codestral-latest', 'Codestral Latest', 'A', '40.0%', '32k'],
 ]
@@ -574,9 +574,9 @@ export const routeway = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
   // Removed (2026-11-03 audit): deepseek-v4-flash:free (DeepSeek V4 Flash) — :free variant gone from the live API, the base id now bills $0.12/$0.25 per M; replacement: deepseek-v4.1-flash:free
   // Removed (2026-11-03 audit): minimax-m2.7:free (MiniMax M2.7) — id gone from the live API entirely (closest paid: minimax-m2.5); replacement: minimax-m3.1-flash:free
-  ['deepseek-v4.1-flash:free', 'DeepSeek V4.1 Flash', 'S+', '-', '42k'], // Added (2026-11-03 audit) — the free DeepSeek slot moved to the V4.1 generation, $0/$0, 42k ctx
+  // Removed (2026-11-22 audit): deepseek-v4.1-flash:free - absent from the live 282-model catalog and from the public catalog, detail route blank
   ['minimax-m3.1-flash:free', 'MiniMax M3.1 Flash', 'S+', '-', '42k'], // Added (2026-11-03 audit) — the free MiniMax slot moved to the M3.1 generation, $0/$0, 42k ctx
-  ['muse-glimmer-30b:free', 'Muse Glimmer 30B', 'B+', '-', '131k'], // Added (2026-09-02)
+  ['muse-glimmer-30b:free', 'Muse Glimmer 30B', 'S+', '76.0%', '131k'], // Fixed (2026-11-22 audit): tier B+ -> S+ and sweScore '-' -> '76.0%' per the official Meta model card (high reasoning)
   // Added (2026-09-28 audit) — 6 free Gemma 4 26B A4B community finetunes, 62k ctx, vision + tools + reasoning:
   ['gemma-4-26b-a4b-it-chimerax:free', 'Gemma 4 26B A4B ChimeraX', 'B+', '-', '62k'],
   ['gemma-4-26b-a4b-it-darksoul:free', 'Gemma 4 26B A4B Darksoul', 'B+', '-', '62k'],
@@ -603,37 +603,22 @@ export const routeway = [
 ]
 
 // 📖 Novita AI source - https://api.novita.ai/openai/v1/models
-// 📖 Novita is mostly paid/trial-credit, so this catalog only includes live chat models reporting 0 input/output price.
-// 📖 Test/dev/placeholder zero-price IDs were intentionally excluded.
+// 📖 ⚠️ RETIRED 2026-11-22 - none of the 5 tracked zero-price ids is left: they are absent from the
+// 📖 live public catalog (78 ids), every per-model page 404s and the pricing/catalog feeds expose no
+// 📖 $0/$0 chat pair. Kept as an empty array so downstream provider-metadata/config code that imports
+// 📖 `novita` and references the 'novita' key (NOVITA_API_KEY) doesn't crash; the entry is also
+// 📖 commented out of the `sources` map below so it won't appear in the catalog.
 export const novita = [
-  // 📖 2026-10-17 audit: the zero-price tier collapsed again — 7 of 8 catalog models now bill per
-  // 📖 token on the live /v1/models (the Ling TIME LIMITED FREE promo and the GLM/Qwen/MiniMax free
-  // 📖 tiers all ended). Only dev/glm46 ($0, 256k) + the new apodex partner launch remain free.
-  // ── S+ tier — SWE-bench Verified ≥70% ──
-  // Removed (2026-10-10 audit): qwen/qwen3.6-plus + qwen/qwen3.5-plus — both gone from the live /v1/models (94 models): Novita killed the Qwen3.5/3.6 Plus tier in favor of the Qwen3.8 generation; replacements: qwen/qwen3.8-flash (cheap, 1M ctx) / qwen/qwen3.8-max (flagship)
-  // ── A tier — SWE-bench Verified 40–50% ──
-  // Removed (2026-10-17 audit): zai-org/glm-5.3-flash (GLM 5.3 Flash) — free promo ended, API now bills $1.5/M in + $5/M out; reverses the 2026-10-10 add
-  // Removed (2026-10-17 audit): qwen/qwen3.8-flash (Qwen3.8 Flash) — no longer free, now bills $1.5/M in + $4.7/M out; reverses the 2026-10-10 add
-  // Removed (2026-09-29 audit): inclusionai/ling-3.0-flash-fin (Ling 3.0 Flash Fin) — still listed but now billed $0.075/M in, $0.22/M out; replacement: ling-3.1-flash
-  // Removed (2026-10-17 audit): inclusionai/ling-3.0-flash-sante (Ling 3.0 Flash Sante) — TIME LIMITED FREE promo ended, now $0.75/M in + $2.2/M out
-  // Removed (2026-10-17 audit): inclusionai/ling-3.1-flash (Ling 3.1 Flash) — no longer free, now bills $3/M in + $9/M out; reverses the 2026-09-29 add
-  ['dev/glm46', 'GLM 4.6 (dev)', 'A', '-', '256k'], // Re-added (2026-09-29 audit) — zero-price again on the live API; reverses the 2026-09-22 paid-only removal; 2026-10-17 audit: still the only $0 legacy model
-  ['apodex/apodex-1.1-mini', 'Apodex 1.1 Mini', 'B+', '-', '262k'], // Added (2026-10-17 audit) — free partner launch since 2026-10-01 (35B MoE, no stated end date), $0 on the live API; replaces its OpenRouter :free slot delisted the same day
-  ['bunny', 'Bunny', 'A-', '-', '262k'], // Added (2026-11-03 audit) — zero-price on the live API; the renamed Space Bunny stealth model (community reads it as MiniMax M3.1-class with strong coding reputation); reverses the 2026-09-29 hold
-  // Added (2026-11-03 audit) — 2 new free gateway router models (launched 2026-10-27), 1M ctx each:
-  ['nvrouter/auto', 'Novita Router Auto', 'B+', '-', '1M'],
-  ['nvrouter/fusion', 'Novita Router Fusion', 'B', '-', '1M'],
-  // Removed (2026-10-17 audit): inclusionai/ling-3.0-flash (Ling 3.0 Flash) — no longer free, now bills $0.6/M in + $1.8/M out; reverses the 2026-10-10 add
-  // Removed (2026-10-17 audit): zai-org/glm-4.7-flash (GLM 4.7 Flash) — no longer free, now bills $0.7/M in + $4/M out; reverses the 2026-10-10 add
-  // Removed (2026-10-17 audit): minimax/minimax-m2.7 (MiniMax M2.7) — no longer free, now bills $3/M in + $12/M out; reverses the 2026-10-10 add
-  // Notes (2026-09-29): `bunny` is also zero-price again but Novita publishes no description, coding relevance unverifiable; left out
+  // Removed (2026-11-22 audit): all 5 entries - dev/glm46, apodex/apodex-1.1-mini, bunny,
+  // nvrouter/auto, nvrouter/fusion. No free route remains.
 ]
 
 // 📖 Pollinations AI source - https://gen.pollinations.ai
 // 📖 OpenAI-compatible endpoint: https://gen.pollinations.ai/v1/chat/completions
-// 📖 Free tier: free API key from https://enter.pollinations.ai (Pollen credit system with free daily grants).
+// 📖 Quota (2026-11-22 audit): there is no recurring daily grant - a new account gets a ONE-TIME Quest
+// 📖 credit (roughly $1.50-$2.50, no card) and a free API key from https://enter.pollinations.ai is required.
 // 📖 Since 2026-09 the /v1/chat/completions endpoint requires a free API key (401 without one); the legacy
-// 📖 anonymous path only reaches the default model via GET /text. Daily Pollen grants per tier renew free.
+// 📖 anonymous path only reaches the default model via GET /text. Once the Quest credit is spent, paid Pollen is needed.
 // 📖 Verified live 2026-09-21 via GET /v1/models (411 models): the old short ids (openai, deepseek, kimi,
 // 📖 laguna...) are no longer primary ids but still resolve as aliases of the canonical namespaced models.
 // 📖 Note (2026-09-21): the anonymous tier (text.pollinations.ai/models) now lists ONLY openai-fast;
@@ -651,6 +636,8 @@ export const pollinations = [
   ['kimi', 'Moonshot Kimi K2.6', 'S+', '80.2%', '262k'],
   ['minimax', 'MiniMax M3', 'S+', '80.5%', '524k'],
   ['moonshotai/kimi-k3', 'Moonshot Kimi K3', 'S+', '76.8%', '1M'], // Added (2026-09-21) — canonical id, healthy on live /v1/models; score follows the Kimi K3 entry on NVIDIA
+  ['moonshotai/kimi-k3.1-pro', 'Moonshot Kimi K3.1 Pro', 'S+', '-', '1M'], // Added (2026-11-22 audit) - new free listing (paid_only=false), no published SWE-bench Verified (tier provisional)
+  ['minimax/minimax-m3.1-flash', 'MiniMax M3.1 Flash', 'S+', '-', '1M'], // Added (2026-11-22 audit) - new free listing (paid_only=false), no published SWE-bench Verified (tier provisional)
   // Removed (2026-09-28 audit): deepseek/deepseek-v4-pro — now paid_only in the Pollinations catalog; still free on NVIDIA NIM
   // Removed (2026-09-26): qwen/qwen3.8-max (Qwen3.8 Max) — requires paid Pollen (embedded credits error on free-tier keys, issue #190); still free on DashScope
   // Removed (2026-09-26): google/gemini-3.1-pro-preview (Gemini 3.1 Pro Preview) — requires paid Pollen (embedded credits error on free-tier keys, issue #190); no free Gemini Pro tier anywhere
@@ -671,11 +658,13 @@ export const pollinations = [
   ['openai/gpt-6.1-terra', 'OpenAI GPT-6.1 Terra', 'S', '-', '1M'], // Added (2026-11-03 audit) — new free listing on live /v1/models (added upstream 2026-10-26)
   // ── A+ tier — SWE-bench Verified 50–60% ──
   ['deepseek/deepseek-v4.1-flash', 'DeepSeek V4.1 Flash', 'A+', '-', '1M'], // Added (2026-09-22) — healthy on live /v1/models, successor to V4 Flash
+  ['deepseek/deepseek-v4.1-flash-1017', 'DeepSeek V4.1 Flash 1017', 'A+', '-', '1M'], // Added (2026-11-22 audit) - new dated free listing (paid_only=false), tier follows the V4.1 Flash entry above
+  ['meta/muse-spark-open', 'Meta Muse Spark Open', 'A+', '-', '1M'], // Added (2026-11-22 audit) - new free listing (paid_only=false), no published SWE-bench Verified (tier provisional)
   ['openai/gpt-5.6-terra', 'OpenAI GPT-5.6 Terra', 'A+', '-', '1M'], // Added (2026-11-03 audit) — new free listing on live /v1/models
   ['stealth/glyph-cluster', 'Glyph Cluster (Stealth)', 'A+', '-', '256k'], // Added (2026-11-03 audit) — experimental coding-focused stealth model (256k ctx, 99.94% success over 1612 requests per live metadata); same stealth slot as Kilo/Vercel/onomeo
   // Removed (2026-09-28 audit): meituan/longcat-2.0 (LongCat 2.0) — now paid_only in the Pollinations catalog
   // Removed (2026-09-26): gemma-4-31b (Gemma 4 31B) — requires paid Pollen (embedded credits error on free-tier keys, issue #190); the free Gemma route is NVIDIA NIM
-  ['gpt-oss', 'GPT OSS 20B', 'A+', '50.3%', '128k'], // Fixed (2026-10-17 audit): ctx '131k' → '128k' (live gen.pollinations.ai metadata)
+  ['gpt-oss', 'GPT OSS 20B', 'S', '60.7%', '128k'], // Fixed (2026-11-22 audit): alias resolves to OpenAI GPT OSS 20B, sweScore '50.3%' -> '60.7%' (official high-reasoning card) and tier A+ -> S
   // Removed (2026-09-28 audit): qwen3.7-flash — now paid_only in the Pollinations catalog; still free on DashScope
   // Added (2026-09-28 audit) — 7 new free models on the live gen.pollinations.ai catalog:
   ['openai/gpt-6-sol', 'OpenAI GPT-6 Sol', 'S+', '-', '1M'],
@@ -690,7 +679,7 @@ export const pollinations = [
   // Added (2026-10-10 audit) — 3 new free models on live gen.pollinations.ai/v1/models (the 4 other candidates found the same day were skipped: kimi-k2.7-code, qwen3-coder-next, laguna-s-2.1, longcat-2.0 all carry a 2026-09 "paid Pollen" verdict and the audit did not sniff completions to clear it, see issue #190 note above):
   ['openai/gpt-6.1-sol', 'OpenAI GPT-6.1 Sol', 'S+', '-', '1M'], // Added (2026-10-10 audit) — new in the live catalog, GPT-6 Sol successor, 1M ctx
   // Added (2026-10-17 audit) — 6 new free models on live gen.pollinations.ai/v1/models (5 catalog slots flipped to paid Pollen the same day):
-  ['qwen/qwen3.8-2.4t-a95b', 'Qwen3.8 2.4T A95B', 'A+', '-', '256k'], // Added (2026-10-17 audit) — the DashScope 2.4T flagship, capped at 256k here; tier follows the DashScope entry
+  // Removed (2026-11-22 audit): qwen/qwen3.8-2.4t-a95b - now paid_only=true in the live catalog and the Quest credit cannot cover paid Pollen
   ['x-ai/grok-4.6', 'xAI Grok 4.6', 'A+', '-', '200k'], // Added (2026-10-17 audit) — free successor of the paid-flipped grok-4.7
   ['openai/gpt-5.4', 'OpenAI GPT-5.4', 'S', '-', '1M'], // Added (2026-10-17 audit) — full GPT-5.4 at 1M ctx (the 'openai' alias keeps routing to gpt-5.4-nano)
   ['x-ai/grok-4.3', 'xAI Grok 4.3', 'B+', '-', '200k'], // Added (2026-10-17 audit) — legacy Grok slot back on the free tier
@@ -704,7 +693,8 @@ export const pollinations = [
 
 // 📖 SiliconFlow source - https://api.siliconflow.cn/v1/chat/completions
 // 📖 OpenAI-compatible endpoint: https://api.siliconflow.cn/v1
-// 📖 Free tier: permanently free models at $0 (no card needed beyond phone SMS verification).
+// 📖 Free tier: permanently free models at $0, but since 2026-05-15 a MANDATORY real-name verification
+// 📖 is required (regional ID documents or the offline alternative), not SMS only; no card needed.
 // 📖 Verified 2026-08-23 via pricing page + docs: THUDM/GLM-Z1-9B-0414 is 免费; Qwen3-8B and DeepSeek-R1-Distill-Qwen-7B
 // 📖 documented as free in SiliconFlow guide 2026-06-05 ("Three models are completely free: Qwen3-8B, DeepSeek-R1-Distill-Qwen-7B, DeepSeek-OCR")
 // 📖 and still reachable with free-tier rate limits (1000 RPM). Keep only the chat text models here.
@@ -716,7 +706,7 @@ export const siliconflow = [
   // Removed (2026-09-21): Qwen/Qwen3-8B ($0.06/M) + Qwen/Qwen2.5-7B-Instruct ($0.05/M) — no longer free, both now paid on the official model pages; replacement: Qwen/Qwen3.5-4B
   // Removed (2026-09-05): deepseek-ai/DeepSeek-R1-Distill-Qwen-7B (DeepSeek R1 Distill Qwen 7B) - No longer listed on SiliconFlow pricing/catalog page (0 of 184 model records); superseded by the newer R1-0528 Qwen3 distill
   // Removed (2026-09-22): Qwen/Qwen3.5-4B (Qwen3.5 4B) — absent from the official pricing page free list, remaining Qwen3.5 sizes are all paid
-  ['XingChenAGI/Xing4.0-29B', 'Xing4.0 29B', 'A-', '-', '256k'], // Fixed (2026-09-28 audit): ctx '262k' → '256k', // Added (2026-09-21) — new $0 model on the official pricing page (181 records checked); engineering/coding focused
+  ['XingChenAGI/Xing4.0-29B', 'Xing4.0 29B', 'S+', '75.0%', '256k'], // Fixed (2026-11-22 audit): sweScore '-' -> '75.0%' and tier A- -> S+ per the official TeleAI model card (same checkpoint as the hosted route)
   // Re-added (2026-11-03 audit) — 6 small chat models are 免费 again on the official pricing page with price-0 rows in the console catalog payload (exact ctx verified): reverses the 2026-09 paid/deprecated verdicts. GLM-5.3-Flash stays excluded: the rendered pricing table shows it paid (¥0.80/¥2.80) despite one stale price-0 payload block
   // ── B+ tier ──
   ['Qwen/Qwen3-8B', 'Qwen3 8B', 'B+', '-', '128k'], // Re-added (2026-11-03 audit) — 免费 again on the official pricing page (reverses the 2026-09-21 paid verdict)
@@ -737,24 +727,24 @@ export const siliconflow = [
 export const requesty = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
   ['nvidia/nemotron-3-ultra-550b-a55b', 'Nemotron 3 Ultra', 'S+', '71.9%', '1M'],
-  ['poolside/laguna-xs.2', 'Laguna XS.2', 'S+', '69.9%', '32k'], // Fixed (2026-11-03 audit): sweScore '70.9%' → '69.9%' (70.9% belongs to successor Laguna XS 2.1, not on Requesty; 69.9% is the official Poolside model card for XS.2)
+  // Removed (2026-11-22 audit): poolside/laguna-xs.2 - absent from the global and EU 787-model catalogs and from the public directory
   // ── S tier — SWE-bench Verified 60–70% ──
-  ['nvidia/nemotron-3-super-120b-a12b', 'Nemotron 3 Super', 'S', '60.5%', '1M'],
-  ['poolside/laguna-m.1', 'Laguna M.1', 'S', '-', '32k'],
+  // Removed (2026-11-22 audit): nvidia/nemotron-3-super-120b-a12b - absent from the global and EU catalogs, the free docs are stale
+  // Removed (2026-11-22 audit): poolside/laguna-m.1 - absent from the global and EU 787-model catalogs and from the public directory
   // ── A+ tier — SWE-bench Verified 50–60% ──
   ['google/gemma-4-31b-it', 'Gemma 4 31B', 'A+', '52.0%', '256k'], // Fixed (2026-10-17 audit): ctx '262k' → '256k' (live context_window on router.requesty.ai)
-  ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', 'Nemotron 3 Omni', 'A+', '52.0%', '128k'], // Fixed (2026-10-17 audit): ctx '131k' → '128k' (live context_window)
+  ['nvidia/nemotron-3-nano-omni-30b-a3b-reasoning', 'Nemotron 3 Omni', 'A+', '-', '128k'], // Fixed (2026-11-22 audit): sweScore '52.0%' -> '-' (no published figure backs 52.0 on Requesty)
   // ── A tier — SWE-bench Verified 40–50% ──
   ['nvidia/nemotron-3-nano-30b-a3b', 'Nemotron Nano 30B', 'A-', '38.8%', '256k'], // Fixed (2026-10-17 audit): ctx '262k' → '256k' (live context_window)
   // ── B+ tier — SWE-bench Verified 30–35% ──
   ['nvidia/nemotron-3.5-lightning-30b-a3b', 'Nemotron 3.5 Lightning', 'B+', '-', '1M'],
   // ── B tier — SWE-bench Verified 20–30% ──
   ['mistral/leanstral-1-5', 'Leanstral 1.5', 'B', '-', '256k'], // Fixed (2026-10-17 audit): ctx '262k' → '256k' (live context_window)
-  ['novita/inclusionai/ling-3.0-tiny', 'Ling 3.0 Tiny', 'B', '-', '256k'], // Fixed (2026-10-17 audit): ctx '262k' → '256k' (live context_window)
+  // Removed (2026-11-22 audit): novita/inclusionai/ling-3.0-tiny - absent from the global and EU catalogs and from the public directory
   ['novita/ling-3.1-flash', 'Ling 3.1 Flash', 'B+', '-', '256k'], // Fixed (2026-10-17 audit): id 'novita/inclusionai/ling-3.1-flash' → 'novita/ling-3.1-flash' (silent router rename, the inclusionai path was dropped) + ctx '262k' → '256k' (live context_window); added 2026-10-10
   // ── C tier — other zero-price models (kept for breadth) ──
   // Removed (2026-10-10 audit): nvidia/nemotron-3.5-content-safety — moderation guardrail classifier (Gemma-3-4B fine-tune, tools:false), not a coding model (catalog hygiene; matches OpenRouter/Kilo cleanup)
-  ['nvidia/muse-glimmer-30b', 'Muse Glimmer 30B', 'C', '-', '128k'], // Fixed (2026-10-17 audit): ctx '131k' → '128k' (live context_window)
+  ['nvidia/muse-glimmer-30b', 'Muse Glimmer 30B', 'S+', '76.0%', '128k'], // Fixed (2026-11-22 audit): tier C -> S+ and sweScore '-' -> '76.0%' per the official Meta model card
 ]
 
 // 📖 OrcaRouter source - https://api.orcarouter.ai/v1
@@ -768,7 +758,7 @@ export const requesty = [
 export const orcarouter = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
   ['deepseek/deepseek-v4-flash-free', 'DeepSeek V4 Flash (Free)', 'S+', '79.0%', '1M'],
-  ['deepseek/deepseek-v4.1-flash-free', 'DeepSeek V4.1 Flash (Free)', 'S+', '74.2%', '1M'], // Added (2026-11-03 audit) — production successor to V4 Flash (released 2026-09-10), 1M ctx / 384K max output, 74.2 DeepSWE v1.1
+  ['deepseek/deepseek-v4.1-flash-free', 'DeepSeek V4.1 Flash (Free)', 'S+', '-', '1M'], // Fixed (2026-11-22 audit): sweScore '74.2%' -> '-' (74.2 is the DeepSWE v1.1 figure, not SWE-bench Verified)
   // ── S tier — SWE-bench Verified 60–70% ──
   ['tencent/hy3-free', 'Tencent Hy3 (Free)', 'S', '-', '256k'],
   ['orcarouter/free', 'OrcaRouter Free (difficulty-routed)', 'S', '-', '-'], // Added (2026-09-15) — verified via live audit
@@ -778,46 +768,48 @@ export const orcarouter = [
   // ── A tier — SWE-bench Verified 40–50% ──
   // Removed (2026-09-29 audit): orcarouter/fusion + fusion-mini + fusion-flash — ids still exist but official docs state each fusion request is billed as the sum of its paid frontier panel legs (Claude Opus 4.8, GPT-5.5, Gemini 3.1 Pro) at cost; the 2026-09-22 "$0 per /v1/models" reading was wrong, the pricing endpoint does not reflect fusion billing
   ['tencent/hy4-preview-free', 'Tencent Hy4 Preview (Free)', 'S', '-', '1M'], // Added (2026-09-28 audit) — new free id, 1M ctx, shadows the Hy4 770B MoE flagship
-  ['orca/orcaverify-text1.0-free', 'OrcaVerify Text 1.0 (Free)', 'C', '-', '-'], // Added (2026-09-28 audit) — AI-text detection, non-coding, kept for breadth
+  // Removed (2026-11-22 audit): orca/orcaverify-text1.0-free - explicit model_not_found for both free and paid ids, absent from the catalogs and the free package; decision detector, not chat
 ]
 
 // 📖 Vercel AI Gateway source - https://vercel.com/docs/ai-gateway
 // 📖 OpenAI-compatible gateway: https://ai-gateway.vercel.sh/v1/chat/completions
-// 📖 Official Vercel gateway at list prices (zero markup). Every account gets $5 of
-// 📖 gateway credits every 30 days (no card needed), and the catalog also exposes a
-// 📖 handful of genuinely $0 models (input AND output priced 0). Verified live
-// 📖 2026-09-05 via GET /v1/models (373 models, 5 with $0/$0 pricing).
-// 📖 Caveats: the monthly credit only covers a subset of the catalog, and buying
-// 📖 credits once permanently moves the account to the paid tier (official FAQ),
-// 📖 which is why this provider is quotaCode 'limited'.
+// 📖 Official Vercel gateway at list prices (zero markup). The $5/month free credit requires a
+// 📖 payment method, only covers a subset of the catalog and ends after the first credit purchase;
+// 📖 separate zero-price promotional routes (input AND output priced 0) are what this list tracks.
+// 📖 Verified live 2026-11-22 via GET /v1/models (517 entries, 6 zero-price language ids).
+// 📖 Caveats: eligibility for the credit is subset-only and buying credits once permanently moves
+// 📖 the account to the paid tier (official FAQ), which is why this provider is quotaCode 'limited'.
 export const vercelGateway = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
   // Removed (2026-09-15): minimax/minimax-m3-free (MiniMax M3 (Free)) — free variant removed, now paid-only
   // Removed (2026-09-15): minimax/minimax-m2.7-free (MiniMax M2.7 (Free)) — free variant removed, now paid-only
   // Removed (2026-11-03 audit): poolside/laguna-s-2.1-free (Laguna S 2.1 (Free)) — absent from the live gateway catalog; only the paid poolside/laguna-s-2.1 remains ($0.09/$0.18 per M, 1M ctx). The 2026-09-29 "$0/$0" note is stale; mirrors the OpenRouter delisting
   ['reflection/beam-free', 'Beam 1.0 (Free)', 'S+', '80.9%', '1M'], // Added (2026-10-17 audit) — new $0/$0 flagship (Reflection Beam 1.0, 501B MoE, released 2026-10-05), SWE-bench Verified 80.9% per reflection.ai. 2026-11-03 audit: the base id reflection/beam is ALSO $0/$0 now, not added (duplicate of this entry)
+  ['recursive/flint-v1.0', 'Recursive Flint 1.0', 'S+', '74.2%', '262k'], // Added (2026-11-22 audit) - zero-price endpoints on the live gateway, SWE-bench Verified 74.2% per the Recursive model card
   // ── B+ tier — vertical-tuned lightweight (coding secondary) ──
   // Removed (2026-09-28 audit): inclusionai/ling-3.0-flash-fin-free + inclusionai/ling-3.0-flash-vl-free — free variants removed from the gateway, only paid variants remain
   // Removed (2026-10-10 audit): inclusionai/ling-3.0-flash-sante-free — the free slot was upgraded: gateway now serves ling-3.1-flash-free at $0/$0 (paid ling-3.0-flash-sante still listed)
   // Removed (2026-10-17 audit): inclusionai/ling-3.1-flash-free — delisted from the gateway entirely, only the paid inclusionai/ling-3.1-flash remains ($0.30/$0.90 per M); reverses the 2026-10-10 add
-  ['nvidia/nemotron-3.5-lightning-free', 'Nemotron 3.5 Lightning (Free)', 'A+', '54.3%', '1M'], // Added (2026-10-17 audit) — new $0/$0 slot; SWE-bench Verified 54.3% per the NVIDIA model card, A+ on the documented scale (matches the NIM entry)
+  ['nvidia/nemotron-3.5-lightning-free', 'Nemotron 3.5 Lightning (Free)', 'A+', '-', '1M'], // Fixed (2026-11-22 audit): sweScore '54.3%' -> '-' (not supportable); keep the unknown until the checkpoint question is settled
   ['stealth/glyph-cluster', 'Glyph Cluster (stealth)', 'B', '-', '256k'], // Added (2026-10-10 audit) — new anonymous early-access model (~2026-10-07), $0/$0, 256k ctx; replaces the rotated-out pixel-canary slot
   // Removed (2026-11-03 audit): stealth/cat-jam (Cat Jam (stealth)) — absent from the live gateway catalog; the stealth slot rotated out after its stealth period ended
   // Removed (2026-10-10 audit): stealth/pixel-canary — stealth slot rotated, id absent from the live gateway
-  ['inclusionai/ling-3.1-flash-1019', 'Ling 3.1 Flash 1019', 'B+', '-', '1M'], // Added (2026-11-03 audit) — new $0/$0 slot (released 2026-10-30, ~560B MoE), 1M ctx; reopens the Ling free slot delisted 2026-10-17
+  // Removed (2026-11-22 audit): inclusionai/ling-3.1-flash-1019 - no longer $0/$0, now bills $0.30/$0.90 per 1M
   // 2026-09-29 audit: list stays strictly $0/$0. Credit-value alternates for the $5/30d credits (paid, NOT added): zai/glm-5.3-flash ($0.15/$0.50 per M, 1M ctx), deepseek/deepseek-v4-flash ($0.13/$0.26 per M, 1M ctx), qwen3.7-flash ($0.03/$0.13 per M, 991k ctx)
 ]
 
 // 📖 Ollama Cloud source - https://ollama.com/pricing and https://ollama.com/search?c=cloud
-// 📖 Free plan includes cloud model access with session/weekly limits. This list keeps coding-relevant cloud models only.
-// 📖 Catalog verified 2026-07-18 against official Ollama cloud model search page.
+// 📖 Pricing moved to token billing on 2026-08-31 with a small monthly STARTER-model allowance; the
+// 📖 free starter set is not enumerated, so eligibility of the rows below is UNVERIFIED. The old
+// 📖 session/weekly caps describe the legacy plan only. This list keeps coding-relevant cloud models only.
+// 📖 Cloud IDs rechecked 2026-11-22; free eligibility remains unresolved for the public starter set.
 export const ollamaCloud = [
   // ── S+ tier — SWE-bench Verified ≥70% ──
   ['nemotron-3-ultra', 'Nemotron 3 Ultra', 'S+', '71.9%', '256k'],
   // Removed (2026-09-28 audit): glm-5.1 (GLM 5.1) — no longer in the Ollama Cloud catalog (glm-5.2/5.3/5.3-flash remain)
   ['glm-5.2', 'GLM 5.2', 'S+', '82.8%', '1M'], // Fixed (2026-10-17 audit): ctx '976k' → '1M' (live /v1/models reports the full 1048576); ctx first fixed 2026-07-27
-  ['minimax-m2.7', 'MiniMax M2.7', 'S+', '78.0%', '192k'], // Fixed (2026-10-17 audit): ctx '200k' → '192k' (exact live value)
-  ['minimax-m3', 'MiniMax M3', 'S+', '78.4%', '500k'], // Fixed (2026-11-03 audit): ctx '512k' → '500k' (live /v1/models reports 512000)
+  // Removed (2026-11-22 audit): minimax-m2.7 - explicitly retired 2026-11-09 in the official catalog
+  ['minimax-m3', 'MiniMax M3', 'S+', '80.5%', '500k'], // Fixed (2026-11-22 audit): sweScore '78.4%' -> '80.5%' (official Verified figure)
   ['minimax-m3.1-flash', 'MiniMax M3.1 Flash', 'S+', '-', '976k'], // Added (2026-11-03 audit) — new cloud model on live /v1/models, 976k ctx
   // Removed (2026-08-23): minimax-m2.5 (MiniMax M2.5) — no longer in ollama.com/v1/models (19 models live)
   ['kimi-k2.6', 'Kimi K2.6', 'S+', '80.2%', '256k'], // Fixed (2026-07-27): ctx '262k' → '256k'
@@ -835,14 +827,14 @@ export const ollamaCloud = [
   // ── A+ tier — SWE-bench Verified 50–60% ──
   // Removed (2026-08-23): kimi-k2.5 (Kimi K2.5) — no longer in ollama.com/v1/models
   ['gemma4:31b', 'Gemma 4 31B', 'A+', '52.0%', '256k'], // Fixed (2026-07-27): ctx '256k' → '128k'
-  ['gpt-oss:20b', 'GPT OSS 20B', 'A+', '50.3%', '128k'],
-  ['mistral-large-3:675b', 'Mistral Large 3 675B Cloud', 'A+', '-', '256k'], // Fixed (2026-08-23): ID 'mistral-large-3:675b-cloud' → 'mistral-large-3:675b' (tag renamed upstream)
+  ['gpt-oss:20b', 'GPT OSS 20B', 'S', '60.7%', '128k'], // Fixed (2026-11-22 audit): sweScore '50.3%' -> '60.7%' (official high-reasoning card), tier A+ -> S
+  // Removed (2026-11-22 audit): mistral-large-3:675b - absent from tags/models/pricing and its library page 404s
   ['mistral-large-4', 'Mistral Large 4', 'A+', '-', '1M'], // Added (2026-10-10 audit) — new cloud model (~Oct 4, 1.05T MoE, 1M ctx, thinking + tools); tier follows the Mistral Large family precedent
   ['muse-spark-open', 'Muse Spark Open', 'S+', '-', '1M'], // Added (2026-11-03 audit) — new cloud model on live /v1/models, 1M ctx
   ['mimo-v2.6-pro', 'MiMo V2.6 Pro', 'S+', '-', '1M'], // Added (2026-11-03 audit) — new cloud model on live /v1/models, 1M ctx
   ['mimo-v2.6-flash', 'MiMo V2.6 Flash', 'A+', '-', '1M'], // Added (2026-11-03 audit) — new cloud model on live /v1/models, 1M ctx
   // Removed (2026-09-28 audit): qwen3.5:397b (Qwen 3.5 Cloud) — qwen3.5 is not flagged cloud on ollama.com and is absent from the cloud catalog/pricing page
-  ['nemotron-3-nano:30b', 'Nemotron 3 Nano 30B', 'A-', '38.8%', '256k'], // Fixed (2026-10-17 audit): ctx '1M' → '256k' (live /v1/models downgraded the context)
+  // Removed (2026-11-22 audit): nemotron-3-nano:30b - local-only model, no cloud badge and absent from the cloud catalog
   ['beam', 'Beam', 'S+', '81.6%', '1M'], // Added (2026-10-17 audit) — Reflection Beam free on Ollama Cloud for a limited time per the 2026-10-16 blog; SWE-bench Verified 81.6% per Ollama's post
 ]
 
@@ -902,7 +894,7 @@ export const sources = {
   groq: {
     name: 'Groq',
     url: 'https://api.groq.com/openai/v1/chat/completions',
-    quota: 'Free · ~30-50 RPM per model',
+    quota: 'Free · 30 RPM per model',
     quotaCode: 'free',
     models: groq,
   },
@@ -930,13 +922,16 @@ export const sources = {
   //   quotaCode: 'metered',
   //   models: githubModels,
   // },
-  mistral: {
-    name: 'Mistral LP',
-    url: 'https://api.mistral.ai/v1/chat/completions',
-    quota: 'Free Experiment plan',
-    quotaCode: 'free',
-    models: mistral,
-  },
+  // 'mistral': RETIRED 2026-11-22 - Mistral Free mode no longer includes API access (billing
+  // required, see the mistral block above). Provider metadata and MISTRAL_API_KEY support stay
+  // in src/core for backwards compat with existing configs.
+  // 'mistral': {
+  //   name: 'Mistral LP',
+  //   url: 'https://api.mistral.ai/v1/chat/completions',
+  //   quota: 'No free API tier (billing required)',
+  //   quotaCode: 'metered',
+  //   models: mistral,
+  // },
   cloudflare: {
     name: 'Cloudflare AI',
     url: 'https://api.cloudflare.com/client/v4/accounts/{$CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions',
@@ -961,17 +956,19 @@ export const sources = {
   ovhcloud: {
     name: 'OVHcloud AI',
     url: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions',
-    quota: 'Free sandbox · 2 RPM no key · 400 RPM with key',
+    quota: 'Free anonymous sandbox · 2 RPM · keyed access is paid',
     quotaCode: 'free',
     models: ovhcloud,
   },
-  codestral: {
-    name: 'Codestral',
-    url: 'https://api.mistral.ai/v1/chat/completions',
-    quota: 'Free · 30 req/min, 2000/day',
-    quotaCode: 'free',
-    models: codestral,
-  },
+  // 'codestral': RETIRED 2026-11-22 - same platform-wide policy change as mistral (see the
+  // codestral block above). CODESTRAL_API_KEY support stays in src/core for backwards compat.
+  // 'codestral': {
+  //   name: 'Codestral',
+  //   url: 'https://api.mistral.ai/v1/chat/completions',
+  //   quota: 'No free API tier (billing required)',
+  //   quotaCode: 'metered',
+  //   models: codestral,
+  // },
   // 'zai': REMOVED 2026-10-17 — GLM Coding Plan free window ended 2026-10-07, plan is
   // paid-only now (no free model left on the coding endpoint). Provider metadata and
   // ZAI_API_KEY support stay in src/core for backwards compat with existing configs.
@@ -1000,7 +997,7 @@ export const sources = {
   'opencode-zen': {
     name: 'OpencodeZen',
     url: 'https://opencode.ai/zen/v1/chat/completions',
-    quota: 'Free · Zen key required',
+    quota: 'Free in OpenCode only · account-bound, no key unlock',
     quotaCode: 'free',
     models: opencodeZen,
     zenOnly: true,
@@ -1016,7 +1013,7 @@ export const sources = {
   llm7: {
     name: 'LLM7',
     url: 'https://api.llm7.io/v1/chat/completions',
-    quota: 'Free · no key needed',
+    quota: 'Free · turbo tier only · no key needed',
     quotaCode: 'limited',
     models: llm7,
     noKeyNeeded: true,
@@ -1028,24 +1025,26 @@ export const sources = {
     quotaCode: 'free',
     models: routeway,
   },
-  novita: {
-    name: 'Novita AI',
-    url: 'https://api.novita.ai/openai/v1/chat/completions',
-    quota: 'Free · 5 zero-price models',
-    quotaCode: 'limited',
-    models: novita,
-  },
+  // 'novita': RETIRED 2026-11-22 - no free route left (see the novita block above). Provider
+  // metadata and NOVITA_API_KEY support stay in src/core for backwards compat with existing configs.
+  // 'novita': {
+  //   name: 'Novita AI',
+  //   url: 'https://api.novita.ai/openai/v1/chat/completions',
+  //   quota: 'No free route left (retired)',
+  //   quotaCode: 'metered',
+  //   models: novita,
+  // },
   pollinations: {
     name: 'Pollinations AI',
     url: 'https://gen.pollinations.ai/v1/chat/completions',
-    quota: 'Free · daily Pollen grants · key at enter.pollinations.ai',
-    quotaCode: 'free',
+    quota: 'Free start · one-time Quest credit · key required',
+    quotaCode: 'limited',
     models: pollinations,
   },
   siliconflow: {
     name: 'SiliconFlow',
     url: 'https://api.siliconflow.cn/v1/chat/completions',
-    quota: 'Free · 7 models @ $0 · 1000 RPM',
+    quota: 'Free · 7 models @ $0 · 1000 RPM · real-name verification',
     quotaCode: 'free',
     models: siliconflow,
   },
@@ -1066,15 +1065,15 @@ export const sources = {
   'vercel-gateway': {
     name: 'Vercel AI Gateway',
     url: 'https://ai-gateway.vercel.sh/v1/chat/completions',
-    quota: 'Free · $5 credits/30 days + $0 models · no card',
+    quota: 'Free · $5 credits/30 days + $0 models · card required',
     quotaCode: 'limited',
     models: vercelGateway,
   },
   'ollama-cloud': {
     name: 'Ollama Cloud',
     url: 'https://ollama.com/v1/chat/completions',
-    quota: 'Free plan · session + weekly caps',
-    quotaCode: 'free',
+    quota: 'Limited · monthly starter-model allowance · eligibility unverified',
+    quotaCode: 'limited',
     models: ollamaCloud,
   },
   // 'onomeo': REMOVED 2026-11-03 — the provider dropped its entire free lineup (catalog now 100% paid,
@@ -1090,7 +1089,7 @@ export const sources = {
   runcrate: {
     name: 'Runcrate',
     url: 'https://api.runcrate.ai/v1/chat/completions',
-    quota: 'Open models are free with your GitHub account',
+    quota: 'Free · GitHub account 30+ days · weekly allowance',
     quotaCode: 'limited',
     models: runcrate,
   },

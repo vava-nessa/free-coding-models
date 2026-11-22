@@ -132,42 +132,11 @@ export function filterByTierOrExit(results, tierLetter) {
 // 📖 models appear automatically without a code update.
 // 📖 Falls back silently to the static list on network failure.
 
-// 📖 Known SWE-bench scores for OpenRouter free models.
-// 📖 Keyed by base model ID (without the :free suffix).
-// 📖 Unknown models default to tier 'B' / '25.0%'.
-const OPENROUTER_TIER_MAP = {
-  'qwen/qwen3-coder':                         ['S+', '70.6%'],
-  'mistralai/devstral-2':                      ['S+', '72.2%'],
-  'minimax/minimax-m2.5':                      ['S+', '74.0%'],
-  'z-ai/glm-4.5-air':                          ['S+', '72.0%'],
-  'tencent/hy3-preview':                       ['S+', '70.0%'],
-  'poolside/laguna-m.1':                       ['S+', '70.0%'],
-  'poolside/laguna-xs.2':                      ['S+', '70.0%'],
-  'qwen/qwen3-next-80b-a3b-instruct':          ['S',  '65.0%'],
-  'openai/gpt-oss-120b':                       ['S',  '60.0%'],
-  'inclusionai/ling-2.6-1t':                   ['S',  '60.0%'],
-  'nvidia/nemotron-3-super-120b-a12b':         ['A+', '56.0%'],
-  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning': ['A+', '52.0%'],
-  'openai/gpt-oss-20b':                        ['A',  '42.0%'],
-  'nvidia/nemotron-3-nano-30b-a3b':            ['A',  '43.0%'],
-  'meta-llama/llama-3.3-70b-instruct':         ['A-', '39.5%'],
-  'google/gemma-4-31b-it':                     ['A',  '45.0%'],
-  'google/gemma-4-26b-a4b-it':                 ['A-', '38.0%'],
-  'google/gemma-3-27b-it':                     ['A-', '36.0%'],
-  'google/gemma-3-12b-it':                     ['B+', '30.0%'],
-  'google/gemma-3-4b-it':                      ['B',  '22.0%'],
-  'google/gemma-3n-e4b-it':                    ['B',  '22.0%'],
-  'google/gemma-3n-e2b-it':                    ['B',  '18.0%'],
-  'meta-llama/llama-3.2-3b-instruct':          ['B',  '20.0%'],
-  'nousresearch/hermes-3-llama-3.1-405b':      ['A',  '40.0%'],
-  'nvidia/nemotron-nano-9b-v2':                ['B+', '28.0%'],
-  'nvidia/nemotron-nano-12b-v2-vl':            ['B+', '30.0%'],
-  'cognitivecomputations/dolphin-mistral-24b-venice-edition': ['B+', '28.0%'],
-  'liquid/lfm-2.5-1.2b-thinking':              ['B',  '18.0%'],
-  'liquid/lfm-2.5-1.2b-instruct':              ['B',  '18.0%'],
-  'openrouter/free':                           ['B',  '25.0%'],
-  'openrouter/owl-alpha':                      ['A+', '50.0%'],
-}
+// 📖 Reuse audited catalog ratings so live discovery cannot overwrite them with stale scores.
+// 📖 New discoveries keep a provisional B tier and an unknown benchmark until audited.
+const OPENROUTER_TIER_MAP = Object.fromEntries(
+  sources.openrouter.models.map(([id, , tier, score]) => [id.replace(/:free$/, ''), [tier, score]])
+)
 
 function isOpenRouterFreeModel(model) {
   if (!model?.id) return false
@@ -182,7 +151,7 @@ function isOpenRouterFreeModel(model) {
 // 📖 fetchOpenRouterFreeModels: Fetch live free models from OpenRouter API.
 // 📖 Returns array of tuples [modelId, label, tier, sweScore, ctx] or null on failure.
 // 📖 Formats context windows using formatCtxWindow and labels using labelFromId.
-// 📖 Uses OPENROUTER_TIER_MAP for known models; others default to tier 'B'/'25.0%'.
+// 📖 Uses OPENROUTER_TIER_MAP for known models; others default to tier 'B' with an unknown score.
 export async function fetchOpenRouterFreeModels() {
   try {
     const controller = new AbortController()
@@ -203,7 +172,7 @@ export async function fetchOpenRouterFreeModels() {
 
     return freeModels.map(m => {
       const baseId = m.id.replace(/:free$/, '')
-      const [tier, swe] = OPENROUTER_TIER_MAP[baseId] || ['B', '25.0%']
+      const [tier, swe] = OPENROUTER_TIER_MAP[baseId] || ['B', '-']
       const ctx = formatCtxWindow(m.context_length)
       const label = labelFromId(m.id)
       return [m.id, label, tier, swe, ctx]

@@ -123,7 +123,10 @@ export function ProviderLogo({
 }: ProviderLogoProps) {
   const cfg = getConfig(providerKey)
   const icon = iconSrc(cfg, colored)
-  const txt = showWordmark ? textSrc(cfg) : null
+  // 📖 Reused placeholder assets must not identify Kilo, Ollama or other gateways as GitHub.
+  const placeholder = (cfg.folder === 'github' && providerKey !== 'github-models')
+    || (cfg.folder === 'openrouter' && providerKey !== 'openrouter')
+  const txt = showWordmark && !placeholder ? textSrc(cfg) : null
   const caption = cfg.caption ?? providerName
   const textHeight = Math.max(10, Math.round(size * 0.7))
 
@@ -136,7 +139,7 @@ export function ProviderLogo({
         className="inline-flex shrink-0 items-center justify-center"
         style={{ width: size, height: size }}
       >
-        <img
+        {placeholder ? <Monogram name={providerName} color={cfg.brandColor} size={size} /> : <img
           src={icon.src}
           alt=""
           aria-hidden="true"
@@ -153,7 +156,7 @@ export function ProviderLogo({
             //    as light text on the dark background.
             filter: icon.isColored ? 'none' : 'invert(1) hue-rotate(180deg)',
           }}
-        />
+        />}
       </span>
       {showWordmark && (
         cfg.legacy ? null

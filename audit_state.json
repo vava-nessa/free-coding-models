@@ -1,125 +1,188 @@
 {
   "_meta": {
-    "totalModels": 258,
-    "lastFullAudit": "2026-11-03"
+    "totalModels": 221,
+    "lastFullAudit": "2026-11-22"
   },
   "nvidia": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "6d221cd1aa5b0f6b59df691495d42544",
-    "modelCount": 14
+    "lastAudited": "2026-11-22",
+    "fingerprint": "f0722d1cab3cccc46d18bf7901ce2378",
+    "modelCount": 17,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "pending": [
+      "Four existing IDs not confirmed by incomplete public listing; retained."
+    ]
   },
   "groq": {
-    "lastAudited": "2026-11-03",
+    "lastAudited": "2026-11-22",
     "fingerprint": "8f08188ce3e3fc9fa956d084734a1561",
-    "modelCount": 3
+    "modelCount": 3,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested."
   },
   "cerebras": {
-    "lastAudited": "2026-11-03",
+    "lastAudited": "2026-11-22",
     "fingerprint": "f3de06edba5d938848ebd9e8432a2f7b",
-    "modelCount": 2
+    "modelCount": 2,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested."
   },
   "googleai": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "79ca93f8a7f76753babdfaa5030e5447",
-    "modelCount": 10
+    "lastAudited": "2026-11-22",
+    "fingerprint": "d745743c91ce2b669adee7d0d4f3b824",
+    "modelCount": 8,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "pending": [
+      "Hydrogen chat compatibility; Pro benchmark conflict."
+    ]
   },
   "mistral": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "2f51b06e208d2658d2e6f90bcad06f9d",
-    "modelCount": 8
+    "lastAudited": "2026-11-22",
+    "fingerprint": "d41d8cd98f00b204e9800998ecf8427e",
+    "modelCount": 0,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "status": "retired-from-free-catalog"
   },
   "cloudflare": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "d88448bd1de0882a5e162501d25136e3",
-    "modelCount": 12
+    "lastAudited": "2026-11-22",
+    "fingerprint": "711f69115e0f3dd321b9f70f58992257",
+    "modelCount": 11,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested."
   },
   "openrouter": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "1b58b469d86742e84c1684572972c1a8",
-    "modelCount": 16
+    "lastAudited": "2026-11-22",
+    "fingerprint": "7a50a2c5ddfce8d5ac8cdc61acb35aee",
+    "modelCount": 12,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "pending": [
+      "Free route retirements inferred from catalog and endpoint lists."
+    ]
   },
   "sambanova": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "4f2223d483b6726543ede11685a94924",
-    "modelCount": 5
+    "lastAudited": "2026-11-22",
+    "fingerprint": "7d0030a3e8ce7a524c40af83d44989dc",
+    "modelCount": 3,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "pending": [
+      "GLM-5.3 addition and existing MiniMax free eligibility unresolved."
+    ]
   },
   "ovhcloud": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "a701f8e62e39fd265de1608bd0a20f06",
-    "modelCount": 14
+    "lastAudited": "2026-11-22",
+    "fingerprint": "e235a0c1bdae6263224f61d3ab468c16",
+    "modelCount": 17,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested."
   },
   "codestral": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "5e8ca2462d78998441463382957eb963",
-    "modelCount": 1
+    "lastAudited": "2026-11-22",
+    "fingerprint": "d41d8cd98f00b204e9800998ecf8427e",
+    "modelCount": 0,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "status": "retired-from-free-catalog"
   },
   "scaleway": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "14d227cf2bae2762b54118873b460c8d",
-    "modelCount": 14
+    "lastAudited": "2026-11-22",
+    "fingerprint": "447158eb2c7779c31a363afce7a6c589",
+    "modelCount": 12,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested."
   },
   "qwen": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "d1b86e56db25551f175a47df050543f6",
-    "modelCount": 22
+    "lastAudited": "2026-11-22",
+    "fingerprint": "952eb62686f5addeccabc0d4541cb351",
+    "modelCount": 15,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "pending": [
+      "Flash3.5/3.6 conflicting free-quota docs; Omni3.8 quota unclear."
+    ]
   },
   "opencode-zen": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "f49d847e500930eb32431291531695b0",
-    "modelCount": 12
+    "lastAudited": "2026-11-22",
+    "fingerprint": "275cb551f26b9e56c85caabb074a7be5",
+    "modelCount": 11,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "pending": [
+      "Free access limited to OpenCode client; general gateway inference not confirmed."
+    ]
   },
   "kilo": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "d112f10d91acb358f9feb0129869a017",
-    "modelCount": 16
+    "lastAudited": "2026-11-22",
+    "fingerprint": "c5c777019ad0dcb109ad74a2710c3860",
+    "modelCount": 14,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "pending": [
+      "Gemma4 free route unavailable, temporary disable possible.",
+      "Nemotron served checkpoint scores unresolved."
+    ]
   },
   "llm7": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "567d1857a3ef391ce18beb0676d16420",
-    "modelCount": 9
+    "lastAudited": "2026-11-22",
+    "fingerprint": "5e5c4bffe94333b60b58ee59d327d5eb",
+    "modelCount": 4,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested."
   },
   "routeway": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "3255e559b6e92b39aef67c9986d9b6cf",
-    "modelCount": 9
+    "lastAudited": "2026-11-22",
+    "fingerprint": "1089662c97152d503f861f7831aa3b00",
+    "modelCount": 8,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "pending": [
+      "DeepSeek free removal inferred from catalogs, no authenticated probe."
+    ]
   },
   "novita": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "e860b10d80ce0dc701d6931677f6615f",
-    "modelCount": 2
+    "lastAudited": "2026-11-22",
+    "fingerprint": "d41d8cd98f00b204e9800998ecf8427e",
+    "modelCount": 0,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "status": "retired-from-free-catalog"
   },
   "pollinations": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "863a9c83e419ffc17c901c96ca98e4ac",
-    "modelCount": 25
+    "lastAudited": "2026-11-22",
+    "fingerprint": "40a8493edc50504dfcedfb0b3a600408",
+    "modelCount": 33,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested."
   },
   "siliconflow": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "b5ab650ba9f806f6d760465ee34a6d93",
-    "modelCount": 1
+    "lastAudited": "2026-11-22",
+    "fingerprint": "263e1ea4dd50dbd905268ea6f5d65a67",
+    "modelCount": 7,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested."
   },
   "requesty": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "f4579a43d499194455a338d93da9a58b",
-    "modelCount": 12
+    "lastAudited": "2026-11-22",
+    "fingerprint": "1fd64fed1b3e128563a62f9376c2a95a",
+    "modelCount": 8,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "pending": [
+      "Removals inferred from router catalogs and directory; no authenticated calls."
+    ]
   },
   "orcarouter": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "90c72bfc877e166db451283fdba0950e",
-    "modelCount": 6
+    "lastAudited": "2026-11-22",
+    "fingerprint": "e88121fd8aa40425f70689c417ae8d48",
+    "modelCount": 6,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested."
   },
   "vercel-gateway": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "326e334e06ee187868933ef1adbbba46",
-    "modelCount": 5
+    "lastAudited": "2026-11-22",
+    "fingerprint": "70b919e74179975a7612173f15b51063",
+    "modelCount": 4,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "pending": [
+      "Ampersand chat compatibility; zero-price access after credit exhaustion.",
+      "Beam/Lightning serving precision unknown."
+    ]
   },
   "ollama-cloud": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "c5a61f3a28c170199f3932a5d23ed20d",
-    "modelCount": 19
+    "lastAudited": "2026-11-22",
+    "fingerprint": "db9e981549dccd45c8082f6763bfa468",
+    "modelCount": 20,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested.",
+    "pending": [
+      "Free starter-model set not public; existing survivors retained, additions held."
+    ]
   },
   "runcrate": {
-    "lastAudited": "2026-11-03",
-    "fingerprint": "2e7ca26187437d9ad33a2731338a205c"
+    "lastAudited": "2026-11-22",
+    "fingerprint": "51dfe9762291ea3cb7363e51e63c5d54",
+    "modelCount": 6,
+    "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested."
   }
 }
