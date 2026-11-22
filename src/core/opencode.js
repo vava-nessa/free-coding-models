@@ -35,6 +35,7 @@ import { getApiKey } from './config.js'
 import { getCloudflareAccountIdSync } from './cloudflare-account.js'
 import { ENV_VAR_NAMES, OPENCODE_MODEL_MAP, isWindows, isMac, isLinux } from './provider-metadata.js'
 import { resolveToolBinaryPath } from './tool-bootstrap.js'
+import { buildToolSpawnInvocation, formatWindowsArgumentError } from './process-spawn.js'
 
 // 📖 OpenCode config location: ~/.config/opencode/opencode.json on ALL platforms.
 // 📖 OpenCode uses xdg-basedir which resolves to %USERPROFILE%\.config on Windows.
@@ -207,14 +208,24 @@ async function spawnOpenCode(args, providerKey, fcmConfig, existingZaiProxy = nu
   }
 
   const { spawn } = await import('child_process')
-  const child = spawn(resolveToolBinaryPath('opencode') || 'opencode', finalArgs, {
-    stdio: 'inherit',
-    // 📖 Windows keeps a shell because npm-installed CLIs resolve to .cmd shims;
-    // 📖 everywhere else the resolved absolute binary path is spawned directly.
-    shell: isWindows,
-    detached: false,
-    env: childEnv
-  })
+  let invocation
+  try {
+    // 📖 process-spawn handles both halves of GitHub #210: npm `.cmd` shims need
+    // 📖 cmd.exe, and neither branch may let a space in the install path split the
+    // 📖 command. Wrapping the raw `shell: isWindows` spawn did exactly that.
+    invocation = buildToolSpawnInvocation(resolveToolBinaryPath('opencode') || 'opencode', finalArgs, {
+      stdio: 'inherit',
+      detached: false,
+      env: childEnv
+    })
+  } catch (error) {
+    const message = formatWindowsArgumentError(error)
+    if (zaiProxy) zaiProxy.close()
+    if (!message) throw error
+    console.error(chalk.red(message))
+    return 1
+  }
+  const child = spawn(invocation.file, invocation.args, invocation.options)
 
   return new Promise((resolve, reject) => {
     child.on('exit', (code) => {

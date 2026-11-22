@@ -24,9 +24,15 @@
  *   📖 FCM Router: built-in target with nothing to install or spawn; starts the daemon,
  *     pushes the selected model + favorites as the `fast-coding` routing set and prints
  *     the /v1 endpoint + model + key trio (issue #184)
+ *   📖 Launching itself goes through `src/core/process-spawn.js` (issue #210): POSIX
+ *     spawns the resolved binary directly, Windows spawns native executables directly
+ *     and routes npm `.cmd` shims through cmd.exe with quoted tokens, so a user
+ *     profile path containing a space no longer breaks every launcher.
  *
  * @functions
  *   → `resolveLauncherModelId` — choose the provider-specific id for a launch
+ *   → `spawnCommand` — launch a tool through the platform-safe spawn invocation
+ *   → `runToolCommandSync` — quiet sync sibling used for `hermes` config plumbing
  *   → `writeGooseConfig` — install provider + set GOOSE_PROVIDER/GOOSE_MODEL in config.yaml
  *   → `writeCrushConfig` — write provider + models.large/small to crush.json
  *   → `prepareExternalToolLaunch` — persist selected-model defaults and compute the launch command
@@ -35,6 +41,7 @@
  *
  * @exports resolveLauncherModelId, buildToolEnv, prepareExternalToolLaunch, startExternalTool
  *
+ * @see src/core/process-spawn.js
  * @see src/tool-metadata.js
  * @see src/provider-metadata.js
  * @see sources.js
@@ -48,7 +55,12 @@ import { spawn, spawnSync } from 'child_process'
 import { sources } from '../../sources.js'
 import { PROVIDER_COLOR } from '../tui/render-table.js'
 import { getApiKey } from './config.js'
-import { ENV_VAR_NAMES, isWindows } from './provider-metadata.js'
+import { ENV_VAR_NAMES } from './provider-metadata.js'
+import {
+  buildToolSpawnInvocation,
+  formatWindowsArgumentError,
+  isUnsafeWindowsArgumentError,
+} from './process-spawn.js'
 import { getToolMeta, TOOL_METADATA } from './tool-metadata.js'
 import { PROVIDER_METADATA } from './provider-metadata.js'
 import { resolveToolBinaryPath } from './tool-bootstrap.js'
@@ -220,6 +232,11 @@ const JCODE_NATIVE_PROVIDERS = {
   codestral:  { provider: 'mistral',       envKey: 'MISTRAL_API_KEY' },
 }
 
+// 📖 spawnCommand launches a resolved tool binary without letting a shell split a
+// 📖 path that contains spaces (GitHub #210). All platform branching lives in
+// 📖 process-spawn.js: POSIX spawns the binary directly, Windows spawns native
+// 📖 executables directly and routes npm `.cmd` shims through cmd.exe with quoted
+// 📖 tokens instead of Node's unquoted `shell: true` join.
 function spawnCommand(command, args, env) {
   // 📖 Defensive: ensure stdin is back in cooked mode before handing the TTY to
   // 📖 an interactive child (jcode REPL etc). The TUI leaves raw mode enabled;
@@ -227,13 +244,28 @@ function spawnCommand(command, args, env) {
   try {
     if (process.stdin.isTTY && process.stdin.isRaw) process.stdin.setRawMode(false)
   } catch {}
+
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      stdio: 'inherit',
-      shell: isWindows,
-      detached: false,
-      env,
-    })
+    let invocation
+    try {
+      invocation = buildToolSpawnInvocation(command, args, {
+        stdio: 'inherit',
+        detached: false,
+        env,
+      })
+    } catch (error) {
+      // 📖 An argument cmd.exe cannot carry safely is reported, never injected.
+      const message = formatWindowsArgumentError(error)
+      if (!message) {
+        reject(error)
+        return
+      }
+      console.error(chalk.red(message))
+      resolve(1)
+      return
+    }
+
+    const child = spawn(invocation.file, invocation.args, invocation.options)
 
     child.on('exit', (code) => resolve(code))
     child.on('error', (err) => {
@@ -245,6 +277,19 @@ function spawnCommand(command, args, env) {
       }
     })
   })
+}
+
+// 📖 runToolCommandSync is the quiet sibling used for config plumbing
+// 📖 (`hermes config set`, `hermes gateway restart`). It shares the same Windows
+// 📖 shim handling so a spaced npm install path does not fail silently there.
+function runToolCommandSync(command, args, options = {}) {
+  try {
+    const invocation = buildToolSpawnInvocation(command, args, options)
+    return spawnSync(invocation.file, invocation.args, invocation.options)
+  } catch (error) {
+    if (!isUnsafeWindowsArgumentError(error)) throw error
+    return { error, status: 1, signal: null, stdout: null, stderr: null, output: [] }
+  }
 }
 
 function writeAiderConfig(model, apiKey, baseUrl, paths = getDefaultToolPaths()) {
@@ -490,13 +535,13 @@ function writeHermesConfig(model, apiKey, baseUrl, paths = getDefaultToolPaths()
   // 📖 Use `hermes config set` for each field — robust and dependency-free
   // 📖 Must use 'model.default' not 'model', otherwise it replaces the entire model: dict with a string
   // 📖 and subsequent model.provider / model.base_url / model.api_key calls silently fail
-  spawnSync(hermesBin, ['config', 'set', 'model.default', model.modelId], { stdio: 'ignore' })
-  spawnSync(hermesBin, ['config', 'set', 'model.provider', 'custom'], { stdio: 'ignore' })
+  runToolCommandSync(hermesBin, ['config', 'set', 'model.default', model.modelId], { stdio: 'ignore' })
+  runToolCommandSync(hermesBin, ['config', 'set', 'model.provider', 'custom'], { stdio: 'ignore' })
   if (baseUrl) {
-    spawnSync(hermesBin, ['config', 'set', 'model.base_url', baseUrl], { stdio: 'ignore' })
+    runToolCommandSync(hermesBin, ['config', 'set', 'model.base_url', baseUrl], { stdio: 'ignore' })
   }
   if (apiKey) {
-    spawnSync(hermesBin, ['config', 'set', 'model.api_key', apiKey], { stdio: 'ignore' })
+    runToolCommandSync(hermesBin, ['config', 'set', 'model.api_key', apiKey], { stdio: 'ignore' })
   }
 
   return { filePath: configPath, backupPath }
@@ -717,7 +762,7 @@ export function writeZCodeConfig(model, config, paths = getDefaultToolPaths()) {
 // 📖 Non-blocking: if gateway is not running, this is a no-op.
 function restartHermesGateway() {
   const hermesBin = resolveToolBinaryPath('hermes') || 'hermes'
-  spawnSync(hermesBin, ['gateway', 'restart'], { stdio: 'ignore', timeout: 10000 })
+  runToolCommandSync(hermesBin, ['gateway', 'restart'], { stdio: 'ignore', timeout: 10000 })
 }
 
 

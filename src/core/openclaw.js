@@ -33,6 +33,7 @@ import { installProviderEndpoints } from './endpoint-installer.js'
 import { ENV_VAR_NAMES } from './provider-metadata.js'
 import { PROVIDER_COLOR } from '../tui/render-table.js'
 import { resolveToolBinaryPath } from './tool-bootstrap.js'
+import { buildToolSpawnInvocation, formatWindowsArgumentError } from './process-spawn.js'
 import { getApiKey } from './config.js'
 import { syncShellEnv } from './shell-env.js'
 
@@ -69,12 +70,28 @@ function spawnOpenClawCli(env = process.env) {
   return new Promise(async (resolve, reject) => {
     const { spawn } = await import('child_process')
     const command = resolveToolBinaryPath('openclaw') || 'openclaw'
-    const child = spawn(command, [], {
-      stdio: 'inherit',
-      shell: false,
-      detached: false,
-      env,
-    })
+    let invocation
+    try {
+      // 📖 Npm installs OpenClaw as an `openclaw.cmd` shim on Windows, which
+      // 📖 CreateProcess cannot run (`shell: false` alone failed) and `shell: true`
+      // 📖 broke on spaced paths. process-spawn picks the right host for both.
+      invocation = buildToolSpawnInvocation(command, [], {
+        stdio: 'inherit',
+        detached: false,
+        env,
+      })
+    } catch (error) {
+      const message = formatWindowsArgumentError(error)
+      if (!message) {
+        reject(error)
+        return
+      }
+      console.log(chalk.red(message))
+      console.log()
+      resolve(1)
+      return
+    }
+    const child = spawn(invocation.file, invocation.args, invocation.options)
 
     child.on('exit', (code) => resolve(typeof code === 'number' ? code : 0))
     child.on('error', (error) => {

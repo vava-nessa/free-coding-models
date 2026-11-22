@@ -7,8 +7,9 @@ import chalk from 'chalk'
 import { sources } from '../../sources.js'
 import { loadKiloConfig, saveKiloConfig, getKiloConfigPath } from './kilo-config.js'
 import { getApiKey } from './config.js'
-import { ENV_VAR_NAMES, OPENCODE_MODEL_MAP, isWindows } from './provider-metadata.js'
+import { ENV_VAR_NAMES, OPENCODE_MODEL_MAP } from './provider-metadata.js'
 import { resolveToolBinaryPath } from './tool-bootstrap.js'
+import { buildToolSpawnInvocation, formatWindowsArgumentError } from './process-spawn.js'
 
 // 📖 Map source model IDs to Kilo built-in IDs (same as OpenCode).
 function getKiloModelId(providerKey, modelId) {
@@ -43,14 +44,23 @@ async function spawnKilo(args, providerKey, fcmConfig) {
   if (envVarName && resolvedKey) childEnv[envVarName] = resolvedKey
 
   const { spawn } = await import('child_process')
-  const child = spawn(resolveToolBinaryPath('kilo') || 'kilo', finalArgs, {
-    stdio: 'inherit',
-    // 📖 Windows keeps a shell because npm-installed CLIs resolve to .cmd shims;
-    // 📖 everywhere else the resolved absolute binary path is spawned directly.
-    shell: isWindows,
-    detached: false,
-    env: childEnv
-  })
+  let invocation
+  try {
+    // 📖 process-spawn owns the Windows shim handling (GitHub #210): a `.cmd`
+    // 📖 shim goes through cmd.exe with quoted tokens, a native binary is spawned
+    // 📖 directly, and a space in the install path never splits the command.
+    invocation = buildToolSpawnInvocation(resolveToolBinaryPath('kilo') || 'kilo', finalArgs, {
+      stdio: 'inherit',
+      detached: false,
+      env: childEnv
+    })
+  } catch (error) {
+    const message = formatWindowsArgumentError(error)
+    if (!message) throw error
+    console.error(chalk.red(message))
+    return 1
+  }
+  const child = spawn(invocation.file, invocation.args, invocation.options)
 
   return new Promise((resolve, reject) => {
     child.on('exit', (code) => resolve(code))
