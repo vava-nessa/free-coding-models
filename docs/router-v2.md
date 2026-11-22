@@ -27,6 +27,11 @@ free-coding-models --daemon-stop      # stop it
    the next model. Streaming gets the same treatment: an SSE error frame
    before any content fails over **before bytes reach your tool**, and a
    stream that closes without producing content is a failure, not a success.
+   A `200` that carries a **provider billing notice** as its assistant text
+   (Pollinations "not enough credits", issue #209) is also a failure: it is
+   cooled down, paused, and never forwarded. When every model in the set is
+   out of credits the router answers `402` with
+   `error.code: "provider_credit_exhausted"`.
 2. **No more hung requests.** Non-streaming upstream body reads are
    timeout-protected (`router.failover.bodyReadTimeoutMs`, default 30s).
 3. **Quota-aware routing.** A `429` model is paused for its `Retry-After`

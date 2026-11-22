@@ -18,6 +18,8 @@
  *   - Per-provider circuit-breaker on 429 (issue #146): pauses ALL models of a provider
  *     when the provider returns a quota-exhausted response, so the ping loop stops
  *     hammering the user's daily quota while the provider's retry window is active.
+ *   - Provider billing notices embedded in a 200 completion (issue #190) are
+ *     sniffed via ./provider-error-content.js and reported as 402.
  *
  *   → Functions:
  *   - `getProviderSessionHeaders`: Extra mandatory headers per provider (e.g. OpenCode Zen session id)
@@ -38,6 +40,7 @@
  *   - ../src/provider-quota-fetchers.js: _fetchProviderQuotaFromModule (quota fetching with cache)
  *   - ../src/quota-capabilities.js: supportsUsagePercent
  *   - ./provider-cooldown.js: pauseProviderQuota, extractRetryAfterFromResponse (issue #146)
+ *   - ./provider-error-content.js: detectProviderErrorContentInPayload (issue #190)
  *
  *   ⚙️ Configuration:
  *   - PING_TIMEOUT: Timeout in ms for ping requests (default: 15000)
@@ -58,6 +61,7 @@ import {
 } from './cloudflare-account.js'
 import { fetchProviderQuota as _fetchProviderQuotaFromModule, extractQuota as _extractQuotaFromModule, processResponseHeaders as _processResponseHeadersFromModule } from './provider-quota-fetchers.js'
 import { supportsUsagePercent } from './quota-capabilities.js'
+import { detectProviderErrorContentInPayload, hasProviderErrorContentRules } from './provider-error-content.js'
 import {
   extractRetryAfterFromResponse,
   pauseProviderQuota,
@@ -200,25 +204,21 @@ async function isDisabledThinkingRejected(resp, req) {
   }
 }
 
-// 📖 Pollinations paid-wall sniffing (issue #190): models that left the free
-// 📖 tier answer HTTP 200 with the error embedded in the completion content
-// ("The account behind this API key doesn't have enough credits. This model
-// needs paid Pollen..."). Status codes alone mark them healthy, so sniff the
-// body and surface 402 (Payment Required) instead. Scoped to pollinations to
-// avoid false positives on other providers.
-const POLLINATIONS_PAID_WALL_MARKERS = [
-  // 📖 Apostrophe-free fragments: the API may return straight ' or typographic ’
-  'have enough credits',
-  'needs paid pollen',
-]
-
-async function isPollinationsPaidWall(resp) {
+// 📖 Provider billing-notice sniffing (issue #190): models that left the free
+// 📖 tier answer HTTP 200 with the error embedded in the completion content.
+// 📖 Status codes alone mark them healthy, so sniff the body and surface 402
+// 📖 (Payment Required) instead. The provider-scoped marker table is shared
+// 📖 with the router (see ./provider-error-content.js), so non-pollinations
+// 📖 providers are never sniffed (avoids false positives).
+async function isProviderErrorContent(resp, providerKey) {
   try {
     const body = await resp.clone().json()
-    const content = body?.choices?.[0]?.message?.content
-    if (typeof content !== 'string') return false
-    const lower = content.toLowerCase()
-    return POLLINATIONS_PAID_WALL_MARKERS.some((marker) => lower.includes(marker))
+    // 📖 The notice table lives in ./provider-error-content.js so the router
+    // 📖 (issue #209) reads the SAME knowledge instead of duplicating markers.
+    // 📖 Probes use `loose` mode to keep the historical #190 verdicts; the
+    // 📖 router uses strict notice detection so a real answer quoting
+    // 📖 "credits" is never dropped.
+    return detectProviderErrorContentInPayload(providerKey, body, { mode: 'loose' }).detected
   } catch {
     return false
   }
@@ -259,10 +259,10 @@ export async function ping(apiKey, modelId, providerKey, url) {
     }
     // 📖 Normalize all HTTP 2xx statuses to "200" so existing verdict/avg logic still works.
     let code = resp.status >= 200 && resp.status < 300 ? '200' : String(resp.status)
-    // 📖 Pollinations paid-wall (issue #190): a 200 whose completion content is
+    // 📖 Provider billing notice (issue #190): a 200 whose completion content is
     // 📖 the credits error means the model is NOT usable on a free key. Report
     // 📖 402 so rows show a failure instead of a fake-healthy green.
-    if (code === '200' && providerKey === 'pollinations' && (await isPollinationsPaidWall(resp))) {
+    if (code === '200' && hasProviderErrorContentRules(providerKey) && (await isProviderErrorContent(resp, providerKey))) {
       code = '402'
     }
     // 📖 Passive quota tracker (t2): parse the response headers via the shared module.

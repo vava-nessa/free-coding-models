@@ -16,6 +16,9 @@
  *     can hold the first chunks briefly, fail over on an error payload before
  *     anything reaches the client, and treat a content-less close as a real
  *     failure.
+ *   - The tracker also accepts a `detectContentError` inspector so the daemon
+ *     can reject a provider billing notice (issue #209) that streams in as the
+ *     assistant text, before the first byte leaves the router.
  *
  *   📖 "Useful content" means: a non-empty text delta, tool_calls, a legacy
  *   function_call, or reasoning tokens. A bare `{role: "assistant"}` first
@@ -82,25 +85,65 @@ export function validateChatCompletionPayload(payload, { mode = 'strict' } = {})
  * `observe()`; the tracker extracts `data:` JSON payloads and reports:
  *   - useful: seen real content (text delta, tool_calls, reasoning, ...)
  *   - errorPayload: an SSE `data:` frame carried an `error` object
+ *   - contentError: the accumulated text MATCHED a provider error notice
+ *     (issue #209). Only the pre-forward window is scanned, and only when the
+ *     caller passes `detectContentError`, so a credits notice is caught before
+ *     a single byte reaches the client.
+ *   - contentPending: the inspector cannot decide yet (a streamed notice split
+ *     across deltas); the daemon holds the buffer one more chunk.
  * The daemon combines those signals with its hold-buffer policy to decide
  * between flush-to-client, fail-over-before-first-byte, and "content-less
  * stream = failure".
  *
+ * @param {{
+ *   detectContentError?: ((sample: string) => { detected?: boolean } | null) | null,
+ *   maxContentScanChars?: number,
+ * }} [opts]
+ *   - detectContentError: pure inspector over the accumulated text sample.
+ *     Return anything with `detected: true` to flag the stream. Throwing never
+ *     breaks routing (the sample is simply ignored).
+ *   - maxContentScanChars: hard cap on the sample size (default 1024) so a
+ *     hostile stream cannot grow memory through the detector.
  * @returns {{
  *   observe(text: string): void,
  *   get useful(): boolean,
  *   get errorPayload(): boolean,
+ *   get contentError(): { detected: boolean } | null,
+ *   get contentPending(): boolean,
  *   get bytesSeen(): number,
  *   get unparsableFrames(): number,
  *   describe(): string,
  * }}
  */
-export function createStreamReadinessTracker() {
+export function createStreamReadinessTracker({ detectContentError = null, maxContentScanChars = 1024 } = {}) {
   let useful = false
   let errorPayload = false
   let bytesSeen = 0
   let unparsableFrames = 0
   let lineRemainder = ''
+  let contentSample = ''
+  let contentError = null
+  let contentPending = false
+
+  const inspectContent = (content) => {
+    if (!detectContentError || contentError || content.length === 0) return
+    if (contentSample.length >= maxContentScanChars) return
+    contentSample += content.slice(0, maxContentScanChars - contentSample.length)
+    try {
+      const result = detectContentError(contentSample)
+      if (result?.detected) {
+        contentError = result
+        contentPending = false
+      } else {
+        // 📖 The inspector is undecided: the text so far could still become a
+        // notice, so the daemon keeps buffering instead of forwarding.
+        contentPending = Boolean(result?.pending)
+      }
+    } catch {
+      // 📖 A detector bug must never take routing down with it.
+      contentPending = false
+    }
+  }
 
   const inspectDataPayload = (raw) => {
     const trimmed = raw.trim()
@@ -123,7 +166,10 @@ export function createStreamReadinessTracker() {
       const delta = choice?.delta ?? choice?.message
       if (!delta || typeof delta !== 'object') continue
       const content = typeof delta.content === 'string' ? delta.content : ''
-      if (content.length > 0) useful = true
+      if (content.length > 0) {
+        useful = true
+        inspectContent(content)
+      }
       if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) useful = true
       if (delta.function_call != null) useful = true
       const reasoning = typeof delta.reasoning_content === 'string' ? delta.reasoning_content : ''
@@ -153,11 +199,13 @@ export function createStreamReadinessTracker() {
     },
     get useful() { return useful },
     get errorPayload() { return errorPayload },
+    get contentError() { return contentError },
+    get contentPending() { return contentPending },
     get bytesSeen() { return bytesSeen },
     get unparsableFrames() { return unparsableFrames },
     get maxHoldBytes() { return MAX_HOLD_BUFFER_BYTES },
     describe() {
-      return `useful=${useful} error=${errorPayload} bytes=${bytesSeen} unparsable=${unparsableFrames}`
+      return `useful=${useful} error=${errorPayload} content_error=${Boolean(contentError)} bytes=${bytesSeen} unparsable=${unparsableFrames}`
     },
   }
 }

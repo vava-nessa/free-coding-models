@@ -75,6 +75,7 @@ Before forwarding to a provider, the router runs a small normalizer keyed on the
 - **Transient failures** (`429`, `500`, `502`, `503`, timeouts) fail over to the next model.
 - **Auth problems** (`401`, `403`, missing keys) are marked separately so bad credentials never poison the circuit breaker; after one provider returns an auth error, the router skips the rest of that provider for the current request.
 - Upstream HTML maintenance pages and malformed "successful" JSON are treated as retryable provider failures instead of being forwarded to your tool.
+- A `200` whose **content** is a provider billing notice (for example Pollinations "not enough credits" or "needs paid Pollen") is treated as a failed model: the router cools it down, pauses it, and fails over before the text reaches your tool, in streaming and non-streaming mode alike. If every model in the set is out of credits, you get `402` with `error.code: "provider_credit_exhausted"` instead of the provider's text in your chat.
 - Quota/rate-limit failures include retry headers in the final router `503` payload when providers expose them.
 - If a coding tool disconnects mid-request, the daemon aborts the upstream request **without** counting it as a provider failure.
 - Streaming requests retry before the first byte; after partial output starts, the daemon records the failure and lets the current stream finish as safely as possible.

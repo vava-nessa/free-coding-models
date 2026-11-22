@@ -174,6 +174,9 @@ function buildRouterV2TestConfig(models, overrides = {}) {
     apiKeys: {
       groq: 'gsk-router-v2-test',
       nvidia: 'nvapi-router-v2-test',
+      // 📖 Issue #209 tests route through the provider whose gateway returns a
+      // billing notice as the assistant message.
+      pollinations: 'pk-router-v2-test',
     },
     router,
   }
@@ -415,6 +418,234 @@ test('v2 pauses a 429 model for its Retry-After window and skips it on the next 
           const pauses = [...runtime.quotaPauses.keys()]
           assert.ok(pauses.includes(`groq/${TEST_MODELS.groq}`), 'quota pause must be recorded')
         })
+      })
+    })
+  })
+})
+
+// ─── 3b. Provider billing notice served as content (issue #209) ─────────────
+
+const CREDIT_NOTICE = "The account behind this API key doesn't have enough credits. Please top up your balance or complete a quest."
+
+test('v2 fails over a 200 whose CONTENT is the provider credits notice and pauses the model', async () => {
+  await withMockProvider(() => ({
+    body: { id: 'chatcmpl-broke', choices: [{ message: { role: 'assistant', content: CREDIT_NOTICE } }] },
+  }), async (pollinationsProvider) => {
+    await withMockProvider(() => ({ body: okBody('chatcmpl-paid') }), async (nvidiaProvider) => {
+      await withSourceUrls({ pollinations: pollinationsProvider.url, nvidia: nvidiaProvider.url }, async () => {
+        const config = buildRouterV2TestConfig([
+          { provider: 'pollinations', model: 'deepseek', priority: 1 },
+          { provider: 'nvidia', model: TEST_MODELS.nvidia, priority: 2 },
+        ], { failureThreshold: 1 })
+        await withRouterV2TestServer(config, async ({ baseUrl, runtime }) => {
+          const response = await postChat(baseUrl)
+          const payload = await response.json()
+          const brokeKey = 'pollinations/deepseek'
+
+          assert.equal(response.status, 200)
+          assert.equal(payload.id, 'chatcmpl-paid', 'the next model must answer')
+          assert.ok(!JSON.stringify(payload).includes('credits'), 'the notice must never reach the client')
+          assert.equal(response.headers.get('x-fcm-v2-model'), `nvidia/${TEST_MODELS.nvidia}`)
+          assert.equal(response.headers.get('x-fcm-v2-attempts'), '2')
+
+          // 📖 Circuit accounting: the notice is a real failure, so health drops
+          // and the model is paused with the credit-exhaustion reason.
+          assert.equal(runtime.breakers.get(brokeKey).consecutiveFailures, 1)
+          assert.equal(runtime.breakers.get(brokeKey).state, 'OPEN')
+          const pause = runtime.quotaPauses.get(brokeKey)
+          assert.ok(pause, 'credits notice must pause the model')
+          assert.equal(runtime.quotaDetails.get(brokeKey).failure_kind, 'provider_credit_exhausted')
+
+          // 📖 Second request: the paused model is skipped WITHOUT being hit.
+          const second = await postChat(baseUrl)
+          assert.equal(second.status, 200)
+          assert.equal(pollinationsProvider.requests.length, 1, 'paused model must not receive traffic')
+          assert.equal(second.headers.get('x-fcm-v2-model'), `nvidia/${TEST_MODELS.nvidia}`)
+        })
+      })
+    })
+  })
+})
+
+test('v2 answers 402 provider_credit_exhausted when every routed model is out of credits', async () => {
+  await withMockProvider(() => ({
+    body: { id: 'chatcmpl-broke', choices: [{ message: { role: 'assistant', content: CREDIT_NOTICE } }] },
+  }), async (pollinationsProvider) => {
+    await withSourceUrls({ pollinations: pollinationsProvider.url }, async () => {
+      const config = buildRouterV2TestConfig(
+        [{ provider: 'pollinations', model: 'deepseek', priority: 1 }],
+        { maxRetries: 0, failureThreshold: 1 },
+      )
+      await withRouterV2TestServer(config, async ({ baseUrl, runtime }) => {
+        const first = await postChat(baseUrl)
+        const firstPayload = await first.json()
+        assert.equal(first.status, 402)
+        assert.equal(firstPayload.error.code, 'provider_credit_exhausted')
+        assert.ok(firstPayload.error.message.includes('test-set'))
+        assert.ok(!JSON.stringify(firstPayload).includes('Please top up'), 'provider text must not leak into the answer')
+
+        // 📖 The model is now paused, so the next request takes the
+        // "all models unavailable" path: still 402, still the same code.
+        const second = await postChat(baseUrl)
+        const secondPayload = await second.json()
+        assert.equal(second.status, 402)
+        assert.equal(secondPayload.error.code, 'provider_credit_exhausted')
+        assert.equal(pollinationsProvider.requests.length, 1, 'paused model must not be re-hit')
+        assert.equal(runtime.quotaDetails.get('pollinations/deepseek').failure_kind, 'provider_credit_exhausted')
+      })
+    })
+  })
+})
+
+test('v2 fails over a STREAMED credits notice before any byte reaches the client', async () => {
+  await withMockProvider(() => ({
+    status: 200,
+    chunks: [
+      `data: ${JSON.stringify({ choices: [{ delta: { content: CREDIT_NOTICE } }] })}\n\n`,
+      'data: [DONE]\n\n',
+    ],
+  }), async (pollinationsProvider) => {
+    await withMockProvider(() => ({
+      status: 200,
+      chunks: [
+        'data: {"choices":[{"delta":{"content":"real streamed answer"}}]}\n\n',
+        'data: [DONE]\n\n',
+      ],
+    }), async (nvidiaProvider) => {
+      await withSourceUrls({ pollinations: pollinationsProvider.url, nvidia: nvidiaProvider.url }, async () => {
+        const config = buildRouterV2TestConfig([
+          { provider: 'pollinations', model: 'deepseek', priority: 1 },
+          { provider: 'nvidia', model: TEST_MODELS.nvidia, priority: 2 },
+        ], { failureThreshold: 1 })
+        await withRouterV2TestServer(config, async ({ baseUrl, runtime }) => {
+          const response = await postChat(baseUrl, { stream: true })
+          const text = await response.text()
+          assert.equal(response.status, 200)
+          assert.ok(text.includes('real streamed answer'))
+          assert.ok(!text.includes('credits'), 'the streamed notice must never be forwarded')
+          assert.equal(runtime.quotaDetails.get('pollinations/deepseek').failure_kind, 'provider_credit_exhausted')
+        })
+      })
+    })
+  })
+})
+
+test('v2 fails over a credits notice SPLIT across SSE deltas without leaking the first fragment', async () => {
+  await withMockProvider(() => ({
+    status: 200,
+    chunks: [
+      `data: ${JSON.stringify({ choices: [{ delta: { content: 'The account behind this ' } }] })}\n\n`,
+      `data: ${JSON.stringify({ choices: [{ delta: { content: "API key doesn't have enough " } }] })}\n\n`,
+      `data: ${JSON.stringify({ choices: [{ delta: { content: 'credits. Please top up.' } }] })}\n\n`,
+      'data: [DONE]\n\n',
+    ],
+  }), async (pollinationsProvider) => {
+    await withMockProvider(() => ({
+      status: 200,
+      chunks: [
+        'data: {"choices":[{"delta":{"content":"safe streamed answer"}}]}\n\n',
+        'data: [DONE]\n\n',
+      ],
+    }), async (nvidiaProvider) => {
+      await withSourceUrls({ pollinations: pollinationsProvider.url, nvidia: nvidiaProvider.url }, async () => {
+        const config = buildRouterV2TestConfig([
+          { provider: 'pollinations', model: 'deepseek', priority: 1 },
+          { provider: 'nvidia', model: TEST_MODELS.nvidia, priority: 2 },
+        ], { failureThreshold: 1 })
+        await withRouterV2TestServer(config, async ({ baseUrl }) => {
+          const response = await postChat(baseUrl, { stream: true })
+          const text = await response.text()
+          assert.equal(response.status, 200)
+          assert.ok(text.includes('safe streamed answer'))
+          assert.ok(!text.includes('The account behind'), 'the first notice fragment must never be forwarded')
+          assert.ok(!text.includes('credits'))
+        })
+      })
+    })
+  })
+})
+
+test('v2 releases a held stream when the text stops looking like a notice', async () => {
+  await withMockProvider(() => ({
+    status: 200,
+    chunks: [
+      `data: ${JSON.stringify({ choices: [{ delta: { content: 'The account behind' } }] })}\n\n`,
+      `data: ${JSON.stringify({ choices: [{ delta: { content: ' it owns the workspace.' } }] })}\n\n`,
+      'data: [DONE]\n\n',
+    ],
+  }), async (pollinationsProvider) => {
+    await withSourceUrls({ pollinations: pollinationsProvider.url }, async () => {
+      const config = buildRouterV2TestConfig(
+        [{ provider: 'pollinations', model: 'deepseek', priority: 1 }],
+        { maxRetries: 0 },
+      )
+      await withRouterV2TestServer(config, async ({ baseUrl, runtime }) => {
+        const response = await postChat(baseUrl, { stream: true })
+        const text = await response.text()
+        assert.equal(response.status, 200)
+        assert.ok(text.includes('The account behind'))
+        assert.ok(text.includes(' it owns the workspace.'))
+        assert.equal(runtime.quotaPauses.size, 0, 'a diverging answer must not be paused')
+      })
+    })
+  })
+})
+
+test('v2 answers 402 on a streamed credits notice when no model is left', async () => {
+  await withMockProvider(() => ({
+    status: 200,
+    chunks: [`data: ${JSON.stringify({ choices: [{ delta: { content: CREDIT_NOTICE } }] })}\n\n`],
+  }), async (pollinationsProvider) => {
+    await withSourceUrls({ pollinations: pollinationsProvider.url }, async () => {
+      const config = buildRouterV2TestConfig(
+        [{ provider: 'pollinations', model: 'deepseek', priority: 1 }],
+        { maxRetries: 0, failureThreshold: 1 },
+      )
+      await withRouterV2TestServer(config, async ({ baseUrl }) => {
+        const response = await postChat(baseUrl, { stream: true })
+        const payload = await response.json()
+        assert.equal(response.status, 402)
+        assert.equal(payload.error.code, 'provider_credit_exhausted')
+      })
+    })
+  })
+})
+
+test('v2 still serves a genuine answer that merely quotes the credits notice', async () => {
+  const legitAnswer = 'Good question. A provider notice such as "The account behind this API key does not have enough credits" means the balance is empty; top up the account or wait for the daily grant. In your code, catch 402 and surface it.'
+  await withMockProvider(() => ({
+    body: { id: 'chatcmpl-legit', choices: [{ message: { role: 'assistant', content: legitAnswer } }] },
+  }), async (pollinationsProvider) => {
+    await withSourceUrls({ pollinations: pollinationsProvider.url }, async () => {
+      const config = buildRouterV2TestConfig(
+        [{ provider: 'pollinations', model: 'deepseek', priority: 1 }],
+        { maxRetries: 0 },
+      )
+      await withRouterV2TestServer(config, async ({ baseUrl, runtime }) => {
+        const response = await postChat(baseUrl)
+        const payload = await response.json()
+        assert.equal(response.status, 200)
+        assert.equal(payload.choices[0].message.content, legitAnswer)
+        assert.equal(runtime.quotaPauses.size, 0, 'a real answer must never be paused as a provider failure')
+      })
+    })
+  })
+})
+
+test('v2 never sniffs the notice text on providers outside the marker table', async () => {
+  await withMockProvider(() => ({
+    body: { id: 'chatcmpl-groq-text', choices: [{ message: { role: 'assistant', content: CREDIT_NOTICE } }] },
+  }), async (groqProvider) => {
+    await withSourceUrls({ groq: groqProvider.url }, async () => {
+      const config = buildRouterV2TestConfig(
+        [{ provider: 'groq', model: TEST_MODELS.groq, priority: 1 }],
+        { maxRetries: 0 },
+      )
+      await withRouterV2TestServer(config, async ({ baseUrl, runtime }) => {
+        const response = await postChat(baseUrl)
+        assert.equal(response.status, 200)
+        assert.equal((await response.json()).id, 'chatcmpl-groq-text')
+        assert.equal(runtime.quotaPauses.size, 0)
       })
     })
   })
@@ -787,6 +1018,35 @@ describe('response gate', () => {
     assert.equal(tracker.useful, false)
   })
 
+  it('flags a streamed provider notice through the content inspector (issue #209)', () => {
+    const tracker = createStreamReadinessTracker({
+      detectContentError: (sample) => (sample.toLowerCase().includes('no credits') ? { detected: true, code: 'provider_credit_exhausted' } : null),
+    })
+    tracker.observe('data: {"choices":[{"delta":{"content":"The account behind"}}]}\n\n')
+    assert.equal(tracker.contentError, null)
+    tracker.observe('data: {"choices":[{"delta":{"content":" this API key has no credits left here"}}]}\n\n')
+    assert.equal(tracker.contentError?.code, 'provider_credit_exhausted')
+    assert.equal(tracker.useful, true, 'the tracker still reports the text it saw')
+  })
+
+  it('survives a throwing content inspector', () => {
+    const tracker = createStreamReadinessTracker({ detectContentError: () => { throw new Error('boom') } })
+    tracker.observe('data: {"choices":[{"delta":{"content":"hello"}}]}\n\n')
+    assert.equal(tracker.contentError, null)
+    assert.equal(tracker.useful, true)
+  })
+
+  it('exposes the pending signal so a split notice can hold the buffer', () => {
+    const tracker = createStreamReadinessTracker({
+      detectContentError: (sample) => (sample.length < 20 ? { detected: false, pending: true } : null),
+    })
+    tracker.observe('data: {"choices":[{"delta":{"content":"short"}}]}\n\n')
+    assert.equal(tracker.contentPending, true)
+    tracker.observe('data: {"choices":[{"delta":{"content":" and now long enough to decide"}}]}\n\n')
+    assert.equal(tracker.contentPending, false)
+    assert.equal(tracker.contentError, null)
+  })
+
   it('estimates streamed completion tokens', () => {
     assert.equal(estimateTokens(''), 0)
     assert.equal(estimateTokens('abcd'), 1)
@@ -823,11 +1083,23 @@ describe('failure classifier', () => {
     }
   })
 
+  it('treats a 402 payment-required upstream as a provider credit failure, not client blame', () => {
+    const verdict = classifyFailure({ status: 402 })
+    assert.equal(verdict.kind, FAILURE_KINDS.PROVIDER_CREDIT_EXHAUSTED)
+    assert.equal(verdict.blame, 'provider')
+    assert.equal(verdict.failover, true)
+    assert.equal(verdict.healthDamage, true)
+    assert.equal(verdict.blockProvider, false)
+    assert.ok(verdict.quotaPauseMs > 0)
+    assert.equal(verdict.clientStatus, 402)
+  })
+
   it('maps final client status codes per failure kind', () => {
     assert.equal(clientStatusForKind(FAILURE_KINDS.AUTH), 401)
     assert.equal(clientStatusForKind(FAILURE_KINDS.RATE_LIMIT), 429)
     assert.equal(clientStatusForKind(FAILURE_KINDS.INVALID_REQUEST), 400)
     assert.equal(clientStatusForKind(FAILURE_KINDS.SERVER), 502)
+    assert.equal(clientStatusForKind(FAILURE_KINDS.PROVIDER_CREDIT_EXHAUSTED), 402)
   })
 })
 

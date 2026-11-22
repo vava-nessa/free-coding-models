@@ -35,6 +35,10 @@ export const FAILURE_KINDS = Object.freeze({
   AUTH: 'auth_error',
   RATE_LIMIT: 'rate_limit',
   QUOTA: 'quota_exhausted',
+  // 📖 Issue #209: the provider answered 200 (or 402) but the payload IS its
+  // billing notice ("not enough credits"). Distinct from QUOTA so clients get
+  // a payment-required error instead of a retryable rate-limit one.
+  PROVIDER_CREDIT_EXHAUSTED: 'provider_credit_exhausted',
   TIMEOUT: 'timeout',
   NETWORK: 'network_error',
   SERVER: 'provider_server_error',
@@ -53,8 +57,12 @@ export const FAILURE_KINDS = Object.freeze({
 // 📖 HTTP status → kind. 529 is the non-standard "Overloaded" status used by
 // several inference providers: it is model-scoped (that specific model is
 // busy), not a provider-wide outage.
+// 📖 402 Payment Required is ACCOUNT-scoped, not client-caused: without the
+// explicit mapping it fell into INVALID_REQUEST (client blame, no health
+// damage), so a broke provider key kept getting traffic (issue #209).
 const STATUS_KIND_MAP = new Map([
   [401, FAILURE_KINDS.AUTH],
+  [402, FAILURE_KINDS.PROVIDER_CREDIT_EXHAUSTED],
   [403, FAILURE_KINDS.AUTH],
   [408, FAILURE_KINDS.TIMEOUT],
   [429, FAILURE_KINDS.RATE_LIMIT],
@@ -64,6 +72,12 @@ const STATUS_KIND_MAP = new Map([
   [504, FAILURE_KINDS.SERVER],
   [529, FAILURE_KINDS.OVERLOADED],
 ])
+
+// 📖 Credits do not come back on their own within a Retry-After window, so the
+// pause is generous but finite: 10 minutes, then the model gets a probe and a
+// single retry. Prevents burning a whole request budget on one broke model
+// while still recovering automatically when the user tops up.
+const CREDIT_EXHAUSTED_PAUSE_MS = 10 * 60 * 1000
 
 /**
  * 📖 Map an HTTP status code to a coarse failure kind.
@@ -130,6 +144,21 @@ export function classifyFailure({ kind = null, status = null, retryAfterMs = nul
         clientStatus: 429,
       }
     }
+    case FAILURE_KINDS.PROVIDER_CREDIT_EXHAUSTED:
+      // 📖 The account behind the API key cannot pay for this model (or this
+      // whole provider). Fail over immediately, damage health so the circuit
+      // cools down, and pause the model for a fixed window. `blockProvider`
+      // stays false: on gateways like Pollinations only SOME models require
+      // paid credit, so the rest of the provider may still serve.
+      return {
+        kind: resolvedKind,
+        blame: 'provider',
+        failover: true,
+        healthDamage: true,
+        blockProvider: false,
+        quotaPauseMs: CREDIT_EXHAUSTED_PAUSE_MS,
+        clientStatus: 402,
+      }
     case FAILURE_KINDS.INVALID_REQUEST:
       // 📖 Blame attribution fix: a 400/404/413/422 usually means the CLIENT
       // payload does not fit this model (unsupported tools, too-large body).

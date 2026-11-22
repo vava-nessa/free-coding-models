@@ -14,6 +14,7 @@
 import { describe, it, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { ping } from '../src/core/ping.js'
+import { detectProviderErrorContent, detectProviderErrorContentInPayload, PROVIDER_ERROR_CODES } from '../src/core/provider-error-content.js'
 
 const POLLI_URL = 'https://gen.pollinations.ai/v1/chat/completions'
 const OTHER_URL = 'https://api.groq.com/openai/v1/chat/completions'
@@ -79,5 +80,54 @@ describe('ping() Pollinations paid-wall sniffing (issue #190)', () => {
     ])
     const result = await ping('sk-test', 'laguna', 'pollinations', POLLI_URL)
     assert.equal(result.code, '200')
+  })
+})
+
+describe('shared provider notice detector (issues #190 / #209)', () => {
+  const notice = "The account behind this API key doesn't have enough credits. Please top up your balance or complete a quest."
+
+  it('detects the canonical notice in both modes', () => {
+    for (const mode of ['strict', 'loose']) {
+      const result = detectProviderErrorContent('pollinations', notice, { mode })
+      assert.equal(result.detected, true, `${mode} mode must detect the notice`)
+      assert.equal(result.code, PROVIDER_ERROR_CODES.CREDIT_EXHAUSTED)
+    }
+  })
+
+  it('strict mode ignores a long genuine answer that quotes the notice', () => {
+    const answer = `Here is how to handle it. When a provider says "${notice}" it means the balance is empty, so catch the 402 in your client and retry after the daily grant.`
+    assert.equal(detectProviderErrorContent('pollinations', answer, { mode: 'strict' }).detected, false)
+    // 📖 Loose (probe) mode keeps the historical #190 verdict on any fragment.
+    assert.equal(detectProviderErrorContent('pollinations', answer, { mode: 'loose' }).detected, true)
+  })
+
+  it('strict mode still catches the notice prefix even with long top-up instructions', () => {
+    const longNotice = `${notice} ${'Top up at enter.pollinations.ai or complete a quest to earn more Pollen. '.repeat(10)}`.trim()
+    assert.ok(longNotice.length > 400)
+    assert.equal(detectProviderErrorContent('pollinations', longNotice, { mode: 'strict' }).detected, true)
+  })
+
+  it('strict mode still catches a short billing phrase', () => {
+    assert.equal(detectProviderErrorContent('pollinations', 'This model needs paid Pollen.', { mode: 'strict' }).detected, true)
+  })
+
+  it('reports pending for a partial notice so a stream can hold the buffer', () => {
+    const partial = detectProviderErrorContent('pollinations', 'The account behind this ')
+    assert.equal(partial.detected, false)
+    assert.equal(partial.pending, true)
+    // 📖 Diverging text stops being suspicious immediately.
+    assert.equal(detectProviderErrorContent('pollinations', 'The account behind it owns the workspace.').pending, false)
+  })
+
+  it('never matches providers outside the table', () => {
+    assert.equal(detectProviderErrorContent('groq', notice, { mode: 'loose' }).detected, false)
+    assert.equal(detectProviderErrorContent('openrouter', notice, { mode: 'strict' }).detected, false)
+  })
+
+  it('reads the first assistant text from a parsed payload', () => {
+    const payload = { choices: [{ message: { role: 'assistant', content: notice } }] }
+    assert.equal(detectProviderErrorContentInPayload('pollinations', payload).detected, true)
+    assert.equal(detectProviderErrorContentInPayload('pollinations', { choices: [{ message: { tool_calls: [{ id: '1' }] } }] }).detected, false)
+    assert.equal(detectProviderErrorContentInPayload('pollinations', null).detected, false)
   })
 })

@@ -102,6 +102,9 @@ import {
   translateOpenAIToAnthropicResponse,
 } from './router-v2/anthropic-compat.js'
 import { parseFcmModel } from './router-v2/constants.js'
+// 📖 Issue #209: provider billing notices embedded in a 200 completion are a
+// failure, not an answer. Same detector as the probe path (issue #190).
+import { detectProviderErrorContent, detectProviderErrorContentInPayload, PROVIDER_ERROR_CODES } from './provider-error-content.js'
 
 export const ROUTER_DEFAULT_PORT = 19280
 export const ROUTER_MAX_PORT = 19289
@@ -1507,10 +1510,13 @@ export class RouterRuntime {
     if ((verdict.quotaPauseMs != null && verdict.quotaPauseMs > 0)
       || verdict.kind === FAILURE_KINDS.RATE_LIMIT
       || verdict.kind === FAILURE_KINDS.QUOTA
+      || verdict.kind === FAILURE_KINDS.PROVIDER_CREDIT_EXHAUSTED
       || meta.quotaExhausted) {
-      this.recordQuotaPause(key, verdict.quotaPauseMs || DEFAULT_QUOTA_PAUSE_MS, statusCode, meta)
+      this.recordQuotaPause(key, verdict.quotaPauseMs || DEFAULT_QUOTA_PAUSE_MS, statusCode, { ...meta, failureKind: verdict.kind })
     }
-    if (verdict.kind !== FAILURE_KINDS.RATE_LIMIT && verdict.kind !== FAILURE_KINDS.QUOTA) {
+    if (verdict.kind !== FAILURE_KINDS.RATE_LIMIT
+      && verdict.kind !== FAILURE_KINDS.QUOTA
+      && verdict.kind !== FAILURE_KINDS.PROVIDER_CREDIT_EXHAUSTED) {
       this.quotaExhausted.delete(key)
     }
     this.recordProbeResult(key, { ok: false, latencyMs, code: statusCode || 'ERR', error: detail })
@@ -1522,6 +1528,10 @@ export class RouterRuntime {
       until: Date.now() + pauseMs,
       retry_after_ms: pauseMs,
       status: statusCode,
+      // 📖 Issue #209: keep WHY the model was paused so the "all models
+      // unavailable" path can answer 402 payment-required instead of 429 when
+      // every paused model is out of credits rather than rate-limited.
+      failure_kind: meta.failureKind || null,
       rate_limit_headers: meta.rateLimitHeaders || {},
       last_seen: nowIso(),
     })
@@ -1530,6 +1540,7 @@ export class RouterRuntime {
       model: key,
       status: statusCode,
       retry_after_ms: pauseMs,
+      failure_kind: meta.failureKind || null,
       rate_limit_headers: meta.rateLimitHeaders || {},
       last_seen: nowIso(),
     })
@@ -2705,17 +2716,29 @@ export class RouterRuntime {
     const allAuthError = health.length > 0 && health.every((h) => h.state === 'AUTH_ERROR')
     const allPaused = health.length > 0 && health.every((h) => h.state === 'QUOTA_PAUSED')
     const allStaleOrUnsupported = health.length > 0 && health.every((h) => h.state === 'STALE' || h.state === 'UNSUPPORTED')
+    // 📖 Issue #209: when every paused model is paused because its account is
+    // out of credits, 429 + Retry-After would invite endless retries. Answer
+    // 402 payment-required instead, with a dedicated error code.
+    const pausedDetails = this.quotaDetailsForKeys(quotaExhausted)
+    const allCreditExhausted = allPaused
+      && pausedDetails.length === health.length
+      && pausedDetails.every((detail) => detail.failure_kind === FAILURE_KINDS.PROVIDER_CREDIT_EXHAUSTED)
     let statusCode = 503
     if (allAuthError) statusCode = 401
+    else if (allCreditExhausted) statusCode = 402
     else if (allPaused || (quotaExhausted.length === health.length && health.length > 0)) statusCode = 429
     else if (allStaleOrUnsupported) statusCode = 400
     const headers = statusCode === 429 ? this.retryAfterHeaders() : {}
     this.sendProtocolError(res, protocol, statusCode,
       `All models in set are unavailable: ${set.name}`, requestId,
       {
-        code: statusCode === 401 ? 'invalid_api_key' : statusCode === 429 ? 'insufficient_quota' : 'all_models_unavailable',
+        code: statusCode === 401
+          ? 'invalid_api_key'
+          : statusCode === 402
+            ? PROVIDER_ERROR_CODES.CREDIT_EXHAUSTED
+            : statusCode === 429 ? 'insufficient_quota' : 'all_models_unavailable',
         headers,
-        payload: { set: set.name, models_tried: [], quota_exhausted: quotaExhausted, quota_exhausted_details: this.quotaDetailsForKeys(quotaExhausted), model_health: health },
+        payload: { set: set.name, models_tried: [], quota_exhausted: quotaExhausted, quota_exhausted_details: pausedDetails, model_health: health },
       })
     void sendUsageTelemetry(this.config, {}, {
       event: 'app_router_all_down',
@@ -2737,9 +2760,11 @@ export class RouterRuntime {
     // 📖 Keep the v1 client-facing error codes: quota exhaustion is
     // 'insufficient_quota' (OpenAI convention), auth is 'invalid_api_key'.
     const clientCode = allSame
-      ? (kinds[0] === FAILURE_KINDS.RATE_LIMIT || kinds[0] === FAILURE_KINDS.QUOTA
-        ? 'insufficient_quota'
-        : kinds[0] === FAILURE_KINDS.AUTH ? 'invalid_api_key' : kinds[0])
+      ? (kinds[0] === FAILURE_KINDS.PROVIDER_CREDIT_EXHAUSTED
+        ? PROVIDER_ERROR_CODES.CREDIT_EXHAUSTED
+        : kinds[0] === FAILURE_KINDS.RATE_LIMIT || kinds[0] === FAILURE_KINDS.QUOTA
+          ? 'insufficient_quota'
+          : kinds[0] === FAILURE_KINDS.AUTH ? 'invalid_api_key' : kinds[0])
       : 'all_models_failed'
     this.sendProtocolError(res, protocol, statusCode,
       `All routed models failed for set: ${set.name}`, requestId,
@@ -2817,6 +2842,25 @@ export class RouterRuntime {
             this.addRequestLog({ request_id: requestId, model: key, status: 200, latency_ms: latencyMs, tokens: 0, failover: attemptIndex > 0, error: `gate_${gate.reason}` })
             return { done: false, failoverToNext: true, reason: verdict.kind, verdict, status: 200, latencyMs }
           }
+        }
+
+        // 📖 Issue #209: a 200 whose CONTENT is the provider's billing notice is
+        // a failure, not an answer. This runs even when contentValidation is
+        // 'off': that switch opts out of the empty-answer gate, never of
+        // "error text is not a model reply". Strict mode keeps a genuine answer
+        // that merely mentions credits.
+        const providerNotice = detectProviderErrorContentInPayload(candidate.provider, parsed.value)
+        if (providerNotice.detected) {
+          const verdict = classifyFailure({ kind: FAILURE_KINDS.PROVIDER_CREDIT_EXHAUSTED })
+          this.applyFailureVerdict(key, verdict, {
+            detail: `provider notice: ${providerNotice.code} (${providerNotice.marker})`,
+            statusCode: 200,
+            meta: upstreamMeta,
+          })
+          this.recordRouterError('provider_error_content', requestId, { model: key, code: providerNotice.code })
+          this.addRequestLog({ request_id: requestId, model: key, status: 200, latency_ms: latencyMs, tokens: 0, failover: attemptIndex > 0, error: providerNotice.code })
+          this.logger.warn(`Provider notice from ${key}, failing over`, { request_id: requestId, code: providerNotice.code })
+          return { done: false, failoverToNext: true, reason: verdict.kind, verdict, status: 200, latencyMs }
         }
 
         this.markSuccess(key, latencyMs)
@@ -2985,7 +3029,12 @@ export class RouterRuntime {
       // 📖 v2 readiness gate: hold early chunks until the tracker sees useful
       // content, an upstream error frame (fail over BEFORE the client gets
       // bytes), or the hold cap overflows (weird provider: pass through).
-      const tracker = createStreamReadinessTracker()
+      // 📖 Issue #209: the tracker also inspects the accumulated text with the
+      // shared provider-notice detector, so a credits notice streamed as the
+      // assistant answer never reaches the client.
+      const tracker = createStreamReadinessTracker({
+        detectContentError: (sample) => detectProviderErrorContent(candidate.provider, sample),
+      })
       const holdBuffer = []
       let forwarded = false
       let forwardedChars = 0
@@ -3036,6 +3085,20 @@ export class RouterRuntime {
           activeReq.tokens += 1
         }
         if (!forwarded) {
+          if (tracker.contentError) {
+            // 📖 Issue #209: the streamed text IS a provider billing notice.
+            // Nothing reached the client yet, so fail over silently.
+            try { controller.abort() } catch {}
+            const verdict = classifyFailure({ kind: FAILURE_KINDS.PROVIDER_CREDIT_EXHAUSTED })
+            this.applyFailureVerdict(key, verdict, {
+              detail: `provider notice in stream: ${tracker.contentError.code || 'credit_exhausted'}`,
+              statusCode: 200,
+              meta: upstreamMeta,
+            })
+            this.recordRouterError('provider_error_content', requestId, { model: key, stream: true, code: tracker.contentError.code || null })
+            this.addRequestLog({ request_id: requestId, model: key, status: 200, latency_ms: latencyMs, tokens: 0, failover: attemptIndex > 0, error: tracker.contentError.code || 'provider_credit_exhausted', stream: true })
+            return { done: false, failoverToNext: true, reason: verdict.kind, verdict, status: 200, latencyMs }
+          }
           if (tracker.errorPayload) {
             try { controller.abort() } catch {}
             const verdict = classifyFailure({ kind: FAILURE_KINDS.ERROR_PAYLOAD })
@@ -3045,7 +3108,12 @@ export class RouterRuntime {
           }
           if (tracker.useful) {
             holdBuffer.push(text)
-            flushHold()
+            // 📖 Issue #209: while the notice inspector is undecided (the text
+            // so far is a prefix of a billing notice), keep buffering one more
+            // delta instead of forwarding a fragment that may be the notice.
+            // The byte cap guarantees the hold is bounded.
+            const undecided = tracker.contentPending && tracker.bytesSeen <= tracker.maxHoldBytes
+            if (!undecided) flushHold()
           } else if (tracker.bytesSeen > tracker.maxHoldBytes) {
             // 📖 Huge non-JSON preamble: pass it through rather than stall.
             holdBuffer.push(text)
@@ -3068,6 +3136,13 @@ export class RouterRuntime {
             break
           }
         }
+      }
+
+      if (!forwarded && tracker.useful) {
+        // 📖 The stream ended while the notice inspector was still undecided
+        // (short answer that never completed a pending phrase). It is real
+        // content, so flush it instead of reporting an empty stream.
+        flushHold()
       }
 
       if (!forwarded) {
