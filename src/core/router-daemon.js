@@ -47,6 +47,7 @@ import {
   isProviderEnabled,
   loadConfig,
   normalizeRouterConfig,
+  persistApiKeysForProvider,
   saveConfig,
 } from './config.js'
 import { buildChatCompletionPingBody, ping, resolveCloudflareUrl, shouldUseDisabledThinkingForProvider, getProviderSessionHeaders } from './ping.js'
@@ -1278,6 +1279,31 @@ export class RouterRuntime {
     if (this.persistConfig === false) return { success: true, backupCreated: false }
     const result = saveConfig(this.config)
     if (!result.success) this.logger.warn('Router config write failed', { error: result.error })
+    return result
+  }
+
+  // 📖 persistApiKeyForProvider() is the daemon's only write path for a single
+  // 📖 provider's API key (GH #208). It delegates to the config module helper
+  // 📖 that rewrites exactly one provider's key set on disk with replaceApiKeys,
+  // 📖 so deleting a key actually sticks instead of being merged back from the
+  // 📖 disk snapshot by a plain saveConfig(). It also honors the same
+  // 📖 persistConfig:false guard as saveRouterConfig(), which keeps unit-test
+  // 📖 runs from rewriting the real ~/.free-coding-models.json.
+  persistApiKeyForProvider(providerKey) {
+    if (this.persistConfig === false) return { success: true, backupCreated: false }
+    const result = persistApiKeysForProvider(this.config, providerKey)
+    if (!result.success) {
+      this.logger.warn('API key write failed', { provider: providerKey, error: result.error })
+    }
+    return result
+  }
+
+  // 📖 persistSettings() writes non-key settings (provider enabled flags) and,
+  // 📖 like the other two helpers, stays a no-op on the test runtime.
+  persistSettings() {
+    if (this.persistConfig === false) return { success: true, backupCreated: false }
+    const result = saveConfig(this.config)
+    if (!result.success) this.logger.warn('Settings write failed', { error: result.error })
     return result
   }
 
@@ -3969,28 +3995,63 @@ export class RouterRuntime {
           return
         }
         const body = await readJsonBody(req)
-        if (body.apiKeys) {
-          for (const [key, value] of Object.entries(body.apiKeys)) {
-            if (value) {
-              if (!this.config.apiKeys) this.config.apiKeys = {}
-              this.config.apiKeys[key] = value
-            } else {
-              if (this.config.apiKeys) delete this.config.apiKeys[key]
+        // 📖 Key changes are persisted provider-by-provider through
+        // 📖 persistApiKeyForProvider() (GH #208).
+        // 📖
+        // 📖 Why not one saveConfig(this.config) for everything: saveConfig()
+        // 📖 merges apiKeys from the latest on-disk snapshot so a stale writer
+        // 📖 cannot wipe keys it never touched. The flip side is that the very
+        // 📖 key we just deleted from memory comes back from disk, so "Delete
+        // 📖 key" silently undid itself and the provider stayed authenticated.
+        // 📖 persistApiKeyForProvider() replaces only that provider's entry on
+        // 📖 disk (replaceApiKeys) and refreshes this.config from the merged
+        // 📖 snapshot, so unrelated providers keep their keys and env-var
+        // 📖 precedence is untouched (it lives in getApiKey(), not on disk).
+        if (body.apiKeys && typeof body.apiKeys === 'object') {
+          for (const [providerKey, rawValue] of Object.entries(body.apiKeys)) {
+            if (typeof providerKey !== 'string' || !providerKey) continue
+            if (!this.config.apiKeys) this.config.apiKeys = {}
+            // 📖 Empty string / empty array / null means "remove this key".
+            const isList = Array.isArray(rawValue)
+            const nextValue = isList ? rawValue : (typeof rawValue === 'string' ? rawValue.trim() : '')
+            const hasValue = isList ? nextValue.length > 0 : Boolean(nextValue)
+            if (hasValue) this.config.apiKeys[providerKey] = nextValue
+            else delete this.config.apiKeys[providerKey]
+
+            const keySaveResult = this.persistApiKeyForProvider(providerKey)
+            if (!keySaveResult.success) {
+              sendError(
+                res,
+                500,
+                `Failed to persist API key for ${providerKey}: ${keySaveResult.error || 'unknown error'}`,
+                'server_error',
+                'config_save_failed',
+                requestId,
+              )
+              return
             }
           }
         }
-        if (body.providers) {
+        if (body.providers && typeof body.providers === 'object') {
           for (const [key, value] of Object.entries(body.providers)) {
             if (!this.config.providers) this.config.providers = {}
             if (!this.config.providers[key]) this.config.providers[key] = {}
-            this.config.providers[key].enabled = value.enabled !== false
+            this.config.providers[key].enabled = value?.enabled !== false
           }
-        }
-        try {
-          saveConfig(this.config)
-        } catch (err) {
-          sendError(res, 500, 'Failed to save config: ' + err.message, 'server_error', 'config_save_failed', requestId)
-          return
+          // 📖 Provider toggles are saved after the key writes so the in-memory
+          // 📖 config already reflects the snapshot returned by the key helper.
+          const providerSaveResult = this.persistSettings()
+          if (!providerSaveResult.success) {
+            sendError(
+              res,
+              500,
+              `Failed to save provider settings: ${providerSaveResult.error || 'unknown error'}`,
+              'server_error',
+              'config_save_failed',
+              requestId,
+            )
+            return
+          }
         }
         if (body.apiKeys) {
           for (const pk of Object.keys(body.apiKeys)) {
@@ -4382,7 +4443,7 @@ export async function buildDefaultRouterSet(config = {}, maxModels, options = {}
   }
 }
 
-export function createRouterRuntimeForTest({ config, port = 0, logger = null, tokenPath = ROUTER_TOKENS_PATH, breakersPath = null, historyPath = null } = {}) {
+export function createRouterRuntimeForTest({ config, port = 0, logger = null, tokenPath = ROUTER_TOKENS_PATH, breakersPath = null, historyPath = null, persistConfig = false } = {}) {
   const testLogger = logger || {
     level: 'error',
     error() {},
@@ -4392,8 +4453,11 @@ export function createRouterRuntimeForTest({ config, port = 0, logger = null, to
   }
   // 📖 Tests use this factory to exercise the real HTTP router against local
   // 📖 fake providers without spawning a daemon or touching user token files.
-  // 📖 Router config persistence is disabled here so set/probe-mode endpoint
-  // 📖 tests cannot write fixture router sets into ~/.free-coding-models.json.
+  // 📖 Router config persistence is disabled by default so set/probe-mode
+  // 📖 endpoint tests cannot write fixture router sets into
+  // 📖 ~/.free-coding-models.json. A test that must exercise the real disk
+  // 📖 round-trip (e.g. GH #208 API-key deletion) passes persistConfig: true
+  // 📖 with FCM_CONFIG_DIR pointing at a throwaway directory.
   // 📖 v2: breaker/history state also lands in unique tmp files, otherwise
   // 📖 tests would inherit the machine's real persisted breaker state.
   const testId = `${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -4402,7 +4466,7 @@ export function createRouterRuntimeForTest({ config, port = 0, logger = null, to
     port,
     logger: testLogger,
     tokenPath,
-    persistConfig: false,
+    persistConfig,
     paths: {
       breakers: breakersPath || join(tmpdir(), `fcm-router-test-breakers-${testId}.json`),
       history: historyPath || join(tmpdir(), `fcm-router-test-history-${testId}.json`),

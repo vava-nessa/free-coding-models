@@ -145,4 +145,4 @@ Full pipeline, output shape, and failure modes: [sync-set.md](./sync-set.md)
 | `GET /api/config` | Provider config (keys masked) |
 | `GET /api/events` | Live SSE events for the dashboard |
 | `GET /api/key/:provider` | Reveal the full API key for a provider |
-| `POST /api/settings` | Save API keys and provider toggles |
+| `POST /api/settings` | Save API keys and provider toggles. Send `{ "apiKeys": { "<provider>": "" } }` to delete a saved key |

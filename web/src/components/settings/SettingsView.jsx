@@ -118,6 +118,11 @@ export default function SettingsView({ onToast, onOpenChangelog, onCheckForUpdat
       if (result.success) {
         onToast?.(t('settings.keyRemovedForProvider', { provider: key }), 'info')
         setRevealedKeys((prev) => { const n = new Set(prev); n.delete(key); return n })
+        // 📖 Clear the local draft + stale test badge too: the masked key shown
+        // 📖 above comes from /api/config, but the input under it is local state
+        // 📖 and would otherwise keep whatever was typed before the delete.
+        setKeyInputs((prev) => ({ ...prev, [key]: '' }))
+        setTestResults((prev) => { const n = { ...prev }; delete n[key]; return n })
         await loadConfig()
       } else {
         onToast?.(result.error || t('settings.keyRemoveFailed'), 'error')

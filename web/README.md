@@ -20,7 +20,7 @@ The React app uses a realtime-first connection strategy against the local engine
 * **`GET /api/state`** returns the wrapped live dashboard state for REST fallback polling.
 * **`GET /api/models`** remains the legacy flat model catalog endpoint for simple clients.
 * **`GET /api/config`** retrieves active provider toggles (keys are masked).
-* **`POST /api/settings`** updates API keys and provider preferences.
+* **`POST /api/settings`** updates API keys and provider preferences. An empty string for a provider deletes its saved key (the file entry goes away, an env var for the same provider keeps working).
 * **`POST /api/global-benchmark`** benchmarks only the models currently visible in the web table, so filters/search control the benchmark scope.
 
 ---
