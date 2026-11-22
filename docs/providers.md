@@ -2,7 +2,7 @@
 
 # Provider Catalog
 
-**21 providers / 221 live models**, generated from [`sources.js`](../sources.js), the same catalog the TUI, the Web Dashboard and the Smart Model Router read. Counts update only when this script is re-run, so they always match the shipped catalog.
+**22 providers / 222 live models**, generated from [`sources.js`](../sources.js), the same catalog the TUI, the Web Dashboard and the Smart Model Router read. Counts update only when this script is re-run, so they always match the shipped catalog.
 
 Sign up on any one provider to grab a free API key: **one key is enough to start**. Add more at any time from inside the app (press `P` in the TUI, or the Web Dashboard Settings page). A few providers (`Kilo`, `LLM7`, OVHcloud sandbox) even answer without a key, with tighter shared limits.
 
@@ -47,6 +47,7 @@ Two caveats worth knowing: free tiers get smaller or disappear over time (the au
 | [Groq](https://console.groq.com/keys) | 3 | S | Free · 30 RPM per model | `GROQ_API_KEY` |
 | [SambaNova](https://cloud.sambanova.ai/apis) | 3 | S | Small dev tier · light use | `SAMBANOVA_API_KEY` |
 | [Cerebras](https://cloud.cerebras.ai) | 2 | S | Free trial · $5 credits / 30 days · card required | `CEREBRAS_API_KEY` |
+| [cheapllm.shop](https://cheapllm.shop/signup) | 1 | S+ | Free · no rate limit during the beta · then 5k in / 1k out tokens/hour | `CHEAPLLM_API_KEY` |
 
 ## Tier scale
 

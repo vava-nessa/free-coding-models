@@ -29,7 +29,7 @@
  *   📖 Secondary: https://swe-rebench.com (independent evals, scores are lower)
  *   📖 Leaderboard tracker: https://www.marc0.dev/en/leaderboard
  *
- *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, githubModels, mistral, codestral, scaleway, googleai, zai, qwen, cloudflare, ovhcloud, opencodeZen, kilo, llm7, routeway, novita, ollamaCloud, pollinations, siliconflow, requesty, orcarouter, vercelGateway, onomeo, runcrate — model arrays per active provider
+ *   @exports nvidiaNim, groq, cerebras, sambanova, openrouter, githubModels, mistral, codestral, scaleway, googleai, zai, qwen, cloudflare, ovhcloud, opencodeZen, kilo, llm7, routeway, novita, ollamaCloud, pollinations, siliconflow, requesty, orcarouter, vercelGateway, onomeo, runcrate, cheapllm — model arrays per active provider
  *   📖 Retired providers (mistral, codestral, novita) stay exported as empty arrays so
  *      provider-metadata/config imports keep working, but they are absent from the
  *      `sources` map since the 2026-11-22 audit.
@@ -874,6 +874,28 @@ export const runcrate = [
   ['Qwen/Qwen3.8-Flash', 'Qwen3.8 Flash', 'A+', '-', '1M'],
 ]
 
+// 📖 cheapllm.shop source - https://cheapllm.shop/docs
+// 📖 OpenAI-compatible API: https://cheapllm.shop/v1/chat/completions (also /v1/responses
+// 📖 and an Anthropic-compatible /v1/messages endpoint, same key).
+// 📖 Free access verified 2026-11-22 against the official terms (https://cheapllm.shop/terms,
+// 📖 last updated 2026-11-16) and the limits section of https://cheapllm.shop/docs:
+// 📖 during the beta every account is free with no rate limit, and when the beta ends every
+// 📖 account keeps a permanent free tier of at least 5,000 input + 1,000 output tokens per
+// 📖 rolling hour (per account, all keys together, no card). Usage past that is billed only
+// 📖 if the user adds a payment method, so the lasting access never asks for a card.
+// 📖 Id and ctx checked live against the public https://cheapllm.shop/v1/models
+// 📖 (no key needed): one model, context_length 262144.
+// 📖 quotaCode stays 'free' (not 'limited') because the badge legend in docs/providers.md
+// 📖 reserves 'limited' for allowances that deplete or need unlocking (one-off credits,
+// 📖 expiring grants); a permanent hourly cap that renews forever matches 'free', exactly
+// 📖 like NVIDIA's 1000 req/month or Requesty's 200 req/day.
+export const cheapllm = [
+  // ── S+ tier — SWE-bench Verified ≥70% ──
+  // 📖 No published SWE-bench Verified score, so '-'; tier follows the DeepSeek V4.1 Flash
+  // 📖 rows already listed for Ollama Cloud and Runcrate (same model family).
+  ['deepseek-v4.1-flash-1017', 'DeepSeek V4.1 Flash 1017', 'S+', '-', '262k'],
+]
+
 // 📖 All sources combined - used by the main script
 // 📖 Each source has: name (display), url (API endpoint), models (array of model tuples)
 // 📖 Providers ordered by generosity of free tier (most generous first)
@@ -1092,6 +1114,13 @@ export const sources = {
     quota: 'Free · GitHub account 30+ days · weekly allowance',
     quotaCode: 'limited',
     models: runcrate,
+  },
+  cheapllm: {
+    name: 'cheapllm.shop',
+    url: 'https://cheapllm.shop/v1/chat/completions',
+    quota: 'Free · no rate limit during the beta · then 5k in / 1k out tokens/hour',
+    quotaCode: 'free',
+    models: cheapllm,
   },
 }
 

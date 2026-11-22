@@ -1015,6 +1015,19 @@ describe('sources.js data integrity', () => {
     assert.equal(sources.runcrate.quotaCode, 'limited')
     assert.ok(Array.isArray(sources.runcrate.models) && sources.runcrate.models.length > 0)
   })
+  it('sources object has cheapllm with correct structure', () => {
+    assert.ok(sources.cheapllm, 'sources.cheapllm should exist')
+    assert.equal(sources.cheapllm.name, 'cheapllm.shop')
+    assert.equal(sources.cheapllm.url, 'https://cheapllm.shop/v1/chat/completions')
+    // 📖 Free tier recurs every rolling hour and never asks for a card, so the badge is 'free'.
+    assert.equal(sources.cheapllm.quotaCode, 'free')
+    assert.ok(Array.isArray(sources.cheapllm.models) && sources.cheapllm.models.length > 0)
+    // 📖 Guard the live-verified id and context (GET https://cheapllm.shop/v1/models, 2026-11-22).
+    const model = sources.cheapllm.models.find((m) => m[0] === 'deepseek-v4.1-flash-1017')
+    assert.ok(model, 'cheapllm should list deepseek-v4.1-flash-1017')
+    assert.equal(model[4], '262k', 'cheapllm context should match context_length 262144')
+    assert.equal(providerMetadataModule.ENV_VAR_NAMES.cheapllm, 'CHEAPLLM_API_KEY')
+  })
 
 })
 

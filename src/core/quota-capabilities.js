@@ -71,6 +71,8 @@ export const PROVIDER_CAPABILITIES = {
   onomeo: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'daily' },
   // 📖 Runcrate: no usage fetcher is wired.
   runcrate: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'unknown' },
+  // 📖 cheapllm.shop: permanent free tier counted over a rolling hour; no usage fetcher is wired.
+  cheapllm: { telemetryType: 'unknown', supportsEndpoint: false, usageDisplay: 'ok', resetCadence: 'rolling' },
 }
 
 /** Fallback for unrecognized providers */

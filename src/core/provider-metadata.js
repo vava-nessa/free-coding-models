@@ -69,6 +69,7 @@ export const ENV_VAR_NAMES = {
   'vercel-gateway': 'VERCEL_AI_GATEWAY_API_KEY',
   onomeo:     'ONOMEO_API_KEY',
   runcrate:   'RUNCRATE_API_KEY',
+  cheapllm:   'CHEAPLLM_API_KEY',
   // 📖 Providers whose OpenCode/Kilo config writers reference {env:VAR} - names
   // 📖 must match those tables exactly (see opencode.js / kilo.js).
   huggingface: 'HUGGINGFACE_API_KEY',
@@ -423,6 +424,14 @@ export const PROVIDER_METADATA = {
     signupHint: 'Settings → Keys → Create API key (an Ollama account is required)',
     rateLimits: 'Free plan: small monthly starter allowance, included models and amount not published',
     detailedLimits: 'Ollama Cloud switched to token billing on 2026-08-31. The session and weekly caps describe a legacy plan and no longer apply.\nWhat remains free is a small monthly starter allowance on a starter model set; Ollama does not publish which models are included or how large the allowance is.\nDo not read this catalog as "all models are free": only the starter allowance is free of charge, everything else bills per token.\nAn Ollama account and an API key are both required.',
+  },
+  cheapllm: {
+    label: 'cheapllm.shop',
+    color: chalk.rgb(90, 230, 215),
+    signupUrl: 'https://cheapllm.shop/signup',
+    signupHint: 'Sign up (email or Google/Discord, no card) → API key given on the next screen',
+    rateLimits: 'Free · no rate limit during the beta · then 5k in / 1k out tokens per hour',
+    detailedLimits: 'During the beta the service is free with no rate limit; the end of the beta is announced on the site and by email beforehand.\nAfter the beta every account keeps a permanent free tier of at least 5,000 input and 1,000 output tokens per hour, counted per account over a rolling hour, all keys together, with no card.\nUsage past the free tier is billed only if the user adds a payment method.\nOne model: deepseek-v4.1-flash-1017 (OpenAI-compatible /v1/chat/completions, /v1/responses, and an Anthropic-compatible /v1/messages), 262,144-token context, text and image input, tool calls, streaming.',
   },
 }
 

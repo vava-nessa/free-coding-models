@@ -73,6 +73,9 @@ export const PROVIDER_AUTH_ENDPOINTS = {
   onomeo:       { url: 'https://onomeo.com/v1/models',          method: 'GET' },
   // 📖 Runcrate's /v1/models is public, so it cannot reject a bad key: check the key on the billing balance endpoint.
   runcrate:     { url: 'https://www.runcrate.ai/api/v1/billing/balance', method: 'GET' },
+  // 📖 cheapllm.shop serves /v1/models without a key (200), but sends 401 for a wrong
+  // 📖 Bearer token, so /v1/models is a valid auth check here (verified 2026-11-22).
+  cheapllm:     { url: 'https://cheapllm.shop/v1/models', method: 'GET' },
   together:     { url: 'https://api.together.xyz/v1/models',        method: 'GET' },
   perplexity:   { url: 'https://api.perplexity.ai/v1/models',       method: 'GET' },
   chutes:       { url: 'https://chutes.ai/v1/models',               method: 'GET' },

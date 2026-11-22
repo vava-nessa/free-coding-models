@@ -198,6 +198,7 @@ const PROVIDER_PALETTES = {
     'vercel-gateway': [170, 190, 230],
     onomeo: [240, 120, 60],
     runcrate: [95, 132, 255],
+    cheapllm: [90, 230, 215],
     'ollama-cloud': [230, 230, 230],
   },
   light: {
@@ -234,6 +235,7 @@ const PROVIDER_PALETTES = {
     'vercel-gateway': [60, 80, 130],
     onomeo: [150, 55, 10],
     runcrate: [26, 43, 120],
+    cheapllm: [0, 120, 115],
     'ollama-cloud': [88, 88, 88],
   },
 }
