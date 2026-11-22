@@ -1,9 +1,9 @@
 ---
 id: t21
 title: Fix GH #208: dashboard Delete key persistence
-status: Review
+status: Done
 created: 2026-11-22
-updated: 2026-11-22T13:15:00Z
+updated: 2026-11-22T16:32:05Z
 ---
 
 # GH #208 - "Delete key" in Settings does not remove the stored API key
@@ -108,3 +108,6 @@ Secondary issues found in the same handler:
 - Pre-existing, unrelated: the repo test suite writes `~/.free-coding-models.json` from
   checkouts that predate this fix (the `/api/settings` tests plus router fixture tests).
   With this fix, two consecutive full runs left the file byte-identical.
+
+## Combined release
+Integrated and published with catalog audit in0.6.2 at373ae64. Combined suite1254passes, dashboard/site builds pass; actual npm package globally installed and help verified. See tasks/t20_audit_all_24.md for release evidence.

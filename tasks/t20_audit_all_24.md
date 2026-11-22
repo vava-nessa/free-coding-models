@@ -1,9 +1,9 @@
 ---
 id: t20
 title: Audit all 24 model providers with DeepSeek
-status: Review
+status: Done
 created: 2026-11-22
-updated: 2026-11-22T16:18:34Z
+updated: 2026-11-22T16:32:04Z
 ---
 
 ## Goal
@@ -196,3 +196,7 @@ Mistral/Codestral API-free loss independently confirmed from official admin docs
 User requested publishing this audit together with all four fixes from triage thread04f1b53d-297a-40ad-a5a5-fb15becd3134 in one0.6.2 release. Integrated six local commits for208/209/210/211, preserving both Pollinations and Windows follow-up fixes. CheapLLM brings final catalog to22providers/222models. Reconciled duplicate task20 by renaming issue208 task to21.
 Combined checks:1254tests pass,252suites; dashboard build, website typecheck and website build pass. Runtime and npm registry verification follow before release confirmation.
 Known limits unchanged: native Windows launch not exercised on this Mac; CheapLLM authenticated generation not tested.
+
+### Publication confirmed
+Combined code pushed in373ae64, single tag/releasev0.6.2. GitHub release notes exactly match changelog/v0.6.2.md and include audit plus208/209/210/211. Release workflow45043429546 successful, CI tests45043429472 successful on Node20/22, Docker image workflow successful.
+npm registry latest0.6.2 confirmed. After registry processing/negative-cache delay, npm install -g free-coding-models@0.6.2 succeeded; global --help exited0. Installed published sources contain22providers/222models including CheapLLM; provider-error-content.js and process-spawn.js both present. Repository clean before recording this evidence. Native Windows execution and CheapLLM authenticated generation remain untested, as documented.
