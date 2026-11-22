@@ -136,7 +136,7 @@ function endsWithPartialPhrase(body, phrases) {
  * @returns {boolean}
  */
 export function hasProviderErrorContentRules(providerKey) {
-  return typeof providerKey === 'string' && Boolean(PROVIDER_ERROR_CONTENT_RULES[providerKey])
+  return typeof providerKey === 'string' && Object.hasOwn(PROVIDER_ERROR_CONTENT_RULES, providerKey)
 }
 
 /**
@@ -155,8 +155,8 @@ export function hasProviderErrorContentRules(providerKey) {
  */
 export function detectProviderErrorContent(providerKey, content, { mode = 'strict' } = {}) {
   if (typeof providerKey !== 'string' || typeof content !== 'string') return NO_MATCH
+  if (!hasProviderErrorContentRules(providerKey)) return NO_MATCH
   const rule = PROVIDER_ERROR_CONTENT_RULES[providerKey]
-  if (!rule) return NO_MATCH
   const trimmed = content.trim()
   if (trimmed.length === 0) return NO_MATCH
 
@@ -183,7 +183,7 @@ export function detectProviderErrorContent(providerKey, content, { mode = 'stric
 
   // 📖 Still undecided: hold the stream only when the text could plausibly
   // become a notice with one more delta.
-  const pendingPrefix = start.length >= MIN_PENDING_CHARS
+  const pendingPrefix = start.length > 0
     && rule.noticePrefixes.some((candidate) => candidate.startsWith(start))
   const pendingPhrase = endsWithPartialPhrase(body, rule.billingPhrases)
   const pending = pendingPrefix || pendingPhrase

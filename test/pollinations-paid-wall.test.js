@@ -112,6 +112,7 @@ describe('shared provider notice detector (issues #190 / #209)', () => {
   })
 
   it('reports pending for a partial notice so a stream can hold the buffer', () => {
+    assert.equal(detectProviderErrorContent('pollinations', 'The').pending, true)
     const partial = detectProviderErrorContent('pollinations', 'The account behind this ')
     assert.equal(partial.detected, false)
     assert.equal(partial.pending, true)
@@ -122,6 +123,7 @@ describe('shared provider notice detector (issues #190 / #209)', () => {
   it('never matches providers outside the table', () => {
     assert.equal(detectProviderErrorContent('groq', notice, { mode: 'loose' }).detected, false)
     assert.equal(detectProviderErrorContent('openrouter', notice, { mode: 'strict' }).detected, false)
+    assert.equal(detectProviderErrorContent('constructor', notice).detected, false)
   })
 
   it('reads the first assistant text from a parsed payload', () => {

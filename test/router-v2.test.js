@@ -594,7 +594,8 @@ test('v2 releases a held stream when the text stops looking like a notice', asyn
 test('v2 answers 402 on a streamed credits notice when no model is left', async () => {
   await withMockProvider(() => ({
     status: 200,
-    chunks: [`data: ${JSON.stringify({ choices: [{ delta: { content: CREDIT_NOTICE } }] })}\n\n`],
+    chunks: ['The', CREDIT_NOTICE.slice(3)].map((content) =>
+      `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`),
   }), async (pollinationsProvider) => {
     await withSourceUrls({ pollinations: pollinationsProvider.url }, async () => {
       const config = buildRouterV2TestConfig(
