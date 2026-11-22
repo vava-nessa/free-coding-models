@@ -138,10 +138,9 @@ export function quoteWindowsCommandToken(token) {
 
   if (CMD_UNREPRESENTABLE.test(value)) {
     const error = new Error(
-      `Windows cannot pass the argument "${value}" to cmd.exe safely (contains ${describeUnrepresentable(value)}).`
+      `Windows cannot pass an argument to cmd.exe safely (contains ${describeUnrepresentable(value)}).`
     )
     error.code = UNSAFE_WINDOWS_ARGUMENT_CODE
-    error.argument = value
     throw error
   }
 

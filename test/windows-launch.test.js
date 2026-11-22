@@ -254,6 +254,7 @@ describe('process-spawn — no unsafe shell interpolation', () => {
         (error) => {
           assert.equal(error.code, UNSAFE_WINDOWS_ARGUMENT_CODE)
           assert.match(error.message, reason)
+          assert.equal(error.message.includes(argument), false)
           assert.equal(isUnsafeWindowsArgumentError(error), true)
           assert.equal(formatWindowsArgumentError(error), `  X ${error.message}`)
           return true
