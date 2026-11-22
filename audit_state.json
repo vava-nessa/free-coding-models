@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "totalModels": 221,
+    "totalModels": 222,
     "lastFullAudit": "2026-11-22"
   },
   "nvidia": {
@@ -184,5 +184,11 @@
     "fingerprint": "51dfe9762291ea3cb7363e51e63c5d54",
     "modelCount": 6,
     "verificationMethod": "Official public catalogs and documentation; authenticated inference not tested."
+  },
+  "cheapllm": {
+    "lastAudited": "2026-11-22",
+    "modelCount": 1,
+    "fingerprint": "4c611d67406892db6962ebcab9af1432",
+    "verificationMethod": "Official free terms and public model catalog; authenticated inference not tested."
   }
 }

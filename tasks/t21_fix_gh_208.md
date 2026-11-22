@@ -1,5 +1,5 @@
 ---
-id: t20
+id: t21
 title: Fix GH #208: dashboard Delete key persistence
 status: Review
 created: 2026-11-22

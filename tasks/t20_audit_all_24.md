@@ -191,3 +191,8 @@ Mistral/Codestral API-free loss independently confirmed from official admin docs
 - Local website pnpm dev running on4328; headless Chrome inspected /models,/docs/providers,/docs/core/providers, Kilo filter14rows, no pageerrors. Corrected misleading placeholder GitHub/OpenRouter branding to actual gateway names.
 - Screenshot /tmp/fcm-audit-artifacts/catalog.png reviewed.
 - Publication status: NOT pushed or published. User confirmation needed before production-relevant push per supplied Git rules. Registry/global-install verification and tweet proposal remain release-phase work.
+
+### Combined release authorized
+User requested publishing this audit together with all four fixes from triage thread04f1b53d-297a-40ad-a5a5-fb15becd3134 in one0.6.2 release. Integrated six local commits for208/209/210/211, preserving both Pollinations and Windows follow-up fixes. CheapLLM brings final catalog to22providers/222models. Reconciled duplicate task20 by renaming issue208 task to21.
+Combined checks:1254tests pass,252suites; dashboard build, website typecheck and website build pass. Runtime and npm registry verification follow before release confirmation.
+Known limits unchanged: native Windows launch not exercised on this Mac; CheapLLM authenticated generation not tested.

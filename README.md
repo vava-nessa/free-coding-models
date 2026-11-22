@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Find the fastest free coding model in seconds.</strong><br>
-  Live latency, stability and verdicts for 221 models from 21 providers, then install the one you pick straight into your favorite coding tool.<br><br>
+  Live latency, stability and verdicts for 222 models from 22 providers, then install the one you pick straight into your favorite coding tool.<br><br>
   <strong>Works with:</strong> OpenCode CLI / Desktop / WebUI, OpenClaw, Crush, Goose, Aider, Kilo CLI, Qwen Code, OpenHands, Amp, Hermes, Continue, Cline, Xcode, Pi, ZCode, ForgeCode, Copilot, jcode, Caveman Code and more.
 </p>
 
@@ -24,7 +24,7 @@ free-coding-models
 ```
 
 <p align="center">
-  <sub>Then create a free account on one of the <a href="#-providers">21 providers</a> to grab an API key.</sub>
+  <sub>Then create a free account on one of the <a href="#-providers">22 providers</a> to grab an API key.</sub>
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@ free-coding-models
 
 ## 💡 Why this tool?
 
-There is a large catalog of free and free-limited coding models (**21 providers / 221 live models**, generated from [`sources.js`](./sources.js)). Which one is fastest *right now*? Which one is actually stable, versus just lucky on the last ping?
+There is a large catalog of free and free-limited coding models (**22 providers / 222 live models**, generated from [`sources.js`](./sources.js)). Which one is fastest *right now*? Which one is actually stable, versus just lucky on the last ping?
 
 `free-coding-models` (FCM) answers that by pinging every model in parallel, showing live latency, and computing a **live Stability Score (0-100)** combining p95 latency, jitter, spike rate and uptime. Average latency alone is misleading: a model that randomly spikes to 6 seconds is not reliable.
 
@@ -87,7 +87,7 @@ free-coding-models --fiable              # print the single most reliable model 
 
 ## 🟢 Providers
 
-**21 active providers / 221 live models**.
+**22 active providers / 222 live models**.
 
 | Provider | Live models | Best tier | Free tier | Env var |
 |----------|-------------|-----------|-----------|---------|
@@ -112,6 +112,7 @@ free-coding-models --fiable              # print the single most reliable model 
 | [Groq](https://console.groq.com/keys) | 3 | S | Free · 30 RPM per model | `GROQ_API_KEY` |
 | [SambaNova](https://cloud.sambanova.ai/apis) | 3 | S | Small dev tier · light use | `SAMBANOVA_API_KEY` |
 | [Cerebras](https://cloud.cerebras.ai) | 2 | S | Free trial · $5 credits / 30 days · card required | `CEREBRAS_API_KEY` |
+| [cheapllm.shop](https://cheapllm.shop/signup) | 1 | S+ | Free · no rate limit during the beta · then 5k in / 1k out tokens/hour | `CHEAPLLM_API_KEY` |
 
 > 🧾 **What "free" means here:** free is a property of the *(provider, model)* pair, never of the provider as a whole. A row is listed only when that exact model id costs $0 to call through that provider (permanent free tier, `:free` variant, or free plan), verified live at audit time. The same open-weights model can be free on one host and paid on another - paid siblings are deliberately excluded. Full breakdown and badge legend: [`docs/providers.md`](./docs/providers.md).
 
